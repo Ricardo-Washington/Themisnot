@@ -39,7 +39,7 @@
                     <label for="password">Senha</label>
                     <input type="password" id="password" required placeholder="Digite sua senha">
                 </div>
-                <button type="submit" class="cta-button">Login</button>
+                <button type="submit" class="cta-button" onclick="login()">Login</button>
                 <div id="registerMessage" class="register-message"></div>
             </form>
             <p class="login-link">Ainda não uma conta? <a href="../Registrice/registre-se.html">Registre-se</a></p>
@@ -64,8 +64,24 @@
             <p>&copy; 2025 Thémis. Todos os direitos reservados.</p>
         </div>
     </footer>
-
-    <script src="/login/login.js"></script>
 </body>
+
+  <script src="/login/login.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/12.1.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/12.1.0/firebase-auth-compat.js"></script>
+    <script>
+        // Inicialize o Firebase
+        const firebaseConfig = {
+            apiKey: "AIzaSyDVK6hzW1gifPrjDQrC00I9GWQqumaY3PE",
+            authDomain: "themis-bcaa4.firebaseapp.com",
+            projectId: "themis-bcaa4",
+            storageBucket: "themis-bcaa4.appspot.com",
+            messagingSenderId: "244101876997",
+            appId: "1:244101876997:web:fcee5a85d3506417c7fb6c"
+        };
+
+        // Inicialização correta do Firebase    
+        firebase.initializeApp(firebaseConfig);
+    </script>
 
 </html>
