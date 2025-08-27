@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Thémis | Login</title>
+    <link rel="stylesheet" href="login.css">
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;700&family=Anton&display=swap" rel="stylesheet">
+    <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.11.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.11.0/firebase-auth-compat.js"></script>
+</head>
+
+<body>
+    <nav class="navbar">
+        <div class="container nav-content">
+            <a href="../index/index.html" class="logo"><img src="/img/logo.png" alt="logo"></a>
+            <ul class="nav-links">
+                <li><a href="../index/index.html#sobre">Sobre</a></li>
+                <li><a href="../index/index.html#cursos">Cursos</a></li>
+                <li><a href="../index/index.html#depoimentos">Depoimentos</a></li>
+                <li><a href="../index/index.html#contato">Contato</a></li>
+                <li><a href="../Registrice/registre-se.html">Registri-se</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <section class="register-section">
+        <div class="container register-container">
+            <h2 class="section-title">Login</h2>
+            <form id="registerForm" class="register-form">
+                <div class="form-group">
+                    <label for="email">E-mail</label>
+                    <input type="email" id="email" required placeholder="Digite seu e-mail">
+                </div>
+                <div class="form-group">
+                    <label for="password">Senha</label>
+                    <input type="password" id="password" required placeholder="Digite sua senha">
+                </div>
+                <button type="submit" class="cta-button">Login</button>
+                <div id="registerMessage" class="register-message"></div>
+            </form>
+            <p class="login-link">Ainda não uma conta? <a href="../Registrice/registre-se.html">Registre-se</a></p>
+        </div>
+    </section>
+
+    <footer class="footer-section">
+        <div class="container footer-content">
+            <div class="footer-info">
+                <h4>Thémis</h4>
+                <p>Rua da Segurança, 123 - Cidade Protetora</p>
+                <p>contato@Thémis.com</p>
+                <p>(11) 98765-4321</p>
+            </div>
+            <div class="social-links">
+                <a href="#"><i class="fab fa-facebook-f"></i></a>
+                <a href="#"><i class="fab fa-instagram"></i></a>
+                <a href="#"><i class="fab fa-linkedin-in"></i></a>
+            </div>
+        </div>
+        <div class="footer-copyright">
+            <p>&copy; 2025 Thémis. Todos os direitos reservados.</p>
+        </div>
+    </footer>
+
+    <script src="/Registrice/registre-se.js"></script>
+</body>
+
+</html>
