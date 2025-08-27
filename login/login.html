@@ -8,7 +8,27 @@
     <link rel="stylesheet" href="login.css">
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;700&family=Anton&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-    
+    <script src="https://www.gstatic.com/firebasejs/12.1.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/12.1.0/firebase-auth-compat.js"></script>
+    <script>
+        // Configuração do Firebase
+        const firebaseConfig = {
+            apiKey: "AIzaSyDVK6hzW1gifPrjDQrC00I9GWQqumaY3PE",
+            authDomain: "themis-bcaa4.firebaseapp.com",
+            projectId: "themis-bcaa4",
+            storageBucket: "themis-bcaa4.appspot.com",
+            messagingSenderId: "244101876997",
+            appId: "1:244101876997:web:fcee5a85d3506417c7fb6c"
+        };
+
+        // Inicialize o Firebase
+        if (!firebase.apps.length) {
+            firebase.initializeApp(firebaseConfig);
+            window.location.href = "/home/home.html"
+        } else {
+            firebase.app(); // Use a instância já inicializada
+        }
+    </script>
 </head>
 
 <body>
@@ -20,7 +40,7 @@
                 <li><a href="../index/index.html#cursos">Cursos</a></li>
                 <li><a href="../index/index.html#depoimentos">Depoimentos</a></li>
                 <li><a href="../index/index.html#contato">Contato</a></li>
-                <li><a href="../Registrice/registre-se.html">Registri-se</a></li>
+                <li><a href="../Registrice/registre-se.html">Registre-se</a></li>
             </ul>
         </div>
     </nav>
@@ -40,7 +60,7 @@
                 <button type="submit" class="cta-button" onclick="login()">Login</button>
                 <div id="registerMessage" class="register-message"></div>
             </form>
-            <p class="login-link">Ainda não uma conta? <a href="../Registrice/registre-se.html">Registre-se</a></p>
+            <p class="login-link">Ainda não tem uma conta? <a href="../Registrice/registre-se.html">Registre-se</a></p>
         </div>
     </section>
 
@@ -49,7 +69,7 @@
             <div class="footer-info">
                 <h4>Thémis</h4>
                 <p>Rua da Segurança, 123 - Cidade Protetora</p>
-                <p>contato@Thémis.com</p>
+                <p>contato@themis.com</p>
                 <p>(11) 98765-4321</p>
             </div>
             <div class="social-links">
@@ -64,27 +84,6 @@
     </footer>
 
     <script src="/login/login.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/12.1.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/12.1.0/firebase-auth-compat.js"></script>
-    <script>
-        const firebaseConfig = {
-            apiKey: "AIzaSyDVK6hzW1gifPrjDQrC00I9GWQqumaY3PE",
-            authDomain: "themis-bcaa4.firebaseapp.com",
-            projectId: "themis-bcaa4",
-            storageBucket: "themis-bcaa4.firebasestorage.app",
-            messagingSenderId: "244101876997",
-            appId: "1:244101876997:web:fcee5a85d3506417c7fb6c"
-        }; 
-  // Initialize Firebase
-    fibase.initializeApp(firebaseConfig);
-        console.log('antes');
-    firebase.auth().signInWithEmailAndPassword("ricardow@gmail.com", "123456").then(response => {
-        console.log("Usuário logado com sucesso:", response);
-    }).catch(error =>{
-        console.log("error", error);
-    });
-        console.log('depois');
-    </script>
 </body>
 
 </html>
