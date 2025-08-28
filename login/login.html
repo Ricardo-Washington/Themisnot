@@ -24,7 +24,6 @@
         // Inicialize o Firebase
         if (!firebase.apps.length) {
             firebase.initializeApp(firebaseConfig);
-            window.location.href = "/home/home.html"
         } else {
             firebase.app(); // Use a instância já inicializada
         }
@@ -57,7 +56,7 @@
                     <label for="password">Senha</label>
                     <input type="password" id="password" required placeholder="Digite sua senha">
                 </div>
-                <button type="submit" class="cta-button" onclick="login()">Login</button>
+                <button type="submit" class="cta-button">Login</button>
                 <div id="registerMessage" class="register-message"></div>
             </form>
             <p class="login-link">Ainda não tem uma conta? <a href="../Registrice/registre-se.html">Registre-se</a></p>

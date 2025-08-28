@@ -1,19 +1,6 @@
 document.getElementById('registerForm').addEventListener('submit', function(event) {
-    const emailInput = document.getElementById('email');
-    const email = emailInput.value.trim();
-    const messageDiv = document.getElementById('registerMessage');
-    // Regex simples para validação de e-mail
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-    if (!emailRegex.test(email)) {
-        event.preventDefault();
-        messageDiv.textContent = 'Por favor, insira um e-mail válido.';
-        messageDiv.style.color = 'red';
-        emailInput.focus();
-        return false;
-    } else {
-        messageDiv.textContent = '';
-    }
+    event.preventDefault(); // Impede o envio padrão do formulário
+    login(); // Chama a função de login
 });
 
 function login() {
@@ -27,7 +14,7 @@ function login() {
     if (!emailRegex.test(email)) {
         messageDiv.textContent = 'Por favor, insira um e-mail válido.';
         messageDiv.style.color = 'red';
-        return; // Não prosseguir com o login
+        return;
     }
 
     firebase.auth().signInWithEmailAndPassword(email, password)
@@ -52,11 +39,3 @@ function login() {
         });
 }
 
-// Inicialize o Firebase
-if (!firebase.apps.length) {
-    firebase.initializeApp(firebaseConfig);
-} else {
-    firebase.app(); // Use a instância já inicializada
-}
-
-console.log(firebase.apps.length ? 'Firebase inicializado' : 'Firebase não inicializado');
