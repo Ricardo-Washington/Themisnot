@@ -20,7 +20,6 @@
             messagingSenderId: "244101876997",
             appId: "1:244101876997:web:fcee5a85d3506417c7fb6c"
         };
-
         // Inicialize o Firebase
         if (!firebase.apps.length) {
             firebase.initializeApp(firebaseConfig);
@@ -60,6 +59,7 @@
                 <div id="registerMessage" class="register-message"></div>
             </form>
             <p class="login-link">Ainda não tem uma conta? <a href="../Registrice/registre-se.html">Registre-se</a></p>
+            <p class="login-link">Esqueceu sua senha? <a onclick="recoverPassword()">Recuperar senha!</a></p>
         </div>
     </section>
 

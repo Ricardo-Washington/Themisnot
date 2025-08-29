@@ -9,8 +9,9 @@
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;700&family=Anton&display=swap" rel="stylesheet">
     <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
     <!-- Firebase SDK -->
-    <script src="https://www.gstatic.com/firebasejs/10.11.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.11.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/12.1.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/12.1.0/firebase-auth-compat.js"></script>
+    <script src="registre-se.js"></script>
 </head>
 
 <body>
@@ -47,7 +48,7 @@
                     <label for="confirmPassword">Confirme a Senha</label>
                     <input type="password" id="confirmPassword" required placeholder="Confirme sua senha">
                 </div>
-                <button type="submit" class="cta-button">Registrar</button>
+                <button type="submit" class="cta-button" onclick="register()">Registrar</button>
                 <div id="registerMessage" class="register-message"></div>
             </form>
             <p class="login-link">Já tem uma conta? <a href="../Loguin/loguin.html">Faça login</a></p>
@@ -72,8 +73,6 @@
             <p>&copy; 2025 Thémis. Todos os direitos reservados.</p>
         </div>
     </footer>
-
-    <script src="/Registrice/registre-se.js"></script>
 </body>
-
+<script src="/firebase-init.js"></script>
 </html>

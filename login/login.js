@@ -7,7 +7,7 @@ function login() {
     const email = document.getElementById('email').value.trim();
     const password = document.getElementById('password').value.trim();
     const messageDiv = document.getElementById('registerMessage');
-
+    
     // Regex para validar o formato do e-mail
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -20,6 +20,7 @@ function login() {
     firebase.auth().signInWithEmailAndPassword(email, password)
         .then((userCredential) => {
             // Login bem-sucedido
+            
             console.log('Login bem-sucedido:', userCredential);
             window.location.href = "/home/home.html"; // Redireciona para a página home
         })
@@ -32,10 +33,22 @@ function login() {
                 messageDiv.textContent = 'Usuário não encontrado. Verifique o e-mail.';
             } else if (error.code === 'auth/wrong-password') {
                 messageDiv.textContent = 'Senha incorreta. Tente novamente.';
-            } else {
+            } else if (error.code === 'auth/invalid-credential') {
+                messageDiv.textContent = 'Senha incorreta. Tente novamente.';
+            }else {
                 messageDiv.textContent = 'Erro ao fazer login: ' + error.message;
             }
             messageDiv.style.color = 'red';
         });
-}
 
+}
+function recoverPassword() {
+    showLoading();
+    firebase.auth().sendPasswordResetEmail(form.email().value).then(() => {
+        hideLoading();
+        alert('Email enviado com sucesso');
+    }).catch(error => {
+        hideLoading();
+        alert(getErrorMessage(error));
+    });
+}
