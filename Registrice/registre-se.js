@@ -1,5 +1,23 @@
+// Configuração do Firebase
+const firebaseConfig = {
+  apiKey: "AIzaSyDVK6hzW1gifPrjDQrC00I9GWQqumaY3PE",
+  authDomain: "themis-bcaa4.firebaseapp.com",
+  projectId: "themis-bcaa4",
+  storageBucket: "themis-bcaa4.firebasestorage.app",
+  messagingSenderId: "244101876997",
+  appId: "1:244101876997:web:fcee5a85d3506417c7fb6c"
+};
+
 // Inicialize o Firebase
+if (!firebase.apps.length) {
     firebase.initializeApp(firebaseConfig);
+} else {
+    firebase.app(); // Use a instância já inicializada
+}
+
+// Inicialize o Firestore
+const db = firebase.firestore();
+
 // Adiciona o listener para o formulário
 document.getElementById('registerForm').addEventListener('submit', function(event) {
     event.preventDefault(); // Impede o envio padrão do formulário
@@ -21,7 +39,17 @@ function register() {
         return;
     }
 
+    // Cria o usuário no Firebase Authentication
     firebase.auth().createUserWithEmailAndPassword(email, password)
+        .then((userCredential) => {
+            const user = userCredential.user;
+
+            // Salva os dados do usuário no Firestore
+            return db.collection('users').doc(user.uid).set({
+                email: user.email,
+                createdAt: new Date()
+            });
+        })
         .then(() => {
             alert('Registro realizado com sucesso!');
             window.location.href = '/home/home.html'; // Redireciona para a página inicial
