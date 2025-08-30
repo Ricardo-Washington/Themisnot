@@ -13,7 +13,10 @@ const firebaseConfig = {
 // Inicialize o Firebase apenas uma vez
 if (!firebase.apps.length) {
   firebase.initializeApp(firebaseConfig);
-}
+}else {
+      firebase.app(); // Use a instância já inicializada
+  }
 
 // Inicialize o Firestore
 const db = firebase.firestore();
+
