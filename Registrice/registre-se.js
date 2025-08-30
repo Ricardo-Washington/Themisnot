@@ -49,10 +49,7 @@ function registerUser() {
         email: user.email,
         createdAt: new Date()
       });
-    })
-    .then(() => {
-      alert('Registro realizado com sucesso!');
-      window.location.href = '/home/home.html'; // Redireciona para a página inicial
+      window.location.href = '/home/home.html';
     })
     .catch(error => {
       console.error('Erro ao registrar:', error);
