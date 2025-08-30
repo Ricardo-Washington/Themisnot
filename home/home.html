@@ -8,6 +8,10 @@
     <link rel="stylesheet" href="home.css">
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;700&family=Anton&display=swap" rel="stylesheet">
     <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
+    <script src="/js/auth-guard.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/12.1.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/12.1.0/firebase-auth-compat.js"></script>
+    <script src="/js/firebase-init.js"></script>
 </head>
 
 <body>
@@ -18,7 +22,8 @@
                 <li><a href="#produtos">Produtos</a></li>
                 <li><a href="#cursos">Cursos</a></li>
                 <li><a href="#contato">Contato</a></li>
-                <li><a href="../login/login.html">Sair</a></li>
+                <li><a href="../login/login.html" onclick="logout()">Sair</a></li>
+                <li><button type="button" onclick="logout()">Sair</button></li>
             </ul>
         </div>
     </nav>
@@ -31,7 +36,7 @@
     </header>
 
     <section id="produtos" class="produtos-section">
-        <div class="container">
+        <div class="container"> 
             <h2 class="section-title">Produtos</h2>
             <div class="produtos-grid">
                 <div class="produto-item">
@@ -100,14 +105,7 @@
         </div>
     </footer>
 </body>
-    <script>
-    // Verifique se o usuário está autenticado
-        firebase.auth().onAuthStateChanged((user) => {
-            if (!user) {
-                // Se o usuário não estiver logado, redirecione para a página de login
-                window.location.href = "/login/login.html";
-            }
-        });
-    </script>
+    
+    <script src="home.js"></script>
 
 </html>
