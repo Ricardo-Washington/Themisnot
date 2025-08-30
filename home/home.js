@@ -12,18 +12,17 @@ if (!firebase.apps.length) {
 } else {
     firebase.app(); // Use a instância já inicializada
 }
-
-document.getElementById('registerForm').addEventListener('submit', function(event) {
-    event.preventDefault(); // Impede o envio padrão do formulário
-    login(); // Chama a função de login
-});
-
 firebase.auth().onAuthStateChanged((user) => {
         if (!user) {
             // Se o usuário não estiver logado, redirecione para a página de login
             window.location.href = "/login/login.html";
         }
     });
+
+document.getElementById('registerForm').addEventListener('submit', function(event) {
+    event.preventDefault(); // Impede o envio padrão do formulário
+    login(); // Chama a função de login
+});
 
 function logout() {
     firebase.auth().signOut().then(() => {
