@@ -12,12 +12,18 @@ if (!firebase.apps.length) {
 } else {
     firebase.app(); // Use a instância já inicializada
 }
-firebase.auth().onAuthStateChanged((user) => {
-        if (!user) {
-            // Se o usuário não estiver logado, redirecione para a página de login
-            window.location.href = "/login/login.html";
+firebase.auth().onAuthStateChanged(async (user) => {
+    if (!user) {
+        window.location.href = "/login/login.html";
+    } else {
+        // Abrir modal apenas se não existe cadastro
+        const docRef = firebase.firestore().collection('usuarios').doc(user.uid);
+        const doc = await docRef.get();
+        if (!doc.exists) {
+            document.getElementById('userModal').style.display = 'flex';
         }
-    });
+    }
+});
 
 document.getElementById('registerForm').addEventListener('submit', function(event) {
     event.preventDefault(); // Impede o envio padrão do formulário
@@ -125,18 +131,21 @@ document.getElementById('userRegisterForm').addEventListener('submit', async fun
 
     if (!valid) return;
 
-    // Salvar no Firestore
-    try {
-        await firebase.firestore().collection('usuarios').add({
-            nome, nascimento, cpf, rg, telefone, estadoCivil, endereco,
-            criadoEm: firebase.firestore.FieldValue.serverTimestamp()
-        });
-        localStorage.setItem('cadastroRealizado', 'true');
-        document.getElementById('userRegisterForm').style.display = 'none';
-        document.getElementById('modalSuccess').style.display = 'block';
-    } catch (err) {
-        alert('Erro ao salvar cadastro. Tente novamente.');
+    // Salvar no Firestore usando o uid do usuário
+    const user = firebase.auth().currentUser;
+    if (user) {
+        try {
+            await firebase.firestore().collection('usuarios').doc(user.uid).set({
+                nome, nascimento, cpf, rg, telefone, estadoCivil, endereco,
+                criadoEm: firebase.firestore.FieldValue.serverTimestamp()
+            });
+            localStorage.setItem('cadastroRealizado', 'true');
+            document.getElementById('userRegisterForm').style.display = 'none';
+            document.getElementById('modalSuccess').style.display = 'block';
+        } catch (err) {
+            alert('Erro ao salvar cadastro. Tente novamente.');
+        }
     }
 });
 
-// ...existing code...
+localStorage.removeItem('cadastroRealizado')
