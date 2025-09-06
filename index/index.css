@@ -345,6 +345,13 @@ section {
     color: var(--light-grey);
 }
 
+.img-curso{
+    width: 100%;
+    height: 300px;
+    object-fit: cover;
+    border-radius: 8px;
+    margin-bottom: 15px;
+}
 .social-links a {
     color: var(--light-grey);
     font-size: 1.5rem;

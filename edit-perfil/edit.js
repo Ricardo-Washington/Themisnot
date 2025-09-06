@@ -1,4 +1,5 @@
 
+isAuthenticated();
 // Função para validar CPF
 function validarCPF(cpf) {
     cpf = cpf.replace(/[^\d]+/g,'');
