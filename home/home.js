@@ -21,15 +21,26 @@ firebase.auth().onAuthStateChanged(async (user) => {
     } 
 });
 
+findCadater();
+
 function logout() {
     firebase.auth().signOut().then(() => {
         window.location.href = "/login/login.html";
     });
 }
 
+//buscar dasdos do usuario
+function findCadater(){
+    firebase.firestore()
+        .collection('usuarios')
+        .get()
+        .then(snapshot => {
+          const dadosuser =  snapshot.docs.map(doc => doc.data());
+        })
+}
 
 
-//modal de perfil
+
 
 // Validação simples de CPF
 function validarCPF(cpf) {
@@ -44,13 +55,12 @@ function validarCPF(cpf) {
   for (let i = 0; i < 10; i++) soma += cpf[i] * (11 - i);
   resto = (soma * 10) % 11;
   if (resto === 10) resto = 0;
-  return resto == cpf[10];
+  
 }
 
 // Validação simples de telefone
 function validarTelefone(tel) {
   tel = tel.replace(/\D/g, '');
-  return tel.length >= 10 && tel.length <= 11;
 }
 
 // Exibe modal se cadastro não foi feito
@@ -59,6 +69,11 @@ window.addEventListener('DOMContentLoaded', () => {
     document.getElementById('userModal').style.display = 'flex';
   }
 });
+
+// Fecha modal
+function closeModal() {
+  document.getElementById('userModal').style.display = 'none';
+}
 
 function cadastrar() {
 
@@ -71,15 +86,20 @@ function cadastrar() {
       console.error('Erro ao cadastrar:', error);
       alert('Erro ao cadastrar: ' + error.message);
     });
+    alert("Cadastrado com sucesso!");
+    closeModal();
 }
 
 function cadaUsuarios() {
     return{
         nome: form.nome.value,
-        email: form.email.value,
         cpf: form.cpf.value,
+        rg: form.rg.value,
         telefone: form.telefone.value,
         nascimento: form.nascimento.value,
+        estadoCivil: form.estadoCivil.value,
+        endereco: form.endereco.value,
+        // Adicione outros campos conforme necessário
         user:{
             uid: firebase.auth().currentUser.uid,
         }
@@ -89,18 +109,11 @@ function cadaUsuarios() {
 
 
 
-
-// Fecha modal
-function closeModal() {
-  document.getElementById('userModal').style.display = 'none';
-}
-
 // Máscaras
 function aplicarMascara(id, formatador) {
   document.getElementById(id).addEventListener('input', e => {
     e.target.value = formatador(e.target.value.replace(/\D/g, ''));
   });
-}
 
 aplicarMascara('cpf', v => v.replace(/(\d{3})(\d)/, '$1.$2')
                             .replace(/(\d{3})(\d)/, '$1.$2')
@@ -108,8 +121,8 @@ aplicarMascara('cpf', v => v.replace(/(\d{3})(\d)/, '$1.$2')
 
 aplicarMascara('telefone', v => v.replace(/^(\d{2})(\d)/, '($1) $2')
                                  .replace(/(\d{5})(\d{1,4})$/, '$1-$2'));
-
-// Submissão do formulário
+}
+/* Submissão do formulário
 document.getElementById('userRegisterForm').addEventListener('submit', e => {
   e.preventDefault();
 
@@ -133,7 +146,7 @@ document.getElementById('userRegisterForm').addEventListener('submit', e => {
     document.getElementById('modalSuccess').style.display = 'block';
     document.getElementById('userModal').style.display = 'none'; // <-- esta linha fecha o modal
 }
-});
+});*/
 
 
 window.addEventListener('DOMContentLoaded', () => {
