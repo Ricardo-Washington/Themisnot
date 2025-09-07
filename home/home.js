@@ -35,6 +35,9 @@ function findCadater(){
         .collection('usuarios')
         .get()
         .then(snapshot => {
+          snapshot.docs.forEach(doc => {
+            console.log(doc.data());
+          });
           const dadosuser =  snapshot.docs.map(doc => doc.data());
         })
 }
@@ -99,7 +102,6 @@ function cadaUsuarios() {
         nascimento: form.nascimento.value,
         estadoCivil: form.estadoCivil.value,
         endereco: form.endereco.value,
-        // Adicione outros campos conforme necessário
         user:{
             uid: firebase.auth().currentUser.uid,
         }
