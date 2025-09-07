@@ -1,14 +1,15 @@
 import { initializeApp } from "firebase/app";
 
 // Configuração do Firebase
-const firebaseConfig = {
-  apiKey: "AIzaSyDVK6hzW1gifPrjDQrC00I9GWQqumaY3PE",
-  authDomain: "themis-bcaa4.firebaseapp.com",
-  projectId: "themis-bcaa4",
-  storageBucket: "themis-bcaa4.appspot.com",
-  messagingSenderId: "244101876997",
-  appId: "1:244101876997:web:fcee5a85d3506417c7fb6c"
-};
+ const firebaseConfig = {
+    apiKey: "AIzaSyAxwS4HeioFdcD6MaDDoVYmJUthcJhTfjc",
+    authDomain: "themis-154d1.firebaseapp.com",
+    projectId: "themis-154d1",
+    storageBucket: "themis-154d1.firebasestorage.app",
+    messagingSenderId: "1017306886601",
+    appId: "1:1017306886601:web:3b7f5057515d244c2bb818",
+    measurementId: "G-3G0VW26WD9"
+  };
 
 // Inicialize o Firebase apenas uma vez
 if (!firebase.apps.length) {
