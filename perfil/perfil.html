@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Thémis | Perfil</title>
+  <link rel="stylesheet" href="perfil.css">
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;700&family=Anton&display=swap" rel="stylesheet">
+  <script src="https://www.gstatic.com/firebasejs/12.1.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/12.1.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore-compat.js"></script>
+</head>
+<body>
+
+  <!-- NAVBAR -->
+  <nav class="navbar">
+    <div class="container nav-content">
+      <a href="/index/index.html" class="logo"><img src="/img/logo.png" alt="logo"></a>
+      <ul class="nav-links">
+        <li><a href="/index/index.html#produtos">Produtos</a></li>
+        <li><a href="/index/index.html#cursos">Cursos</a></li>
+        <li><a href="#dados">Meus Dados</a></li>
+        <li><button class="nav-button" onclick="logout()">Sair</button></li>
+      </ul>
+    </div>
+  </nav>
+
+  <!-- PERFIL DO USUÁRIO -->
+  <section id="dados" class="cursos-section" style="padding-top: 140px;">
+    <div class="container">
+      <h2 class="section-title">Perfil do Usuário</h2>
+      <div class="curso-item" >
+        <p><strong>Nome:</strong> <span id="nome"></span></p>
+        <p><strong>CPF:</strong> <span id="cpf"></span></p>
+        <p><strong>RG:</strong> <span id="rg"></span></p>
+        <p><strong>Telefone:</strong> <span id="telefone"></span></p>
+        <p><strong>Data de Nascimento:</strong> <span id="nascimento"></span></p>
+        <p><strong>Estado Civil:</strong> <span id="estadoCivil"></span></p>
+        <p><strong>Endereço:</strong> <span id="endereco"></span></p>
+      </div>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer class="footer-section">
+    <div class="container footer-content">
+      <div class="footer-info">
+        <h4>Thémis</h4>
+        <p>Rua da Segurança, 123 - Cidade Protetora</p>
+        <p>contato@themis.com</p>
+        <p>(11) 98765-4321</p>
+      </div>
+      <div class="social-links">
+        <a href="#"><i class="fab fa-facebook-f"></i></a>
+        <a href="#"><i class="fab fa-instagram"></i></a>
+        <a href="#"><i class="fab fa-linkedin-in"></i></a>
+      </div>
+    </div>
+    <div class="footer-copyright">
+      <p>&copy; 2025 Thémis. Todos os direitos reservados.</p>
+    </div>
+  </footer>
+  <script src="/perfil/perfil.js"></script>
+</body>
+</html>
