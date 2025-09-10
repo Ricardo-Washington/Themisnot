@@ -21,29 +21,24 @@ firebase.auth().onAuthStateChanged(async (user) => {
     } 
 });
 
-findCadater();
+window.addEventListener('DOMContentLoaded', () => {
+  const jaLogouAntes = localStorage.getItem('usuarioLogado');
+  if (!jaLogouAntes) {
+    // Mostra o modal na primeira vez
+    document.getElementById('userModal').style.display = 'flex';
 
+    // Marca que o usuário já logou
+    localStorage.setItem('usuarioLogado', 'true');
+  }
+});
+
+
+// Logout
 function logout() {
     firebase.auth().signOut().then(() => {
         window.location.href = "/login/login.html";
     });
 }
-
-//buscar dasdos do usuario
-function findCadater(){
-    firebase.firestore()
-        .collection('usuarios')
-        .get()
-        .then(snapshot => {
-          snapshot.docs.forEach(doc => {
-            console.log(doc.data());
-          });
-          const dadosuser =  snapshot.docs.map(doc => doc.data());
-        })
-}
-
-
-
 
 // Validação simples de CPF
 function validarCPF(cpf) {
@@ -66,50 +61,6 @@ function validarTelefone(tel) {
   tel = tel.replace(/\D/g, '');
 }
 
-// Exibe modal se cadastro não foi feito
-window.addEventListener('DOMContentLoaded', () => {
-  if (!localStorage.getItem('cadastroRealizado')) {
-    document.getElementById('userModal').style.display = 'flex';
-  }
-});
-
-// Fecha modal
-function closeModal() {
-  document.getElementById('userModal').style.display = 'none';
-}
-
-function cadastrar() {
-
-    const usuarios = cadaUsuarios();
-    alert("Cadastrado com sucesso!");
-    
-    firebase.firestore().collection('usuarios').add(usuarios).then(() => {
-      window.location.href = "/index/index.html";
-    }).catch(error => {
-      console.error('Erro ao cadastrar:', error);
-      alert('Erro ao cadastrar: ' + error.message);
-    });
-    alert("Cadastrado com sucesso!");
-    closeModal();
-}
-
-function cadaUsuarios() {
-    return{
-        nome: form.nome.value,
-        cpf: form.cpf.value,
-        rg: form.rg.value,
-        telefone: form.telefone.value,
-        nascimento: form.nascimento.value,
-        estadoCivil: form.estadoCivil.value,
-        endereco: form.endereco.value,
-        user:{
-            uid: firebase.auth().currentUser.uid,
-        }
-    };
-}
-
-
-
 
 // Máscaras
 function aplicarMascara(id, formatador) {
@@ -124,50 +75,39 @@ aplicarMascara('cpf', v => v.replace(/(\d{3})(\d)/, '$1.$2')
 aplicarMascara('telefone', v => v.replace(/^(\d{2})(\d)/, '($1) $2')
                                  .replace(/(\d{5})(\d{1,4})$/, '$1-$2'));
 }
-/* Submissão do formulário
-document.getElementById('userRegisterForm').addEventListener('submit', e => {
-  e.preventDefault();
 
-  const campos = ['nome', 'nascimento', 'cpf', 'rg', 'telefone'];
-  let valido = true;
+// Mostra o modal apenas na primeira vez que o usuário loga
 
-  campos.forEach(campo => {
-    const valor = document.getElementById(campo).value.trim();
-    const erro = document.getElementById(campo + 'Error');
-    erro.textContent = '';
 
-    if (!valor || (campo === 'cpf' && !validarCPF(valor)) || (campo === 'telefone' && !validarTelefone(valor))) {
-      erro.textContent = `Preencha corretamente o campo ${campo}.`;
-      valido = false;
-    }
-  });
 
-    if (valido) {
-    localStorage.setItem('cadastroRealizado', 'true');
-    document.getElementById('userRegisterForm').style.display = 'none';
-    document.getElementById('modalSuccess').style.display = 'block';
-    document.getElementById('userModal').style.display = 'none'; // <-- esta linha fecha o modal
+function cadastrarDados() {
+    const cadastrarDados = {
+        nome: form.nome.value,
+        cpf: form.cpf.value,
+        rg: form.rg.value,
+        telefone: form.telefone.value,
+        nascimento: form.nascimento.value,
+        estadoCivil: form.estadoCivil.value,
+        endereco: form.endereco.value,
+        user:{
+            uid: firebase.auth().currentUser.uid,
+        }
+    };
+    console.log(cadastrarDados);
+    
 }
-});*/
 
 
-window.addEventListener('DOMContentLoaded', () => {
-  const jaLogouAntes = localStorage.getItem('usuarioLogado');
 
-  if (!jaLogouAntes) {
-    // Mostra o modal na primeira vez
-    document.getElementById('userModal').style.display = 'flex';
 
-    // Marca que o usuário já logou
-    localStorage.setItem('usuarioLogado', 'true');
-  }
-});
 
 const form = {
-    nascimento: document.getElementById('nascimento'),
-    cpf: document.getElementById('cpf'),
-    rg: document.getElementById('rg'),
-    telefone: document.getElementById('telefone'),
-    nome: document.getElementById('nome'),
-    email: document.getElementById('email'),
+    nascimento: () => document.getElementById('nascimento'),
+    cpf: () => document.getElementById('cpf'),
+    rg: () => document.getElementById('rg'),
+    telefone: () => document.getElementById('telefone'),
+    nome: () => document.getElementById('nome'),
+    email: () => document.getElementById('email'),
+    estadoCivil: () => document.getElementById('estadoCivil'),
+    endereco: () => document.getElementById('endereco'),
 }

@@ -12,49 +12,62 @@ const firebaseConfig = {
       firebase.initializeApp(firebaseConfig);
     }
 
-    firebase.auth().onAuthStateChanged(user => {
-      if (!user) {
-        window.location.href = "/login/login.html";
-        return;
-      }
+firebase.auth().onAuthStateChanged(user => {
+  if (!user) {
+    window.location.href = "/login/login.html";
+    return;
+  }
 
 
-    firebase.auth().onAuthStateChanged(user => {
-        if(user) {
-          findperfil(user);
-        }
-    });
-    });
-
-      function findperfil(user){
-        firebase.firestore()
-            .collection('usuarios')
-            .where('user.uid', '==', user.uid)
-            .orderBy('nome', 'asc')
-            .get()
-            .then(snapshot => {
-            if (!snapshot.empty) {
-                const dados = snapshot.docs[0].data();
-                document.getElementById('nome').textContent = dados.nome;
-                document.getElementById('cpf').textContent = dados.cpf;
-                document.getElementById('rg').textContent = dados.rg;
-                document.getElementById('telefone').textContent = dados.telefone;
-                document.getElementById('nascimento').textContent = dados.nascimento;
-                document.getElementById('estadoCivil').textContent = dados.estadoCivil;
-                document.getElementById('endereco').textContent = dados.endereco;
-            } else {
-                alert("Dados do usuário não encontrados.");
-            }
-            })
-            .catch(error => {
-            console.error("Erro ao buscar dados:", error);
-            });
-        }
-    
-        
-
-    function logout() {
-      firebase.auth().signOut().then(() => {
-        window.location.href = "/login/login.html";
-      });
+firebase.auth().onAuthStateChanged(user => {
+    if(user) {
+      findperfil(user);
     }
+});
+});
+
+function findperfil(user){
+firebase.firestore()
+    .collection('usuarios')
+    .where('user.uid', '==', user.uid)
+    .orderBy('nome', 'asc')
+    .get()
+    .then(snapshot => {
+    if (!snapshot.empty) {
+        const dados = snapshot.docs[0].data();
+        document.getElementById('nome').textContent = dados.nome;
+        document.getElementById('cpf').textContent = dados.cpf;
+        document.getElementById('rg').textContent = dados.rg;
+        document.getElementById('telefone').textContent = dados.telefone;
+        document.getElementById('nascimento').textContent = dados.nascimento;
+        document.getElementById('estadoCivil').textContent = dados.estadoCivil;
+        document.getElementById('endereco').textContent = dados.endereco;
+    } else {
+        alert("Dados do usuário não encontrados.");
+    }
+    })
+    .catch(error => {
+    console.error("Erro ao buscar dados:", error);
+    });
+}
+// Logout
+function logout() {
+  firebase.auth().signOut().then(() => {
+    window.location.href = "/login/login.html";
+  });
+}
+
+    /*
+buscar dasdos do usuario
+function findCadater(){
+firebase.firestore()
+  .collection('usuarios')
+  .get()
+  .then(snapshot => {
+    snapshot.docs.forEach(doc => {
+      console.log(doc.data());
+    });
+    const dadosuser =  snapshot.docs.map(doc => doc.data());
+  })
+
+}*/
