@@ -24,7 +24,6 @@
                 <li><a href="#cursos">Cursos</a></li>
                 <li><a href="#contato">Contato</a></li>
                 <li><a href="/perfil/perfil.html">Perfil</a></li>
-                <li><button class="nav-button" type="button" data-modal="userModal">open</button></li>
                 <li><button class="nav-button" type="button" onclick="logout()">Sair</button></li>
             </ul>
         </div>
@@ -155,7 +154,8 @@
             <label>Endereço</label>
             <input type="text" id="endereco">
           </div>
-          <button type="submit" class="btn-modal" onclick="cadastrarDados()" >Cadastrar</button>
+          <button type="submit" class="btn-modal" onclick="cadastrarDados(event)" >Cadastrar</button>
+          
         </form>
         <div id="modalSuccess" class="modal-success" style="display:none;">
           <p>Cadastro realizado com sucesso! Seja bem-vindo.</p>

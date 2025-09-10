@@ -26,6 +26,10 @@ firebase.auth().onAuthStateChanged(user => {
 });
 });
 
+function gohome() {
+  window.location.href = "/home/home.html";
+}
+
 function findperfil(user){
 firebase.firestore()
     .collection('usuarios')
