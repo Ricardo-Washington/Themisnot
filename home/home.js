@@ -1,3 +1,4 @@
+// Configuração do Firebase
 const firebaseConfig = {
     apiKey: "AIzaSyAxwS4HeioFdcD6MaDDoVYmJUthcJhTfjc",
     authDomain: "themis-154d1.firebaseapp.com",
@@ -7,6 +8,7 @@ const firebaseConfig = {
     appId: "1:1017306886601:web:3b7f5057515d244c2bb818",
     measurementId: "G-3G0VW26WD9"
   };
+
 
 
 // Inicialize o Firebase
@@ -21,16 +23,6 @@ firebase.auth().onAuthStateChanged(async (user) => {
     } 
 });
 
-window.addEventListener('DOMContentLoaded', () => {
-  const jaLogouAntes = localStorage.getItem('usuarioLogado');
-  if (!jaLogouAntes) {
-    // Mostra o modal na primeira vez
-    document.getElementById('userModal').style.display = 'flex';
-
-    // Marca que o usuário já logou
-    localStorage.setItem('usuarioLogado', 'true');
-  }
-});
 
 
 // Logout
@@ -76,10 +68,16 @@ aplicarMascara('telefone', v => v.replace(/^(\d{2})(\d)/, '($1) $2')
                                  .replace(/(\d{5})(\d{1,4})$/, '$1-$2'));
 }
 
-// Mostra o modal apenas na primeira vez que o usuário loga
+  // Abrir modal apenas uma vez por usuário
+window.addEventListener('DOMContentLoaded', function() {
+    if (!localStorage.getItem('cadastrarDados')) {
+        document.getElementById('userModal').style.display = 'flex';
+    }else{
+        document.getElementById('userModal').style.display = 'none';
+    }
+});
 
-
-
+ // Função para cadastrar dados no Firestore
 function cadastrarDados() {
     const cadastrarDados = {
         nome: form.nome.value,
@@ -94,11 +92,7 @@ function cadastrarDados() {
         }
     };
     console.log(cadastrarDados);
-    
-}
-
-
-
+  }
 
 
 const form = {
@@ -111,3 +105,7 @@ const form = {
     estadoCivil: () => document.getElementById('estadoCivil'),
     endereco: () => document.getElementById('endereco'),
 }
+
+
+
+

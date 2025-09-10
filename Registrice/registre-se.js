@@ -64,7 +64,7 @@ const firebaseConfig = {
       })
       .then(() => {
         alert('Registro realizado com sucesso!');
-        window.location.href = '/login/login.html'; // Redireciona para a página de login
+        window.location.href = '/home/home.html'; // Redireciona para a página de login
       })
       .catch(error => {
         console.error('Erro ao registrar:', error);

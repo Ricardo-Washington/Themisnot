@@ -24,7 +24,7 @@ firebase.auth().onAuthStateChanged((user) => {
     if (user) {
         // Usuário está logado
         console.log('Usuário logado:', user);
-        window.location.href = "/home/home1.html"; // Redireciona para a página home
+        window.location.href = "/home/home.html"; // Redireciona para a página home
     } else {
         // Usuário não está logado
         console.log('Nenhum usuário logado');
