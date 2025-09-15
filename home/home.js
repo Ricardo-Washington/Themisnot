@@ -25,7 +25,7 @@ const form = {
     nome: () => document.getElementById('nome'),
     estadoCivil: () => document.getElementById('estadoCivil'),
     endereco: () => document.getElementById('endereco'),
-    atribuição: () => document.getElementById('atribuição'),
+    atribuicao: () => document.getElementById('atribuicao'),
 }
 
 // Verifica o estado de autenticação e dados do usuário
@@ -63,6 +63,12 @@ async function cadastrarDados(event) {
         return;
     }
     
+    // Valida se todos os campos obrigatórios estão preenchidos
+    if (!validarCamposObrigatorios()) {
+        alert("Por favor, preencha todos os campos obrigatórios.");
+        return;
+    }
+    
     const userData = {
         nome: form.nome().value,
         cpf: form.cpf().value,
@@ -71,16 +77,11 @@ async function cadastrarDados(event) {
         nascimento: form.nascimento().value,
         estadoCivil: form.estadoCivil().value,
         endereco: form.endereco().value,
-        atribuição: form.atribuição().value,
-         user:{
+        atribuicao: form.atribuicao().value,
+        user: {
             uid: firebase.auth().currentUser.uid,
         }
     };
-    
-    if (!userData.nome || !userData.cpf || !userData.rg) {
-        alert("Por favor, preencha todos os campos obrigatórios.");
-        return;
-    }
 
     try {
         await db.collection('usuarios').doc(user.uid).set(userData);
@@ -93,11 +94,64 @@ async function cadastrarDados(event) {
     }
 }
 
+// Função para validar todos os campos obrigatórios
+function validarCamposObrigatorios() {
+    const camposObrigatorios = [
+        form.nome(),
+        form.nascimento(),
+        form.cpf(),
+        form.rg(),
+        form.telefone(),
+        form.estadoCivil(),
+        form.endereco(),
+        form.atribuicao(),
+    ];
+    
+    let todosPreenchidos = true;
+    
+    camposObrigatorios.forEach(campo => {
+        if (!campo.value.trim()) {
+            // Destaca o campo vazio
+            campo.style.border = '2px solid red';
+            // Mostra mensagem de erro se existir
+            const errorElement = document.getElementById(campo.id + 'Error');
+            if (errorElement) {
+                errorElement.textContent = 'Este campo é obrigatório';
+            }
+            todosPreenchidos = false;
+        } else {
+            // Remove o destaque se o campo estiver preenchido
+            campo.style.border = '';
+            // Limpa mensagem de erro
+            const errorElement = document.getElementById(campo.id + 'Error');
+            if (errorElement) {
+                errorElement.textContent = '';
+            }
+        }
+    });
+    
+    return todosPreenchidos;
+}
+
 // Adicione o listener de evento para a função cadastrarDados() no formulário
 document.addEventListener('DOMContentLoaded', () => {
     const userForm = document.getElementById('userRegisterForm');
     if (userForm) {
         userForm.addEventListener('submit', cadastrarDados);
+        
+        // Adiciona evento para remover o destaque quando o usuário começar a digitar
+        const inputs = userForm.querySelectorAll('input, select');
+        inputs.forEach(input => {
+            input.addEventListener('input', function() {
+                if (this.value.trim()) {
+                    this.style.border = '';
+                    const errorElement = document.getElementById(this.id + 'Error');
+                    if (errorElement) {
+                        errorElement.textContent = '';
+                    }
+                }
+            });
+        });
     }
 });
 
