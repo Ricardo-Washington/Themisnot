@@ -312,18 +312,7 @@ a {
   align-items: center;
   justify-content: center;
 }
-.modal-content {
-  background: var(--dark-grey);
-  padding: 32px 28px;
-  border-radius: 18px;
-  box-shadow: 0 8px 32px rgba(0,0,0,0.35);
-  min-width: 340px;
-  max-width: 95vw;
-  width: 400px;
-  color: var(--white);
-  position: relative;
-  animation: modalFadeIn 0.4s;
-}
+
 @keyframes modalFadeIn {
   from { opacity: 0; transform: translateY(-40px);}
   to { opacity: 1; transform: translateY(0);}
@@ -365,6 +354,7 @@ a {
   margin-top: 2px;
   min-height: 18px;
 }
+
 .btn-modal {
   width: 100%;
   padding: 12px;
@@ -393,7 +383,7 @@ a {
   box-shadow: 0 8px 32px rgba(0,0,0,0.35);
   min-width: 340px;
   max-width: 95vw;
-  width: 400px;
+  width: 500px;
   color: var(--white);
   position: relative;
   animation: modalFadeIn 0.4s;

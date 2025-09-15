@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="adm.css">
+    <link rel="stylesheet" href="/global.css">
+    <title>ADM</title>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="container nav-content">
+            <a href="#" class="logo"><img src="/img/logo.png" alt="logo"></a>
+            <ul class="nav-links">
+                <li><a href="#funcionarios">Lista de Funcionários</a></li>
+                <li><a href="#cursos">Lista de Alunos</a></li>
+                <li><a href="#contato">Contrato</a></li>
+                <li><button class="nav-button" type="button" onclick="logout()">Sair</button></li>
+            </ul>
+        </div>
+    </nav>
+
+    <main>
+        <header class="hero-section">
+            <div class="container hero-content">
+                <h1>Bem-vindo à Thémis</h1>
+                <p>Explore nossos produtos e cursos para aprimorar sua segurança e habilidades.</p>
+            </div>
+        </header>
+        <section id="Funcionarios" class="Funcionarios-section">
+            <div class="container"> 
+                <h2 class="section-title">Lista Funcionarios</h2>
+                <div class="funcionario-item">
+                    <ul>
+                        <li><P><strong>Nome do funcionario:</strong><span id="Nome"></span></P></li>
+                        <li><P><strong>Atribuição:</strong><span id="Atribuição"></span></P></li>
+                        <li><P><strong>cpf:</strong><span id="cpf"></span></P></li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+        <section id="cursos" class="cursos-section">
+            <div class="container">
+                <h2 class="section-title">Cursos</h2>
+                <div class="cursos-grid">
+                    <div class="curso-item">
+                        <img src="/img/vigilant.png" alt="Curso de Vigilante">
+                        <h3>Curso de Vigilante</h3>
+                        <p>Curso básico para formação de vigilantes profissionais.</p>
+                    </div>
+                </div>
+                <div>
+                    <a href="#" class="details-button" >Saiba Mais</a>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer id="contato" class="footer-section">
+        <div class="container footer-content">
+            <div class="footer-info">
+                <h4>Thémis</h4>
+                <p>Rua da Segurança, 123 - Cidade Protetora</p>
+                <p>contato@themis.com</p>
+                <p>(11) 98765-4321</p>
+            </div>
+            <div class="social-links">
+                <a href="#"><i class="fab fa-facebook-f"></i></a>
+                <a href="#"><i class="fab fa-instagram"></i></a>
+                <a href="#"><i class="fab fa-linkedin-in"></i></a>
+            </div>
+        </div>
+        <div class="footer-copyright">
+            <p>&copy; 2025 Thémis. Todos os direitos reservados.</p>
+        </div>
+    </footer>
+</body>
+</html>

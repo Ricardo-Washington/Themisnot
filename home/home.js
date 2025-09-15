@@ -25,6 +25,7 @@ const form = {
     nome: () => document.getElementById('nome'),
     estadoCivil: () => document.getElementById('estadoCivil'),
     endereco: () => document.getElementById('endereco'),
+    atribuição: () => document.getElementById('atribuição'),
 }
 
 // Verifica o estado de autenticação e dados do usuário
@@ -70,6 +71,7 @@ async function cadastrarDados(event) {
         nascimento: form.nascimento().value,
         estadoCivil: form.estadoCivil().value,
         endereco: form.endereco().value,
+        atribuição: form.atribuição().value,
          user:{
             uid: firebase.auth().currentUser.uid,
         }

@@ -1,0 +1,314 @@
+
+body{
+    font-family: 'Anton', sans-serif;
+}
+/* Seção de Registro */
+.register-section {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(120deg, var(--black) 60%, var(--orange) 100%);
+    padding-top: 120px;
+    padding-bottom: 60px;
+}
+
+.register-container {
+    background-color: var(--dark-grey);
+    border-radius: 18px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45);
+    padding: 50px 40px 35px 40px;
+    max-width: 600px;
+    width: 100%;
+    margin: 0 auto;
+    text-align: center;
+}
+
+.register-form {
+    display: flex;
+    flex-direction: column;
+    gap: 22px;
+    margin-top: 10px;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+}
+
+.form-group label {
+    font-weight: 500;
+    color: var(--orange);
+    margin-bottom: 7px;
+    font-size: 1.05rem;
+    letter-spacing: 0.5px;
+}
+
+.form-group input {
+    width: 100%;
+    padding: 13px 15px;
+    border-radius: 8px;
+    border: 1.5px solid var(--medium-grey);
+    background: var(--black);
+    color: var(--white);
+    font-size: 1rem;
+    transition: border-color 0.3s;
+    outline: none;
+}
+
+.form-group input:focus {
+    border-color: var(--orange);
+    background: var(--medium-grey);
+}
+
+.cta-button {
+    width: 100%;
+    padding: 15px 0;
+    border-radius: 50px;
+    font-size: 1.1rem;
+    font-weight: 700;
+    background: var(--orange);
+    color: var(--white);
+    border: none;
+    cursor: pointer;
+    margin-top: 10px;
+    box-shadow: 0 4px 16px rgba(255, 94, 0, 0.15);
+    transition: background 0.3s, transform 0.3s;
+}
+
+.cta-button:hover {
+    background: #ff5e00;
+    transform: translateY(-3px) scale(1.03);
+}
+
+.register-message {
+    margin-top: 5px;
+    font-size: 1rem;
+    min-height: 22px;
+    margin-bottom: 22px;
+}
+
+.login-link {
+    margin-top: 22px;
+    font-size: 1rem;
+    color: var(--light-grey);
+    font-family: 'Auton', sans-serif;
+}
+
+.login-link a {
+    color: var(--orange);
+    font-weight: 600;
+    text-decoration: underline;
+    transition: color 0.3s;
+}
+
+.login-link a:hover {
+    color: var(--white);
+}
+
+/* Estilo para a seção de registro */
+.register-section {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(120deg, var(--black) 60%, var(--orange) 100%);
+    padding-top: 120px;
+    padding-bottom: 60px;
+}
+
+.register-container {
+    background-color: var(--dark-grey);
+    border-radius: 18px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.45);
+    padding: 50px 40px 35px 40px;
+    max-width: 700px;
+    width: 100%;
+    margin: 0 auto;
+    text-align: center;
+    animation: fadeIn 1.2s;
+}
+
+.register-form {
+    display: flex;
+    flex-direction: column;
+    gap: 22px;
+    margin-top: 10px;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+}
+
+.form-group label {
+    font-family: 'Montserrat', sans-serif;
+    font-weight: 500;
+    color: var(--orange);
+    margin-bottom: 7px;
+    font-size: 1.05rem;
+    letter-spacing: 0.5px;
+}
+
+.form-group input {
+    width: 100%;
+    padding: 13px 15px;
+    border-radius: 8px;
+    border: 1.5px solid var(--medium-grey);
+    background: var(--black);
+    color: var(--white);
+    font-size: 1rem;
+    font-family: 'Montserrat', sans-serif;
+    transition: border-color 0.3s;
+    outline: none;
+}
+
+.form-group input:focus {
+    border-color: var(--orange);
+    background: var(--medium-grey);
+}
+
+.cta-button {
+    width: 100%;
+    padding: 15px 0;
+    border-radius: 50px;
+    font-size: 1.1rem;
+    font-weight: 700;
+    background: var(--orange);
+    color: var(--white);
+    border: none;
+    cursor: pointer;
+    margin-top: 10px;
+    box-shadow: 0 4px 16px rgba(255,94,0,0.15);
+    transition: background 0.3s, transform 0.3s;
+}
+
+.cta-button:hover {
+    background: #ff5e00;
+    transform: translateY(-3px) scale(1.03);
+}
+
+.register-message {
+    margin-top: 12px;
+    font-size: 1rem;
+    font-family: 'Montserrat', sans-serif;
+    min-height: 22px;
+}
+
+.login-link {
+    margin-top: 22px;
+    font-size: 1rem;
+    color: var(--light-grey);
+    font-family: 'Montserrat', sans-serif;
+}
+
+.login-link a {
+    color: var(--orange);
+    font-weight: 600;
+    text-decoration: underline;
+    transition: color 0.3s;
+}
+
+.login-link a:hover {
+    color: var(--white);
+}
+.select-cargo{
+    width: 100%;
+}
+.form-group {
+  margin-bottom: 16px;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+.form-group label {
+  font-size: 1rem;
+  margin-bottom: 5px;
+  color: var(--white);
+}
+.form-group input,
+.form-group select {
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid var(--medium-grey);
+  background: var(--black);
+  color: var(--white);
+  font-size: 1rem;
+  outline: none;
+  transition: border 0.2s;
+  margin-bottom: 22px;
+}
+.form-group input:focus,
+.form-group select:focus {
+  border: 1.5px solid var(--orange);
+}
+
+/* Responsivo */
+@media (max-width: 600px) {
+    .register-container {
+        padding: 30px 10px 25px 10px;
+        max-width: 98vw;
+    }
+}
+/* Responsividade */
+@media (max-width: 992px) {
+    .about-grid {
+        grid-template-columns: 1fr;
+    }
+    .about-image {
+        order: -1;
+    }
+    .testimonial-cards-container {
+        grid-template-columns: 1fr;
+    }
+    .hero-content h1 {
+        font-size: 3rem;
+    }
+}
+
+@media (max-width: 768px) {
+    .nav-links {
+        display: none;
+    }
+    .hero-content h1 {
+        font-size: 2.5rem;
+    }
+    .hero-content p {
+        font-size: 1rem;
+    }
+}
+
+@keyframes slideInLeft {
+    from {
+        transform: translateX(-100px);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+@keyframes slideInRight {
+    from {
+        transform: translateX(100px);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+@keyframes popUp {
+    from {
+        transform: scale(0.9);
+        opacity: 0;
+    }
+    to {
+        transform: scale(1);
+        opacity: 1;
+    }
+}

@@ -46,6 +46,7 @@ firebase.firestore()
         document.getElementById('nascimento').textContent = dados.nascimento;
         document.getElementById('estadoCivil').textContent = dados.estadoCivil;
         document.getElementById('endereco').textContent = dados.endereco;
+        document.getElementById('atribuicao').textContent = dados.atribuicao;
     } else {
         alert("Dados do usuário não encontrados.");
     }
