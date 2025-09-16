@@ -205,19 +205,24 @@
     transform: translateY(-10px);
     box-shadow: 0 10px 20px rgba(0, 0, 0, 0.5);
 }
-.buttons-container{
-    display: flex;
-}
+
 .details-button {
     color: var(--orange);
     border: 2px solid var(--orange);
     padding: 10px 25px;
     border-radius: 50px;
     margin-top: 40px;
+    font-weight: 600;
     display: inline-block;
     transition: background-color 0.3s, color 0.3s;
     cursor: pointer
+}
 
+.buttons-container{
+    display: flex;
+    justify-content: center;
+    gap: 500px;
+    margin-bottom: 40px;
 }
 
 .details-button:hover {
