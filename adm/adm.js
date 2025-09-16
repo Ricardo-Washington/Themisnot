@@ -12,7 +12,6 @@ const firebaseConfig = {
       firebase.initializeApp(firebaseConfig);
     }
 
-
 findCadater();
 /*buscar dasdos do usuario*/
 function findCadater(){
@@ -20,11 +19,39 @@ firebase.firestore()
   .collection('usuarios')
   .get()
   .then(snapshot => {
-    snapshot.docs.forEach(doc => {
-      console.log(doc.data());
-    });
-    console.log(snapshot.docs.collections);
-    const dadosuser =  snapshot.docs.map(doc => doc.data());
-  })
+    console.log(snapshot.docs.map(doc => doc.data()));
 
+    console.log(snapshot.docs.collections);
+
+    const dadosuser =  snapshot.docs.map(doc => doc.data());
+    addInfor(dadosuser);
+  })
+}
+
+function addInfor(dadosuser){
+  const lista = document.getElementById('dadosuser');
+
+  dadosuser.forEach(dadosuse => { 
+
+    const li = document.createElement('li');
+    li.classList.add(dadosuse.atribuicao);
+    
+    const nome = document.createElement('p');
+    nome.innerHTML = dadosuse.nome;
+    li.appendChild(nome);
+
+    const cpf = document.createElement('p');
+    cpf.innerHTML = dadosuse.cpf;
+    li.appendChild(cpf);
+
+    const atribuicao = document.createElement('p');
+    atribuicao.innerHTML = dadosuse.atribuicao;
+    li.appendChild(atribuicao);
+
+
+
+    lista.appendChild(li);
+
+    
+  });
 }

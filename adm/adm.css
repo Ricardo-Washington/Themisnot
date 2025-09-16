@@ -46,7 +46,7 @@
     text-align: center;
     padding: 20px;
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
-    max-width: 1200px;
+    max-width: 500px;
     transition: transform 0.3s, box-shadow 0.3s;
 }
 
