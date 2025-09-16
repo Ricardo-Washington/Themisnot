@@ -12,46 +12,52 @@ const firebaseConfig = {
       firebase.initializeApp(firebaseConfig);
     }
 
-findCadater();
-/*buscar dasdos do usuario*/
-function findCadater(){
-firebase.firestore()
-  .collection('usuarios')
-  .get()
-  .then(snapshot => {
-    console.log(snapshot.docs.map(doc => doc.data()));
 
-    console.log(snapshot.docs.collections);
+// A função principal para buscar e separar os dados
+function findUsers() {
+  firebase.firestore()
+    .collection('usuarios')
+    .get()
+    .then(snapshot => {
+      const todosUsuarios = snapshot.docs.map(doc => doc.data());
 
-    const dadosuser =  snapshot.docs.map(doc => doc.data());
-    addInfor(dadosuser);
-  })
+      // Filtra os usuários em dois arrays distintos
+      const funcionarios = todosUsuarios.filter(user => user.atribuicao === 'funcionario');
+      const alunos = todosUsuarios.filter(user => user.atribuicao === 'aluno');
+
+      // Renderiza cada lista no seu local específico
+      renderizarLista('dadosfuincionario', funcionarios);
+      renderizarLista('dadosaluno', alunos);
+    })
+    .catch(error => {
+      console.error("Erro ao buscar usuários: ", error);
+    });
 }
 
-function addInfor(dadosuser){
-  const lista = document.getElementById('dadosuser');
+// A função reutilizável para renderizar a lista
+function renderizarLista(idDaLista, dados) {
+  const lista = document.getElementById(idDaLista);
+  lista.innerHTML = ''; // Limpa a lista antes de adicionar os itens
 
-  dadosuser.forEach(dadosuse => { 
-
+  dados.forEach(usuario => {
     const li = document.createElement('li');
-    li.classList.add(dadosuse.atribuicao);
-    
+    li.classList.add('item');
+
     const nome = document.createElement('p');
-    nome.innerHTML = dadosuse.nome;
+    nome.innerHTML = `<strong>Nome:</strong> ${usuario.nome}`;
     li.appendChild(nome);
 
     const cpf = document.createElement('p');
-    cpf.innerHTML = dadosuse.cpf;
+    cpf.innerHTML = `<strong>CPF:</strong> ${usuario.cpf}`;
     li.appendChild(cpf);
 
     const atribuicao = document.createElement('p');
-    atribuicao.innerHTML = dadosuse.atribuicao;
+    atribuicao.innerHTML = `<strong>Atribuição:</strong> ${usuario.atribuicao}`;
     li.appendChild(atribuicao);
 
-
-
     lista.appendChild(li);
-
-    
   });
 }
+
+// Chama a função principal para iniciar o processo
+findUsers();
