@@ -68,12 +68,15 @@ a {
     z-index: 1000;
     padding: 15px 0;
     backdrop-filter: blur(5px);
+    
 }
 
 .nav-content {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    margin-left: 80px;
+    margin-right: 80px;
 }
 .nav-button{
     background: none;
@@ -119,6 +122,8 @@ a {
     gap: 40px;
     flex-wrap: wrap;
     text-align: left;
+    margin-left: 80px;
+    margin-right: 80px;
 }
 
 .footer-info h4 {

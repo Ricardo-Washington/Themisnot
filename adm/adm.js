@@ -7,9 +7,27 @@ const firebaseConfig = {
       appId: "1:1017306886601:web:3b7f5057515d244c2bb818",
       measurementId: "G-3G0VW26WD9"
     };
-
+    // Inicializa o Firebase
     if (!firebase.apps.length) {
       firebase.initializeApp(firebaseConfig);
+    }
+    // Logout
+function logout() {
+    firebase.auth().signOut().then(() => {
+        window.location.href = "/login/login.html";
+    }).catch((error) => {
+        console.error("Erro ao fazer logout:", error);
+    });
+}
+
+
+    function isAuthenticated() {
+        firebase.auth().onAuthStateChanged((user) => {
+            if (!user) {
+                // Se o usuário não estiver logado, redirecione para a página de login
+                window.location.href = "/login/login.html";
+            }
+        });
     }
 
 
@@ -21,11 +39,12 @@ function findUsers() {
     .then(snapshot => {
       const todosUsuarios = snapshot.docs.map(doc => doc.data());
 
-      // Filtra os usuários em dois arrays distintos
       const funcionarios = todosUsuarios.filter(user => user.atribuicao === 'funcionario');
-      const alunos = todosUsuarios.filter(user => user.atribuicao === 'aluno');
+      const alunos = todosUsuarios.filter(user => user.atribuicao === 'Aluno');
 
-      // Renderiza cada lista no seu local específico
+      console.log('Funcionários:', funcionarios);
+      console.log('Alunos:', alunos); // Veja se aparece algo aqui
+
       renderizarLista('dadosfuincionario', funcionarios);
       renderizarLista('dadosaluno', alunos);
     })

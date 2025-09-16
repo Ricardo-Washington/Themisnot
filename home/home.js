@@ -14,6 +14,8 @@ if (!firebase.apps.length) {
     firebase.initializeApp(firebaseConfig);
 }
 
+
+
 const db = firebase.firestore();
 
 // O objeto 'form' para fácil acesso aos elementos
@@ -33,11 +35,17 @@ firebase.auth().onAuthStateChanged(async (user) => {
     if (!user) {
         window.location.href = "/login/login.html";
     } else {
-        // Verifica se o documento do usuário já existe no Firestore
+        // Busca o documento do usuário no Firestore
         const userDoc = await db.collection('usuarios').doc(user.uid).get();
-        
+        if (userDoc.exists) {
+            const dados = userDoc.data();
+            if (dados.atribuicao === 'adm') {
+                window.location.href = "/adm/adm.html";
+                return;
+            }
+        }
+        // Se não existe, é o primeiro login. Abre o modal.
         if (!userDoc.exists) {
-            // Se o documento não existe, é o primeiro login. Abre o modal.
             openModal();
         }
     }
