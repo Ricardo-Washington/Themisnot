@@ -46,6 +46,7 @@ firebase.firestore()
         document.getElementById('nascimento').textContent = dados.nascimento;
         document.getElementById('estadoCivil').textContent = dados.estadoCivil;
         document.getElementById('endereco').textContent = dados.endereco;
+        document.getElementById('atribuicao').textContent = dados.atribuicao;
     } else {
         alert("Dados do usuário não encontrados.");
     }
@@ -61,9 +62,7 @@ function logout() {
   });
 }
 
-    /*
-buscar dasdos do usuario
-function findCadater(){
+/*function findCadater(){
 firebase.firestore()
   .collection('usuarios')
   .get()
@@ -71,6 +70,7 @@ firebase.firestore()
     snapshot.docs.forEach(doc => {
       console.log(doc.data());
     });
+    console.log(snapshot.docs.collections);
     const dadosuser =  snapshot.docs.map(doc => doc.data());
   })
 

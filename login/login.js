@@ -80,3 +80,7 @@ function recoverPassword() {
         alert(getErrorMessage(error));
     });
 }
+
+function registerFunc() {
+    window.location.href = "/registerEmployee/employee.html"; // Redireciona para a página de registro de funcionário
+}

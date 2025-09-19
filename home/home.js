@@ -14,6 +14,8 @@ if (!firebase.apps.length) {
     firebase.initializeApp(firebaseConfig);
 }
 
+
+
 const db = firebase.firestore();
 
 // O objeto 'form' para fácil acesso aos elementos
@@ -25,6 +27,7 @@ const form = {
     nome: () => document.getElementById('nome'),
     estadoCivil: () => document.getElementById('estadoCivil'),
     endereco: () => document.getElementById('endereco'),
+    atribuicao: () => document.getElementById('atribuicao'),
 }
 
 // Verifica o estado de autenticação e dados do usuário
@@ -32,11 +35,17 @@ firebase.auth().onAuthStateChanged(async (user) => {
     if (!user) {
         window.location.href = "/login/login.html";
     } else {
-        // Verifica se o documento do usuário já existe no Firestore
+        // Busca o documento do usuário no Firestore
         const userDoc = await db.collection('usuarios').doc(user.uid).get();
-        
+        if (userDoc.exists) {
+            const dados = userDoc.data();
+            if (dados.atribuicao === 'adm') {
+                window.location.href = "/adm/adm.html";
+                return;
+            }
+        }
+        // Se não existe, é o primeiro login. Abre o modal.
         if (!userDoc.exists) {
-            // Se o documento não existe, é o primeiro login. Abre o modal.
             openModal();
         }
     }
@@ -62,6 +71,12 @@ async function cadastrarDados(event) {
         return;
     }
     
+    // Valida se todos os campos obrigatórios estão preenchidos
+    if (!validarCamposObrigatorios()) {
+        alert("Por favor, preencha todos os campos obrigatórios.");
+        return;
+    }
+    
     const userData = {
         nome: form.nome().value,
         cpf: form.cpf().value,
@@ -70,15 +85,11 @@ async function cadastrarDados(event) {
         nascimento: form.nascimento().value,
         estadoCivil: form.estadoCivil().value,
         endereco: form.endereco().value,
-         user:{
+        atribuicao: form.atribuicao().value,
+        user: {
             uid: firebase.auth().currentUser.uid,
         }
     };
-    
-    if (!userData.nome || !userData.cpf || !userData.rg) {
-        alert("Por favor, preencha todos os campos obrigatórios.");
-        return;
-    }
 
     try {
         await db.collection('usuarios').doc(user.uid).set(userData);
@@ -91,11 +102,64 @@ async function cadastrarDados(event) {
     }
 }
 
+// Função para validar todos os campos obrigatórios
+function validarCamposObrigatorios() {
+    const camposObrigatorios = [
+        form.nome(),
+        form.nascimento(),
+        form.cpf(),
+        form.rg(),
+        form.telefone(),
+        form.estadoCivil(),
+        form.endereco(),
+        form.atribuicao(),
+    ];
+    
+    let todosPreenchidos = true;
+    
+    camposObrigatorios.forEach(campo => {
+        if (!campo.value.trim()) {
+            // Destaca o campo vazio
+            campo.style.border = '2px solid red';
+            // Mostra mensagem de erro se existir
+            const errorElement = document.getElementById(campo.id + 'Error');
+            if (errorElement) {
+                errorElement.textContent = 'Este campo é obrigatório';
+            }
+            todosPreenchidos = false;
+        } else {
+            // Remove o destaque se o campo estiver preenchido
+            campo.style.border = '';
+            // Limpa mensagem de erro
+            const errorElement = document.getElementById(campo.id + 'Error');
+            if (errorElement) {
+                errorElement.textContent = '';
+            }
+        }
+    });
+    
+    return todosPreenchidos;
+}
+
 // Adicione o listener de evento para a função cadastrarDados() no formulário
 document.addEventListener('DOMContentLoaded', () => {
     const userForm = document.getElementById('userRegisterForm');
     if (userForm) {
         userForm.addEventListener('submit', cadastrarDados);
+        
+        // Adiciona evento para remover o destaque quando o usuário começar a digitar
+        const inputs = userForm.querySelectorAll('input, select');
+        inputs.forEach(input => {
+            input.addEventListener('input', function() {
+                if (this.value.trim()) {
+                    this.style.border = '';
+                    const errorElement = document.getElementById(this.id + 'Error');
+                    if (errorElement) {
+                        errorElement.textContent = '';
+                    }
+                }
+            });
+        });
     }
 });
 
