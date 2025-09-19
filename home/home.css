@@ -138,6 +138,16 @@ a {
     font-size: 1.3rem;
     margin-bottom: 40px;
 }
+li button{
+    background: none;
+    border: none;
+    color: white;
+    font-size: 1rem;
+}
+
+.logout-button:hover {
+    background-color: darken(var(--orange), 10%);
+}
 
 /* Produtos Section */
 .produtos-section {
