@@ -51,9 +51,9 @@
             </div>
         </section>
         <div class="buttons-container">
-                <a href="#" class="details-button" >Editar</a>
-                <a href="#" class="details-button" >Editar</a>
-            </div>
+            <button class="details-button" onclick="openModal('funcionario')">Editar Funcionário</button>
+            <button class="details-button" onclick="openModal('aluno')">Editar Aluno</button>
+        </div>
     </main>
 
     <footer id="contato" class="footer-section">
@@ -74,5 +74,37 @@
             <p>&copy; 2025 Thémis. Todos os direitos reservados.</p>
         </div>
     </footer>
+
+    <!-- Modal de edição -->
+    <div id="editModal" class="modal-overlay" style="display:none;">
+    <div class="modal-content">
+        <h2 id="modalTitle">Editar Usuário</h2>
+        <form id="editForm">
+        <label>Selecione o usuario</label>
+        <select id="selectUsuario" required></select>
+        <label class="requiredq">Nome </label>
+        <input type="text" id="editNome" placeholder="Nome" required>
+        <label class="requiredq">CPF </label>
+        <input type="text" id="editCpf" placeholder="CPF" required>
+        <label class="requiredq">Endereço </label>
+        <input type="text" id="editEndereco" placeholder="Endereço">
+        <label class="requiredq">Telefone </label>
+        <input type="text" id="editTelefone" placeholder="Telefone">
+        <label class="requiredq">RG </label>
+        <input type="text" id="editRg" placeholder="RG">
+        <label class="requiredq">Data de Nascimento </label>
+        <input type="text" id="editNascimento" placeholder="Nascimento">
+        <label class="requiredq">Atribuição </label>
+        <select id="editAtribuicao" required>
+            <option value="funcionario">Funcionário</option>
+            <option value="aluno">Aluno</option>
+            <option value="adm">Administrador</option>
+        </select>
+        <button type="submit" class="details-button">Salvar</button>
+        <button type="button" class="details-button" onclick="closeModal()">Cancelar</button>
+        <button type="button" class="details-button" id="deleteButton" style="background:#c00;">Excluir</button>
+        </form>
+    </div>
+</div>
 </body>
 </html>

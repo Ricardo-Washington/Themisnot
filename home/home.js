@@ -88,7 +88,8 @@ async function cadastrarDados(event) {
         atribuicao: form.atribuicao().value,
         user: {
             uid: firebase.auth().currentUser.uid,
-        }
+        },
+        dataCadastro: new Date().toISOString().slice(0, 10) // Salva a data do cadastro automaticamente
     };
 
     try {
