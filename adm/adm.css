@@ -51,7 +51,7 @@
 }
 
 .container{
-    max-width: 1200px;
+    max-width: 100%;
     margin: 0 auto;
     padding: 0 20px;
     display: flex;
@@ -242,11 +242,17 @@
     z-index: 9999;
     animation: modalFadeIn 0.3s;
 }
-
+.requiredq{
+    align-items: left;
+    display: flex;
+    justify-content: left;
+    margin-left: 10px;
+}
 .modal-content {
     background: var(--dark-grey, #232323);
     padding: 38px 32px 28px 32px;
     border-radius: 18px;
+    width: 600px;
     box-shadow: 0 12px 40px rgba(0,0,0,0.55);
     min-width: 340px;
     max-width: 95vw;
@@ -319,6 +325,32 @@
 
 #deleteButton:hover {
     background: #ff2d2d !important;
+}
+/* Barra de rolagem estilizada para o modal */
+.modal-content::-webkit-scrollbar {
+  width: 8px;
+  border-radius: 8px;
+  background: var(--medium-grey);
+}
+
+.modal-content::-webkit-scrollbar-thumb {
+  background: var(--orange);
+  border-radius: 8px;
+}
+
+.modal-content::-webkit-scrollbar-thumb:hover {
+  background: #ff7e2e;
+}
+
+.modal-content::-webkit-scrollbar-track {
+  background: var(--dark-grey);
+  border-radius: 8px;
+}
+
+/* Para navegadores Firefox */
+.modal-content {
+  scrollbar-width: thin;
+  scrollbar-color: var(--orange) var(--dark-grey);
 }
 
 @media (max-width: 600px) {

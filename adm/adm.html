@@ -16,7 +16,7 @@
 <body>
     <nav class="navbar">
         <div class="container nav-content">
-            <a href="#" class="logo"><img src="/img/logo.png" alt="logo"></a>
+            <a href="/index/index.html" class="logo"><img src="/img/logo.png" alt="logo"></a>
             <ul class="nav-links">
                 <li><a href="#funcionarios">Lista de Funcionários</a></li>
                 <li><a href="#cursos">Lista de Alunos</a></li>
@@ -80,29 +80,29 @@
     <div class="modal-content">
         <h2 id="modalTitle">Editar Usuário</h2>
         <form id="editForm">
-        <label>Selecione o usuario</label>
-        <select id="selectUsuario" required></select>
-        <label class="requiredq">Nome </label>
-        <input type="text" id="editNome" placeholder="Nome" required>
-        <label class="requiredq">CPF </label>
-        <input type="text" id="editCpf" placeholder="CPF" required>
-        <label class="requiredq">Endereço </label>
-        <input type="text" id="editEndereco" placeholder="Endereço">
-        <label class="requiredq">Telefone </label>
-        <input type="text" id="editTelefone" placeholder="Telefone">
-        <label class="requiredq">RG </label>
-        <input type="text" id="editRg" placeholder="RG">
-        <label class="requiredq">Data de Nascimento </label>
-        <input type="text" id="editNascimento" placeholder="Nascimento">
-        <label class="requiredq">Atribuição </label>
-        <select id="editAtribuicao" required>
-            <option value="funcionario">Funcionário</option>
-            <option value="aluno">Aluno</option>
-            <option value="adm">Administrador</option>
-        </select>
-        <button type="submit" class="details-button">Salvar</button>
-        <button type="button" class="details-button" onclick="closeModal()">Cancelar</button>
-        <button type="button" class="details-button" id="deleteButton" style="background:#c00;">Excluir</button>
+            <label class="requiredq">Selecione o usuario</label>
+            <select id="selectUsuario"></select>
+            <label class="requiredq">Nome </label>
+            <input type="text" id="editNome" placeholder="Nome">
+            <label class="requiredq">CPF </label>
+            <input type="text" id="editCpf" placeholder="CPF">
+            <label class="requiredq">Endereço </label>
+            <input type="text" id="editEndereco" placeholder="Endereço">
+            <label class="requiredq">Telefone </label>
+            <input type="text" id="editTelefone" placeholder="Telefone">
+            <label class="requiredq">RG </label>
+            <input type="text" id="editRg" placeholder="RG">
+            <label class="requiredq">Data de Nascimento </label>
+            <input type="text" id="editNascimento" placeholder="Nascimento">
+            <label class="requiredq">Atribuição </label>
+            <select id="editAtribuicao">
+                <option value="funcionario">Funcionário</option>
+                <option value="aluno">Aluno</option>
+                <option value="adm">Administrador</option>
+            </select>
+            <button type="submit" class="details-button">Salvar</button>
+            <button type="button" class="details-button" onclick="closeModal()">Cancelar</button>
+            <button type="button" class="details-button" id="deleteButton" style="background:#c00;">Excluir</button>
         </form>
     </div>
 </div>
