@@ -139,7 +139,23 @@ document.addEventListener("DOMContentLoaded", carregarAlunos);
 
 // Função para criar contrato em PDF
 function criarContrato(nome, idade, cpf, rg, orgaoRg, endereco, telefone, telefoneAlt) {
-    const contrato = `
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({
+        orientation: "portrait",
+        unit: "mm",
+        format: "a4"
+    });
+
+    // Carrega a logo e gera o PDF após carregar
+    const img = new Image();
+    img.src = "/img/logo.png";
+    img.onload = function () {
+        // Adiciona a logo no topo
+        doc.addImage(img, "PNG", 80, 8, 50, 40); // x, y, largura, altura
+
+        // Texto do contrato com marcadores
+        let contrato = `
+
 THÉMIS – ACADEMIA DE FORMAÇÃO DE VIGILANTES LTDA/EPP
 CONTRATO DE PRESTAÇÃO DE SERVIÇOS
 Pelo presente instrumento particular o Sr(a) NNN,III, CPF Nº CCC, RG nº RRR - SSS, residente na  EEE , TELEFONE: NNN1 NNN2, Doravante Denominado CONTRATANTE e a THÉMIS – ACADEMIA DE FORMAÇÃO DE VIGILANTES LTDA-EPP, nome fantasia THÉMIS – ACADEMIA DE FORMAÇÃO DEVIGILANTES, inscrita no CNPJ 26.489.471/0001-07, autorizada  a    funcionar pelo   DEPARTAMENTO de POLICIA FEDERAL, conforme alvará Nº 4.733/17 , estabelecida na Avenida JK Qd. 12 Lote 16 Sala 2B – Jardim Brasília –Águas Lindas – GO, doravante denominada CONTRATADA, resolvem celebrar o presente contrato de prestação de serviços, conforme cláusulas a seguir:
@@ -188,34 +204,70 @@ Assim, por estarem justas e contratadas, as partes assinam o presente contrato e
 
 Águas Lindas de Goiás-GO, em  09 de JULHO de 2025.
 
- ______________________________________                                    			       _______________________________________
-                         CONTRATADA                            							  CONTRATANTE
+
 `;
 
-    // Substitui os marcadores pelos dados do aluno
-    const contratoPreenchido = contrato
-        .replace(/NNN/g, nome)
-        .replace(/III/g, idade)
-        .replace(/CCC/g, cpf)
-        .replace(/RRR/g, rg)
-        .replace(/SSS/g, orgaoRg)
-        .replace(/EEE/g, endereco)
-        .replace(/NNN1/g, telefone)
-        .replace(/NNN2/g, telefoneAlt);
+        // Substitui os marcadores pelos dados do aluno
+        contrato = contrato
+            .replace(/NNN/g, nome)
+            .replace(/III/g, idade)
+            .replace(/CCC/g, cpf)
+            .replace(/RRR/g, rg)
+            .replace(/SSS/g, orgaoRg)
+            .replace(/EEE/g, endereco)
+            .replace(/NNN1/g, telefone)
+            .replace(/NNN2/g, telefoneAlt);
 
-    // Gera o PDF
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF({
-        orientation: "portrait",
-        unit: "mm",
-        format: "a4"
-    });
+        // Quebra o texto em linhas para o PDF
+        const linhas = contrato.split('\n');
 
-    // Divide o texto em linhas para não ultrapassar a largura da página
-    const linhas = doc.splitTextToSize(contratoPreenchido, 180);
-    doc.setFont("times", "normal");
-    doc.setFontSize(12);
-    doc.text(linhas, 15, 20);
+        // Títulos para destacar (mas agora só em negrito, cor preta)
+        const titulos = [
+            "THÉMIS – ACADEMIA DE FORMAÇÃO DE VIGILANTES LTDA/EPP",
+            "CONTRATO DE PRESTAÇÃO DE SERVIÇOS",
+            "CLÁUSULA PRIMEIRA – DO OBJETO",
+            "CLÁUSULA SEGUNDA – PREÇO E CONDIÇÕES DE PAGAMENTO",
+            "CLÁUSULA TERCEIRA – DAS OBRIGAÇÕES",
+            "CLÁUSULA QUARTA – DA RECISÃO CONTRATUAL",
+            "CLÁUSULA QUINTA – VIGÊNCIA",
+            "CLÁUSULA SEXTA – DO FORO"
+        ];
 
-    doc.save(`Contrato_${nome}.pdf`);
+        let y = 35; // Começa abaixo da logo
+        linhas.forEach(linha => {
+            let texto = linha.trim();
+            if (titulos.some(t => texto.startsWith(t))) {
+                doc.setFont("times", "bold");
+                doc.setFontSize(13);
+                doc.setTextColor(0, 0, 0);
+            } else {
+                doc.setFont("times", "normal");
+                doc.setFontSize(11.5);
+                doc.setTextColor(0, 0, 0);
+            }
+            // Quebra linhas longas automaticamente
+            const partes = doc.splitTextToSize(texto, 180);
+            partes.forEach(parte => {
+                doc.text(parte, 15, y);
+                y += 7;
+                // Se chegar ao fim da página, cria nova página
+                if (y > 280) {
+                    doc.addPage();
+                    y = 20;
+                }
+            });
+        });
+
+        // Espaço para assinatura
+        y += 10;
+        doc.setFont("times", "normal");
+        doc.setFontSize(12);
+        doc.setTextColor(0, 0, 0);
+        doc.line(15, y, 90, y); // Linha para assinatura contratada
+        doc.line(120, y, 195, y); // Linha para assinatura contratante
+        doc.text("CONTRATADA", 35, y + 6);
+        doc.text("CONTRATANTE", 145, y + 6);
+
+        doc.save(`Contrato_${nome}.pdf`);
+    };
 }
