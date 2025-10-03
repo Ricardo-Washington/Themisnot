@@ -33,9 +33,25 @@ document.getElementById("alunoForm").addEventListener("submit", async (event) =>
     const alunoId = document.getElementById("alunoId").value;
     const nome = document.getElementById("nome").value;
     const email = document.getElementById("email").value;
+    const cpf = document.getElementById("cpf").value;
+    const rg = document.getElementById("rg").value;
+    const orgaoRg = document.getElementById("orgaoRg").value;
+    const endereco = document.getElementById("endereco").value;
     const telefone = document.getElementById("telefone").value;
+    const telefoneAlt = document.getElementById("telefoneAlt").value;
+    const idade = document.getElementById("idade").value;
 
-    const alunoData = { nome, email, telefone };
+    const alunoData = { 
+        nome, 
+        email, 
+        cpf, 
+        rg, 
+        orgaoRg, 
+        endereco, 
+        telefone, 
+        telefoneAlt,
+        idade
+    };
 
     try {
         if (alunoId) {
@@ -67,10 +83,17 @@ async function carregarAlunos() {
             <tr>
                 <td>${aluno.nome}</td>
                 <td>${aluno.email}</td>
-                <td>${aluno.telefone}</td>
+                <td>${aluno.cpf || ''}</td>
+                <td>${aluno.rg || ''}</td>
+                <td>${aluno.orgaoRg || ''}</td>
+                <td>${aluno.endereco || ''}</td>
+                <td>${aluno.telefone || ''}</td>
+                <td>${aluno.telefoneAlt || ''}</td>
+                <td>${aluno.idade || ''}</td>
                 <td>
-                    <button onclick="editarAluno('${doc.id}', '${aluno.nome}', '${aluno.email}', '${aluno.telefone}')">Editar</button>
+                    <button onclick="editarAluno('${doc.id}', '${aluno.nome}', '${aluno.email}', '${aluno.cpf}', '${aluno.rg}', '${aluno.orgaoRg}', '${aluno.endereco}', '${aluno.telefone}', '${aluno.telefoneAlt}', '${aluno.idade}')">Editar</button>
                     <button onclick="excluirAluno('${doc.id}')">Excluir</button>
+                    <button onclick="criarContrato('${aluno.nome}', '${aluno.idade}', '${aluno.cpf}', '${aluno.rg}', '${aluno.orgaoRg}', '${aluno.endereco}', '${aluno.telefone}', '${aluno.telefoneAlt}')">Criar Contrato</button>
                 </td>
             </tr>
         `;
@@ -79,11 +102,17 @@ async function carregarAlunos() {
 }
 
 // Função para preencher o formulário com os dados do aluno para edição
-function editarAluno(id, nome, email, telefone) {
+function editarAluno(id, nome, email, cpf, rg, orgaoRg, endereco, telefone, telefoneAlt, idade) {
     document.getElementById("alunoId").value = id;
     document.getElementById("nome").value = nome;
     document.getElementById("email").value = email;
+    document.getElementById("cpf").value = cpf;
+    document.getElementById("rg").value = rg;
+    document.getElementById("orgaoRg").value = orgaoRg;
+    document.getElementById("endereco").value = endereco;
     document.getElementById("telefone").value = telefone;
+    document.getElementById("telefoneAlt").value = telefoneAlt;
+    document.getElementById("idade").value = idade || '';
 }
 
 // Função para excluir aluno
@@ -107,3 +136,86 @@ document.getElementById("btnCursos").addEventListener("click", () => {
 
 // Carrega os alunos ao carregar a página
 document.addEventListener("DOMContentLoaded", carregarAlunos);
+
+// Função para criar contrato em PDF
+function criarContrato(nome, idade, cpf, rg, orgaoRg, endereco, telefone, telefoneAlt) {
+    const contrato = `
+THÉMIS – ACADEMIA DE FORMAÇÃO DE VIGILANTES LTDA/EPP
+CONTRATO DE PRESTAÇÃO DE SERVIÇOS
+Pelo presente instrumento particular o Sr(a) NNN,III, CPF Nº CCC, RG nº RRR - SSS, residente na  EEE , TELEFONE: NNN1 NNN2, Doravante Denominado CONTRATANTE e a THÉMIS – ACADEMIA DE FORMAÇÃO DE VIGILANTES LTDA-EPP, nome fantasia THÉMIS – ACADEMIA DE FORMAÇÃO DEVIGILANTES, inscrita no CNPJ 26.489.471/0001-07, autorizada  a    funcionar pelo   DEPARTAMENTO de POLICIA FEDERAL, conforme alvará Nº 4.733/17 , estabelecida na Avenida JK Qd. 12 Lote 16 Sala 2B – Jardim Brasília –Águas Lindas – GO, doravante denominada CONTRATADA, resolvem celebrar o presente contrato de prestação de serviços, conforme cláusulas a seguir:
+CLÁUSULA PRIMEIRA – DO OBJETO
+O objeto deste contrato consiste na prestação de serviços, pela contratada, a realização do curso pelo (a) contratante, conforme especificação contida abaixo e de acordo com a legislação vigente:	
+CURSO SOLICITADO: RECICLAGEM DA FORMAÇÃO DE VIGILANTES
+DATA DE INICIO: 14/07/2025                                                                         TURNO: DIURNO 08:30 – 17:00
+PARAGRAFO ÚNICO: A data de inicio do curso PODERÁ ser alterada, considerando que esta academia se resguarda a iniciar turmas com, no MÍNIMO 	de 10 (DEZ) alunos e os cursos serão ministrados de segunda-feira a sexta-feira, sendo que, independente do turno escolhido, poderá haver aulas aos SÁBADOS, dependendo da carga horária do curso solicitado.
+CLÁUSULA SEGUNDA – PREÇO E CONDIÇÕES DE PAGAMENTO
+CONDIÇÕES DE PAGAMENTO:
+R$ 450,00 (QUATROCENTOS E CINQUENTA REAIS) PIX INCLUINDO OS EXAMES.
+
+O não cumprimento das condições de pagamento especificadas acima, ficará o (a) CONTRATANTE sujeito às seguintes penalidades:
+1 – Suspensão do (a) CONTRATANTE das AULAS, até a quitação da (s) parcela (s) em aberto (vencidas);
+2 – Retenção do CERTIFICADO ou DECLARAÇÃO de Conclusão até a quitação de todas as pendências;
+3 – Multa de 2% (dois por cento) e JUROS de 1% (um por cento ao mês) sobre o valor da parcela em aberto;
+PARÁGRAFO ÚNICO:A (O) CONTRATANTE AUTORIZA que os títulos sejam descontados na rede Bancária.
+CLÁUSULA TERCEIRA – DAS OBRIGAÇÕES
+A CONTRATADA se obriga a formar ou reciclar Vigilantes, dentro das normas legais, deixando-os APTOS e PREPARADOS para o Exercício da Profissão e providenciar o registro do VIGILANTE junto ao Departamento de Policia Federal (DPF);
+O (A) CONTRATANTE fica ciente que o prazo de registro no certificado/declaração é determinado pelo DPF. Sendo de, até, 60 (sessenta)  uteis, após o termino do curso.
+O (A) CONTRATANTE deve seguir as seguintes obrigações:
+1 – Participação nas aulas PRÁTICAS e TEÓRICAS, nos dias e horários especificados neste documento, SERÃO DE 100%, ou seja, PRESENÇA INTEGRAL, onde, HAVENDO  ocorrência, ESTA,  será avaliada pelos diretores da Academia (contratada), com a possibilidade de reprovação do (a) Aluno (a) Contratante.
+2 – Obter nota mínima de 06 (seis) nas avaliações para aprovação.
+
+3 – O ALUNO ATESTA QUE:
+RESPONDE OU ESTÁ RESPONDENDO A PROCESSO CRIMINAL? PRINCIPALMENTE MARIA DA PENHA? (  ) SIM  (  ) NÂO                           
+ ESTÁ QUITE COM A JUSTIÇA ELEITORAL? (  ) SIM (  ) NÃO       ESTÁ RESPONDENDO A PROCESSO CRIMINAL ELEITORAL  (  ) SIM  (  ) NÃO
+POSSUI ENSINO FUNDAMENTAL COMPLETO? (  ) SIM  (  ) NÃO    
+DIANTE DAS AFIRMAÇÕES CONTIDAS NO ITEM III, CONFIRMO ESTAR CIENTE DAS SANÇÕES EM CASO DE OMISSÃO DA VERDADE.
+ASSINATURA DO ALUNO___________________________________________________________________________________________________________           
+4 -Apresentar a documentação solicitada até a data de inicio do referido curso, sob pena, do aluno (a) ser considerado REPROVADO.
+5 – Obedecer às normas impostas pela CONTRATADA quanto a boa conduta social e ética dentro das dependências da Academia e nas de pendências do prédio onde está instalada a sede da mesma. Sendo detectada a má conduta do (a) aluno (contratante) este, poderá ter a sua exclusão do curso;
+6 – O contratante fica responsável por seus objetos pessoais dentro das instalações da Academia (contatada), portanto, fica a CONTRATADA ISENTA de responsabilidade no caso de roubo, perda ou quebra de qualquer objeto;
+CLÁUSULA QUARTA – DA RECISÃO CONTRATUAL
+O contrato poderá ser rescindido a qualquer momento, pelos seguintes motivos:
+1 – Desistência do (a) CONTRATANTE, sendo que, no caso da desistência ocorrer até 02 (dois)dias APÓS o início do curso, a CONTRATADA terá direito,  a título  de indenização, o percentual de 40% (QUARENTA por cento) do valor do curso e devolverá os títulos das parcelas vencidas e os documentos apresentados, ou no caso do pedido de desistência ocorrer após o segundo dia de curso, não haverá devolução dos valores já PAGOS e o (a) CONTRATANTE ficará responsável pelo pagamento das parcelas vencidas;
+2 – Inviabilidade do registro ou declaração de conclusão junto ao DPF, devido a não apresentação exigida pela Legislação Vigente pelo CONTRATANTE ou por Antecedentes Criminais, ficando o (a) mesmo (a) sem direito a devolução dos valores pagos e responsável pelo pagamento das parcelas vencidas;
+3 – Descumprimento do contido nas cláusulas SEGUNDA e QUARTA pelo (a) CONTRATANTE, ficando (a) mesmo (a) sem direito a devolução dos valores pagos e responsável pelo pagamento das parcelas vencidas;
+4 – Descumprimento pela CONTRATADA de suas obrigações descritas na cláusula SEGUNDA, havendo a devolução, ao CONTRATANTE, de todos os valores pagos e, bem como, dos títulos vencidos e de toda a documentação apresentada para a matrícula.
+CLÁUSULA QUINTA – VIGÊNCIA
+Para pagamento parcelado, este Contrato vigorará a partir da realização da matrícula até a quitação de todas as parcelas descritas nas condições de pagamento e, conseqüente, entrega do certificado ou declaração registrados no DPF;
+Para pagamento á vista, o contrato vigorará a partir da realização da matrícula até a entrega do certificado ou Declaração DEVIDAMENTE registrado no DPF.
+CLÁUSULA SEXTA – DO FORO
+As partes elegem o foro de Águas Lindas de Goiás-GO, para dirimir quaisquer controvérsias existentes em relação ao presente Contrato, em detrimento de outro, por mais privilegiado que seja.
+Assim, por estarem justas e contratadas, as partes assinam o presente contrato em duas vias de igual teor.
+
+Águas Lindas de Goiás-GO, em  09 de JULHO de 2025.
+
+ ______________________________________                                    			       _______________________________________
+                         CONTRATADA                            							  CONTRATANTE
+`;
+
+    // Substitui os marcadores pelos dados do aluno
+    const contratoPreenchido = contrato
+        .replace(/NNN/g, nome)
+        .replace(/III/g, idade)
+        .replace(/CCC/g, cpf)
+        .replace(/RRR/g, rg)
+        .replace(/SSS/g, orgaoRg)
+        .replace(/EEE/g, endereco)
+        .replace(/NNN1/g, telefone)
+        .replace(/NNN2/g, telefoneAlt);
+
+    // Gera o PDF
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({
+        orientation: "portrait",
+        unit: "mm",
+        format: "a4"
+    });
+
+    // Divide o texto em linhas para não ultrapassar a largura da página
+    const linhas = doc.splitTextToSize(contratoPreenchido, 180);
+    doc.setFont("times", "normal");
+    doc.setFontSize(12);
+    doc.text(linhas, 15, 20);
+
+    doc.save(`Contrato_${nome}.pdf`);
+}
