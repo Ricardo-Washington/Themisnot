@@ -82,13 +82,8 @@ async function carregarAlunos() {
         const row = `
             <tr>
                 <td>${aluno.nome}</td>
-                <td>${aluno.email}</td>
                 <td>${aluno.cpf || ''}</td>
                 <td>${aluno.rg || ''}</td>
-                <td>${aluno.orgaoRg || ''}</td>
-                <td>${aluno.endereco || ''}</td>
-                <td>${aluno.telefone || ''}</td>
-                <td>${aluno.telefoneAlt || ''}</td>
                 <td>${aluno.idade || ''}</td>
                 <td>
                     <button onclick="editarAluno('${doc.id}', '${aluno.nome}', '${aluno.email}', '${aluno.cpf}', '${aluno.rg}', '${aluno.orgaoRg}', '${aluno.endereco}', '${aluno.telefone}', '${aluno.telefoneAlt}', '${aluno.idade}')">Editar</button>
@@ -158,7 +153,7 @@ function criarContrato(nome, idade, cpf, rg, orgaoRg, endereco, telefone, telefo
 
 THÉMIS – ACADEMIA DE FORMAÇÃO DE VIGILANTES LTDA/EPP
 CONTRATO DE PRESTAÇÃO DE SERVIÇOS
-Pelo presente instrumento particular o Sr(a) NNN,III, CPF Nº CCC, RG nº RRR - SSS, residente na  EEE , TELEFONE: NNN1 NNN2, Doravante Denominado CONTRATANTE e a THÉMIS – ACADEMIA DE FORMAÇÃO DE VIGILANTES LTDA-EPP, nome fantasia THÉMIS – ACADEMIA DE FORMAÇÃO DEVIGILANTES, inscrita no CNPJ 26.489.471/0001-07, autorizada  a    funcionar pelo   DEPARTAMENTO de POLICIA FEDERAL, conforme alvará Nº 4.733/17 , estabelecida na Avenida JK Qd. 12 Lote 16 Sala 2B – Jardim Brasília –Águas Lindas – GO, doravante denominada CONTRATADA, resolvem celebrar o presente contrato de prestação de serviços, conforme cláusulas a seguir:
+Pelo presente instrumento particular o Sr(a) NNN, III anos, CPF Nº CCC, RG nº RRR - SSS, residente na EEE , TELEFONE: TTT1, GGG2, Doravante Denominado CONTRATANTE e a THÉMIS – ACADEMIA DE FORMAÇÃO DE VIGILANTES LTDA-EPP, nome fantasia THÉMIS – ACADEMIA DE FORMAÇÃO DEVIGILANTES, inscrita no CNPJ 26.489.471/0001-07, autorizada  a    funcionar pelo   DEPARTAMENTO de POLICIA FEDERAL, conforme alvará Nº 4.733/17 , estabelecida na Avenida JK Qd. 12 Lote 16 Sala 2B – Jardim Brasília –Águas Lindas – GO, doravante denominada CONTRATADA, resolvem celebrar o presente contrato de prestação de serviços, conforme cláusulas a seguir:
 CLÁUSULA PRIMEIRA – DO OBJETO
 O objeto deste contrato consiste na prestação de serviços, pela contratada, a realização do curso pelo (a) contratante, conforme especificação contida abaixo e de acordo com a legislação vigente:	
 CURSO SOLICITADO: RECICLAGEM DA FORMAÇÃO DE VIGILANTES
@@ -215,8 +210,8 @@ Assim, por estarem justas e contratadas, as partes assinam o presente contrato e
             .replace(/RRR/g, rg)
             .replace(/SSS/g, orgaoRg)
             .replace(/EEE/g, endereco)
-            .replace(/NNN1/g, telefone)
-            .replace(/NNN2/g, telefoneAlt);
+            .replace(/TTT1/g, telefone)
+            .replace(/GGG2/g, telefoneAlt);
 
         // Quebra o texto em linhas para o PDF
         const linhas = contrato.split('\n');
@@ -271,3 +266,4 @@ Assim, por estarem justas e contratadas, as partes assinam o presente contrato e
         doc.save(`Contrato_${nome}.pdf`);
     };
 }
+

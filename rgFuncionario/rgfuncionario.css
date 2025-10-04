@@ -110,3 +110,32 @@ table tr {
         height: 38px;
     }
 }
+
+/* Barra de rolagem estilizada para a tabela de alunos */
+.tabela-scroll {
+    max-height: 340px; /* Altura para ~4 linhas grandes */
+    overflow-y: auto;
+    margin-top: 18px;
+    border-radius: 12px;
+    box-shadow: 0 4px 18px rgba(0,0,0,0.10);
+}
+
+/* Estilo da barra de rolagem Chrome/Edge */
+.tabela-scroll::-webkit-scrollbar {
+    width: 10px;
+    background: #232323;
+    border-radius: 8px;
+}
+.tabela-scroll::-webkit-scrollbar-thumb {
+    background: #ff5e00;
+    border-radius: 8px;
+}
+.tabela-scroll::-webkit-scrollbar-thumb:hover {
+    background: #ff7e2d;
+}
+
+/* Firefox */
+.tabela-scroll {
+    scrollbar-width: thin;
+    scrollbar-color: #ff5e00 #232323;
+}
