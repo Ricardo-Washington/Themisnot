@@ -11,6 +11,7 @@ const firebaseConfig = {
     if (!firebase.apps.length) {
       firebase.initializeApp(firebaseConfig);
     }
+    const db = firebase.firestore();
     // Logout
 function logout() {
     firebase.auth().signOut().then(() => {
@@ -19,15 +20,18 @@ function logout() {
         console.error("Erro ao fazer logout:", error);
     });
 }
-
-    function isAuthenticated() {
-        firebase.auth().onAuthStateChanged((user) => {
-            if (!user) {
-                // Se o usuário não estiver logado, redirecione para a página de login
-                window.location.href = "/login/login.html";
-            }
-        });
+firebase.auth().onAuthStateChanged(async (user) => {
+    if (!user) {
+        window.location.href = "/login/login.html";
+    } else {
+        const userDoc = await db.collection('usuarios').doc(user.uid).get();
+        const atribuicao = userDoc.data().atribuicao;
+        if (atribuicao !== "adm") {
+            alert("Você não tem permissão para acessar esta página.");
+            window.location.href = "/home/home.html";
+        }
     }
+});
 
 let usuariosFuncionarios = [];
 let usuariosAlunos = [];
