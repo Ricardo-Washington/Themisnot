@@ -1,11 +1,11 @@
 const firebaseConfig = {
-    apiKey: "AIzaSyAxwS4HeioFdcD6MaDDoVYmJUthcJhTfjc",
-    authDomain: "themis-154d1.firebaseapp.com",
-    projectId: "themis-154d1",
-    storageBucket: "themis-154d1.firebasestorage.app",
-    messagingSenderId: "1017306886601",
-    appId: "1:1017306886601:web:3b7f5057515d244c2bb818",
-    measurementId: "G-3G0VW26WD9"
+  apiKey: "AIzaSyAxwS4HeioFdcD6MaDDoVYmJUthcJhTfjc",
+  authDomain: "themis-154d1.firebaseapp.com",
+  projectId: "themis-154d1",
+  storageBucket: "themis-154d1.firebasestorage.app",
+  messagingSenderId: "1017306886601",
+  appId: "1:1017306886601:web:3b7f5057515d244c2bb818",
+  measurementId: "G-3G0VW26WD9"
 };
 // Inicializa o Firebase
 if (!firebase.apps.length) {
@@ -19,8 +19,17 @@ firebase.auth().onAuthStateChanged(async (user) => {
         window.location.href = "/login/login.html";
     } else {
         const userDoc = await db.collection('usuarios').doc(user.uid).get();
-        const atribuicao = userDoc.data().atribuicao;
-        if (atribuicao !== "funcionario" && atribuicao !== "adm") {
+        const dados = userDoc.data();
+        const atribuicao = dados ? dados.atribuicao : null;
+
+        if (!atribuicao) {
+            // Não tem atribuição, volta pra home e abre o modal de cadastro
+            localStorage.setItem('abrirModalCadastro', 'true');
+            window.location.href = "/home/home.html";
+            return;
+        }
+
+        if (atribuicao !== "funcionario") {
             alert("Você não tem permissão para acessar esta página.");
             window.location.href = "/home/home.html";
         }
@@ -39,6 +48,10 @@ document.getElementById("alunoForm").addEventListener("submit", async (event) =>
     const endereco = document.getElementById("endereco").value;
     const telefone = document.getElementById("telefone").value;
     const telefoneAlt = document.getElementById("telefoneAlt").value;
+    const formaPagamento = document.getElementById("formaPagamento").value;
+    const cursoSolicitado = document.getElementById("cursoSolicitado").value;
+    const dataInicio = document.getElementById("dataInicio").value;
+    const turno = document.getElementById("turno").value;
     const idade = document.getElementById("idade").value;
 
     const alunoData = { 
@@ -50,6 +63,10 @@ document.getElementById("alunoForm").addEventListener("submit", async (event) =>
         endereco, 
         telefone, 
         telefoneAlt,
+        formaPagamento,
+        cursoSolicitado,
+        dataInicio,
+        turno,
         idade
     };
 
@@ -86,9 +103,9 @@ async function carregarAlunos() {
                 <td>${aluno.rg || ''}</td>
                 <td>${aluno.idade || ''}</td>
                 <td>
-                    <button onclick="editarAluno('${doc.id}', '${aluno.nome}', '${aluno.email}', '${aluno.cpf}', '${aluno.rg}', '${aluno.orgaoRg}', '${aluno.endereco}', '${aluno.telefone}', '${aluno.telefoneAlt}', '${aluno.idade}')">Editar</button>
+                    <button onclick="editarAluno('${doc.id}', '${aluno.nome}', '${aluno.email}', '${aluno.cpf}', '${aluno.rg}', '${aluno.orgaoRg}', '${aluno.endereco}', '${aluno.telefone}', '${aluno.telefoneAlt}', '${aluno.cursoSolicitado}', '${aluno.idade}', '${aluno.dataInicio}', '${aluno.formaPagamento}')">Editar</button>
                     <button onclick="excluirAluno('${doc.id}')">Excluir</button>
-                    <button onclick="criarContrato('${aluno.nome}', '${aluno.idade}', '${aluno.cpf}', '${aluno.rg}', '${aluno.orgaoRg}', '${aluno.endereco}', '${aluno.telefone}', '${aluno.telefoneAlt}')">Criar Contrato</button>
+                    <button onclick="criarContrato('${aluno.nome}', '${aluno.idade}', '${aluno.cpf}', '${aluno.rg}', '${aluno.orgaoRg}', '${aluno.endereco}', '${aluno.telefone}', '${aluno.telefoneAlt}', '${aluno.formaPagamento}', '${aluno.cursoSolicitado}', '${aluno.dataInicio}')">Criar Contrato</button>
                 </td>
             </tr>
         `;
@@ -97,7 +114,7 @@ async function carregarAlunos() {
 }
 
 // Função para preencher o formulário com os dados do aluno para edição
-function editarAluno(id, nome, email, cpf, rg, orgaoRg, endereco, telefone, telefoneAlt, idade) {
+function editarAluno(id, nome, email, cpf, rg, orgaoRg, endereco, telefone, telefoneAlt, cursoSolicitado, idade, dataInicio, formaPagamento) {
     document.getElementById("alunoId").value = id;
     document.getElementById("nome").value = nome;
     document.getElementById("email").value = email;
@@ -107,6 +124,10 @@ function editarAluno(id, nome, email, cpf, rg, orgaoRg, endereco, telefone, tele
     document.getElementById("endereco").value = endereco;
     document.getElementById("telefone").value = telefone;
     document.getElementById("telefoneAlt").value = telefoneAlt;
+    document.getElementById("formaPagamento").value = formaPagamento || '';
+    document.getElementById("cursoSolicitado").value = cursoSolicitado || '';
+    document.getElementById("dataInicio").value = dataInicio || '';
+    document.getElementById("turno").value = turno || '';
     document.getElementById("idade").value = idade || '';
 }
 
@@ -133,7 +154,7 @@ document.getElementById("btnCursos").addEventListener("click", () => {
 document.addEventListener("DOMContentLoaded", carregarAlunos);
 
 // Função para criar contrato em PDF
-function criarContrato(nome, idade, cpf, rg, orgaoRg, endereco, telefone, telefoneAlt) {
+function criarContrato(nome, idade, cpf, rg, orgaoRg, endereco, telefone, telefoneAlt, formaPagamento, cursoSolicitado, dataInicio, turno) {
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF({
         orientation: "portrait",
@@ -153,15 +174,15 @@ function criarContrato(nome, idade, cpf, rg, orgaoRg, endereco, telefone, telefo
 
 THÉMIS – ACADEMIA DE FORMAÇÃO DE VIGILANTES LTDA/EPP
 CONTRATO DE PRESTAÇÃO DE SERVIÇOS
-Pelo presente instrumento particular o Sr(a) NNN, III anos, CPF Nº CCC, RG nº RRR - SSS, residente na EEE , TELEFONE: TTT1, GGG2, Doravante Denominado CONTRATANTE e a THÉMIS – ACADEMIA DE FORMAÇÃO DE VIGILANTES LTDA-EPP, nome fantasia THÉMIS – ACADEMIA DE FORMAÇÃO DEVIGILANTES, inscrita no CNPJ 26.489.471/0001-07, autorizada  a    funcionar pelo   DEPARTAMENTO de POLICIA FEDERAL, conforme alvará Nº 4.733/17 , estabelecida na Avenida JK Qd. 12 Lote 16 Sala 2B – Jardim Brasília –Águas Lindas – GO, doravante denominada CONTRATADA, resolvem celebrar o presente contrato de prestação de serviços, conforme cláusulas a seguir:
+Pelo presente instrumento particular o Sr(a) NNN, IIII anos, CPF Nº CCC, RG nº RRR - SSS, residente na EEE , TELEFONE: TTT1, GGG2, Doravante Denominado CONTRATANTE e a THÉMIS – ACADEMIA DE FORMAÇÃO DE VIGILANTES LTDA-EPP, nome fantasia THÉMIS – ACADEMIA DE FORMAÇÃO DEVIGILANTES, inscrita no CNPJ 26.489.471/0001-07, autorizada  a    funcionar pelo   DEPARTAMENTO de POLICIA FEDERAL, conforme alvará Nº 4.733/17 , estabelecida na Avenida JK Qd. 12 Lote 16 Sala 2B – Jardim Brasília –Águas Lindas – GO, doravante denominada CONTRATADA, resolvem celebrar o presente contrato de prestação de serviços, conforme cláusulas a seguir:
 CLÁUSULA PRIMEIRA – DO OBJETO
 O objeto deste contrato consiste na prestação de serviços, pela contratada, a realização do curso pelo (a) contratante, conforme especificação contida abaixo e de acordo com a legislação vigente:	
-CURSO SOLICITADO: RECICLAGEM DA FORMAÇÃO DE VIGILANTES
-DATA DE INICIO: 14/07/2025                                                                         TURNO: DIURNO 08:30 – 17:00
+CURSO SOLICITADO: AAA
+DATA DE INICIO: DDD                                                                         TURNO: TTTT 08:30 – 17:00
 PARAGRAFO ÚNICO: A data de inicio do curso PODERÁ ser alterada, considerando que esta academia se resguarda a iniciar turmas com, no MÍNIMO 	de 10 (DEZ) alunos e os cursos serão ministrados de segunda-feira a sexta-feira, sendo que, independente do turno escolhido, poderá haver aulas aos SÁBADOS, dependendo da carga horária do curso solicitado.
 CLÁUSULA SEGUNDA – PREÇO E CONDIÇÕES DE PAGAMENTO
 CONDIÇÕES DE PAGAMENTO:
-R$ 450,00 (QUATROCENTOS E CINQUENTA REAIS) PIX INCLUINDO OS EXAMES.
+PPP
 
 O não cumprimento das condições de pagamento especificadas acima, ficará o (a) CONTRATANTE sujeito às seguintes penalidades:
 1 – Suspensão do (a) CONTRATANTE das AULAS, até a quitação da (s) parcela (s) em aberto (vencidas);
@@ -205,13 +226,17 @@ Assim, por estarem justas e contratadas, as partes assinam o presente contrato e
         // Substitui os marcadores pelos dados do aluno
         contrato = contrato
             .replace(/NNN/g, nome)
-            .replace(/III/g, idade)
+            .replace(/IIII/g, idade)
             .replace(/CCC/g, cpf)
             .replace(/RRR/g, rg)
             .replace(/SSS/g, orgaoRg)
             .replace(/EEE/g, endereco)
             .replace(/TTT1/g, telefone)
-            .replace(/GGG2/g, telefoneAlt);
+            .replace(/GGG2/g, telefoneAlt)
+            .replace(/PPP/g, formaPagamento)
+            .replace(/DDD/g, dataInicio)
+            .replace(/TTTT/g, turno)
+            .replace(/AAA/g, cursoSolicitado);
 
         // Quebra o texto em linhas para o PDF
         const linhas = contrato.split('\n');
@@ -266,4 +291,3 @@ Assim, por estarem justas e contratadas, as partes assinam o presente contrato e
         doc.save(`Contrato_${nome}.pdf`);
     };
 }
-

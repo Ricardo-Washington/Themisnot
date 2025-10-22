@@ -1,12 +1,12 @@
 const firebaseConfig = {
-      apiKey: "AIzaSyAxwS4HeioFdcD6MaDDoVYmJUthcJhTfjc",
-      authDomain: "themis-154d1.firebaseapp.com",
-      projectId: "themis-154d1",
-      storageBucket: "themis-154d1.firebasestorage.app",
-      messagingSenderId: "1017306886601",
-      appId: "1:1017306886601:web:3b7f5057515d244c2bb818",
-      measurementId: "G-3G0VW26WD9"
-    };
+  apiKey: "AIzaSyAxwS4HeioFdcD6MaDDoVYmJUthcJhTfjc",
+  authDomain: "themis-154d1.firebaseapp.com",
+  projectId: "themis-154d1",
+  storageBucket: "themis-154d1.firebasestorage.app",
+  messagingSenderId: "1017306886601",
+  appId: "1:1017306886601:web:3b7f5057515d244c2bb818",
+  measurementId: "G-3G0VW26WD9"
+};
     // Inicializa o Firebase
     if (!firebase.apps.length) {
       firebase.initializeApp(firebaseConfig);
@@ -32,7 +32,7 @@ function logout() {
 let usuariosFuncionarios = [];
 let usuariosAlunos = [];
 let usuarioAtual = null;
-let tipoAtual = null;
+let tipoAtual = null; 
 
 // A função principal para buscar e separar os dados
 function findUsers() {
@@ -201,5 +201,24 @@ document.getElementById('deleteButton').addEventListener('click', function() {
   }
 });
 
-// Chama a função principal para iniciar o processo
-findUsers();
+// Verifica se o usuário logado é ADM
+firebase.auth().onAuthStateChanged((user) => {
+  if (!user) {
+    window.location.href = "/login/login.html";
+    return;
+  }
+  // Busca o usuário no Firestore para checar a atribuição
+  firebase.firestore().collection('usuarios').doc(user.uid).get()
+    .then(doc => {
+      if (!doc.exists || doc.data().atribuicao !== 'ADM') {
+        alert('Acesso restrito! Apenas administradores podem acessar esta página.');
+        window.location.href = "/login/login.html";
+      } else {
+        // Só chama findUsers se for ADM
+        findUsers();
+      }
+    })
+    .catch(() => {
+      window.location.href = "/login/login.html";
+    });
+});

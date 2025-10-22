@@ -43,11 +43,11 @@ firebase.auth().onAuthStateChanged(async (user) => {
                 window.location.href = "/adm/adm.html";
                 return;
             }
+            // Se já existe cadastro, NÃO abre o modal!
+            return;
         }
         // Se não existe, é o primeiro login. Abre o modal.
-        if (!userDoc.exists) {
-            openModal();
-        }
+        openModal();
     }
 });
 
@@ -161,6 +161,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             });
         });
+    }
+
+    // Verifica se deve abrir o modal de cadastro
+    if (localStorage.getItem('abrirModalCadastro') === 'true') {
+        openModal();
+        localStorage.removeItem('abrirModalCadastro');
     }
 });
 
