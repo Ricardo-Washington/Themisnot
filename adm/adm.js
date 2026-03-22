@@ -29,6 +29,8 @@ firebase.auth().onAuthStateChanged(async (user) => {
         if (atribuicao !== "adm") {
             alert("Você não tem permissão para acessar esta página.");
             window.location.href = "/home/home.html";
+        } else {
+            findUsers();
         }
     }
 });
@@ -48,7 +50,7 @@ function findUsers() {
       const todosUsuarios = snapshot.docs.map(doc => ({...doc.data(), id: doc.id}));
 
       usuariosFuncionarios = todosUsuarios.filter(user => user.atribuicao === 'funcionario');
-      usuariosAlunos = todosUsuarios.filter(user => user.atribuicao === 'Aluno');
+      usuariosAlunos = todosUsuarios.filter(user => user.atribuicao === 'aluno' || user.atribuicao === 'Aluno');
 
       renderizarLista('dadosfuincionario', usuariosFuncionarios);
       renderizarLista('dadosaluno', usuariosAlunos);
@@ -203,26 +205,4 @@ document.getElementById('deleteButton').addEventListener('click', function() {
         alert("Erro ao excluir: " + error.message);
       });
   }
-});
-
-// Verifica se o usuário logado é ADM
-firebase.auth().onAuthStateChanged((user) => {
-  if (!user) {
-    window.location.href = "/login/login.html";
-    return;
-  }
-  // Busca o usuário no Firestore para checar a atribuição
-  firebase.firestore().collection('usuarios').doc(user.uid).get()
-    .then(doc => {
-      if (!doc.exists || doc.data().atribuicao !== 'ADM') {
-        alert('Acesso restrito! Apenas administradores podem acessar esta página.');
-        window.location.href = "/login/login.html";
-      } else {
-        // Só chama findUsers se for ADM
-        findUsers();
-      }
-    })
-    .catch(() => {
-      window.location.href = "/login/login.html";
-    });
 });

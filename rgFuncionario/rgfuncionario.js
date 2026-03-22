@@ -29,7 +29,7 @@ firebase.auth().onAuthStateChanged(async (user) => {
             return;
         }
 
-        if (atribuicao !== "funcionario") {
+        if (atribuicao !== "funcionario", "admin") {
             alert("Você não tem permissão para acessar esta página.");
             window.location.href = "/home/home.html";
         }
