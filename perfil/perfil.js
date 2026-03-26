@@ -62,6 +62,7 @@ function logout() {
   });
 }
 
+//so pra aparecer se ta aparecendo a informação do banco de dados, ai depois a gente tira
 /*function findCadater(){
 firebase.firestore()
   .collection('usuarios')

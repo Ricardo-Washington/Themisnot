@@ -26,8 +26,6 @@ html {
 
 body {
 font-family: "Anton", sans-serif;
-    /*font-family: "Trade Winds", system-ui;
-    font-family: 'Montserrat', sans-serif;*/
     background-color: var(--black);
     color: var(--white);
     line-height: 1.6;
@@ -106,7 +104,7 @@ a {
     color: var(--orange);
 }
 
-/* Cabeçalho (Hero Section) */
+/* Cabeçalho */
 .hero-section {
     
     height: 100vh;
@@ -117,7 +115,7 @@ a {
     animation: fadeIn 1.5s ease-in-out;
 }
 .hero-section{
-    background-image: url('/img/1.png');
+    /*background-image: url('/img/1.png');*/
     height: 800px;
     background-size: cover;
     background-position: center;
@@ -372,6 +370,23 @@ section {
    color: var(--light-grey); 
     font-size: 0.9rem;
     text-align: center;
+}
+
+/* botão whatsapp */
+.whatsapp-button {
+    position: fixed;
+    bottom: 3%;
+    right: 3%;
+}
+.whatsapp-button img{
+    width: 100px;
+    height: 100px;
+}
+
+
+.whatsapp-button:hover {
+    background-color: #128C7E;
+    transform: translateY(-5px);
 }
 
 /* Responsividade */
