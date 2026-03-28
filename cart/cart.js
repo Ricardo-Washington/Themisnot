@@ -1,0 +1,104 @@
+// Configuração do Firebase (se necessário)
+const firebaseConfig = {
+    apiKey: "AIzaSyAxwS4HeioFdcD6MaDDoVYmJUthcJhTfjc",
+    authDomain: "themis-154d1.firebaseapp.com",
+    projectId: "themis-154d1",
+    storageBucket: "themis-154d1.firebasestorage.app",
+    messagingSenderId: "1017306886601",
+    appId: "1:1017306886601:web:3b7f5057515d244c2bb818",
+    measurementId: "G-3G0VW26WD9"
+};
+
+if (!firebase.apps.length) {
+    firebase.initializeApp(firebaseConfig);
+}
+
+const db = firebase.firestore();
+
+// Verifica autenticação
+firebase.auth().onAuthStateChanged((user) => {
+    if (!user) {
+        window.location.href = "/login/login.html";
+    } else {
+        loadCart();
+    }
+});
+
+// Função para carregar o carrinho
+function loadCart() {
+    const cart = JSON.parse(localStorage.getItem('cart')) || [];
+    const cartItems = document.getElementById('cart-items');
+    const totalPrice = document.getElementById('total-price');
+    let total = 0;
+
+    cartItems.innerHTML = '';
+
+    if (cart.length === 0) {
+        cartItems.innerHTML = '<p>Seu carrinho está vazio.</p>';
+        totalPrice.textContent = '0,00';
+        return;
+    }
+
+    cart.forEach((item, index) => {
+        const itemDiv = document.createElement('div');
+        itemDiv.className = 'cart-item';
+        itemDiv.innerHTML = `
+            <div>
+                <h4>${item.name}</h4>
+                <p>Preço: R$ ${item.price.toFixed(2).replace('.', ',')}</p>
+            </div>
+            <button class="remove-button" onclick="removeFromCart(${index})">Remover</button>
+        `;
+        cartItems.appendChild(itemDiv);
+        total += item.price;
+    });
+
+    totalPrice.textContent = total.toFixed(2).replace('.', ',');
+}
+
+// Função para remover item do carrinho
+function removeFromCart(index) {
+    let cart = JSON.parse(localStorage.getItem('cart')) || [];
+    cart.splice(index, 1);
+    localStorage.setItem('cart', JSON.stringify(cart));
+    loadCart();
+}
+
+// Função para finalizar compra
+function checkout() {
+    const cart = JSON.parse(localStorage.getItem('cart')) || [];
+    if (cart.length === 0) {
+        alert('Seu carrinho está vazio!');
+        return;
+    }
+
+    // Calcular total
+    let total = 0;
+    cart.forEach(item => total += item.price);
+
+    // Mostrar modal
+    document.getElementById('modal-total').textContent = total.toFixed(2).replace('.', ',');
+    document.getElementById('checkout-modal').style.display = 'flex';
+
+    // Limpar carrinho após checkout (opcional, ou após confirmação)
+    // localStorage.removeItem('cart');
+    // loadCart();
+}
+
+// Função para fechar modal
+function closeModal() {
+    document.getElementById('checkout-modal').style.display = 'none';
+    // Simular que o pagamento foi efetuado e limpar carrinho
+    localStorage.removeItem('cart');
+    loadCart();
+    alert('Pagamento confirmado! Retire seus produtos na Academia Thémis em Águas Lindas de Goiás.');
+}
+
+// Função logout (copiada de home.js)
+function logout() {
+    firebase.auth().signOut().then(() => {
+        window.location.href = "/index/index.html";
+    }).catch((error) => {
+        console.error("Erro ao fazer logout:", error);
+    });
+}

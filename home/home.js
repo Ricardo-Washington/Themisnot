@@ -170,6 +170,14 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
+// Função para adicionar item ao carrinho
+function addToCart(name, price) {
+    let cart = JSON.parse(localStorage.getItem('cart')) || [];
+    cart.push({ name, price });
+    localStorage.setItem('cart', JSON.stringify(cart));
+    alert('Item adicionado ao carrinho!');
+}
+
 // Logout
 function logout() {
     firebase.auth().signOut().then(() => {

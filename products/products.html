@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Thémis | Produtos</title>
+    <link rel="stylesheet" href="products.css">
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;700&family=Anton&display=swap" rel="stylesheet">
+    <script src="/js/auth-guard.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/12.1.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/12.1.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore-compat.js"></script>
+    <script src="products.js"></script>
+</head>
+
+<body>
+    <nav class="navbar">
+        <div class="container nav-content">
+            <a href="/home/home.html" class="logo"><img src="/img/logo.png" alt="logo"></a>
+            <ul class="nav-links">
+                <li><a href="/products/products.html">Produtos</a></li>
+                <li><a href="/home/home.html#cursos">Cursos</a></li>
+                <li><a href="/home/home.html#contato">Contato</a></li>
+                <li><a href="/cart/cart.html">Carrinho</a></li>
+                <li><button class="logout-button" type="button" onclick="logout()">Sair</button></li>
+            </ul>
+        </div>
+    </nav>
+
+    <header class="hero-section">
+        <div class="container hero-content">
+            <h1>Nossos Produtos</h1>
+            <p>Equipamentos e uniformes para profissionais de segurança.</p>
+        </div>
+    </header>
+
+    <section class="produtos-section">
+        <div class="container">
+            <div class="produtos-grid">
+                <div class="produto-item">
+                    <img src="/img/uniaula.png" alt="Uniforme">
+                    <h3>Uniformes</h3>
+                    <p>Uniformes profissionais para vigilantes e equipes de segurança.</p>
+                    <p>Preço: R$ 150,00</p>
+                    <button onclick="addToCart('Uniformes', 150)">Adicionar ao Carrinho</button>
+                </div>
+                <div class="produto-item">
+                    <img src="/img/kit1.png" alt="Kit de Autodefesa">
+                    <h3>Kit de Autodefesa</h3>
+                    <p>Equipamentos essenciais para sua proteção pessoal.</p>
+                    <p>Preço: R$ 200,00</p>
+                    <button onclick="addToCart('Kit de Autodefesa', 200)">Adicionar ao Carrinho</button>
+                </div>
+                <div class="produto-item">
+                    <img src="/img/capacete.png" alt="Capacete de Segurança">
+                    <h3>Capacete de Segurança</h3>
+                    <p>Capacete resistente para proteção em operações de segurança.</p>
+                    <p>Preço: R$ 80,00</p>
+                    <button onclick="addToCart('Capacete de Segurança', 80)">Adicionar ao Carrinho</button>
+                </div>
+                <div class="produto-item">
+                    <img src="/img/colete.png" alt="Colete Balístico">
+                    <h3>Colete Balístico</h3>
+                    <p>Colete de proteção contra projéteis para máxima segurança.</p>
+                    <p>Preço: R$ 300,00</p>
+                    <button onclick="addToCart('Colete Balístico', 300)">Adicionar ao Carrinho</button>
+                </div>
+                <div class="produto-item">
+                    <img src="/img/lanterna.png" alt="Lanterna Tática">
+                    <h3>Lanterna Tática</h3>
+                    <p>Lanterna de alta potência para operações noturnas.</p>
+                    <p>Preço: R$ 50,00</p>
+                    <button onclick="addToCart('Lanterna Tática', 50)">Adicionar ao Carrinho</button>
+                </div>
+                <div class="produto-item">
+                    <img src="/img/algemas.png" alt="Algemas">
+                    <h3>Algemas</h3>
+                    <p>Algemas de aço inoxidável para contenção segura.</p>
+                    <p>Preço: R$ 40,00</p>
+                    <button onclick="addToCart('Algemas', 40)">Adicionar ao Carrinho</button>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <footer class="footer-section">
+        <div class="container footer-content">
+            <div class="footer-info">
+                <h4>Thémis</h4>
+                <p>Rua da Segurança, 123 - Cidade Protetora</p>
+                <p>contato@themis.com</p>
+                <p>(11) 98765-4321</p>
+            </div>
+            <div class="social-links">
+                <a href="#"><i class="fab fa-facebook-f"></i></a>
+                <a href="#"><i class="fab fa-instagram"></i></a>
+                <a href="#"><i class="fab fa-linkedin-in"></i></a>
+            </div>
+        </div>
+        <div class="footer-copyright">
+            <p>&copy; 2025 Thémis. Todos os direitos reservados.</p>
+        </div>
+    </footer>
+
+</body>
+    
+</html>

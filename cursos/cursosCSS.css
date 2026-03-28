@@ -375,12 +375,12 @@ section {
 /* botão whatsapp */
 .whatsapp-button {
     position: fixed;
-    bottom: 3%;
+    bottom: 3%; 
     right: 3%;
 }
 .whatsapp-button img{
-    width: 100px;
-    height: 100px;
+    width: 80px;
+    height: 80px;
 }
 
 

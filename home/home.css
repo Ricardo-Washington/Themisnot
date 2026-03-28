@@ -108,6 +108,10 @@ a {
 .nav-links a:hover {
     color: var(--orange);
 }
+.Produtos:hover {
+    color: var(--orange);
+}
+
 
 /* Hero Section */
 .hero-section {
