@@ -57,8 +57,9 @@ const firebaseConfig = {
       .then((userCredential) => {
         const user = userCredential.user;
         // Salva os dados do usuário no Firestore
-        const logado =  db.collection('users').doc(user.uid).set({
+        const logado =  db.collection('usuarios').doc(user.uid).set({
           email: user.email,
+          atribuicao: 'aluno',
           createdAt: new Date()
         });
       })
@@ -68,7 +69,7 @@ const firebaseConfig = {
       })
       .catch(error => {
         console.error('Erro ao registrar:', error);
-        alert(getErrorMessage(error));
+        alert(getErrorMessage(error));31
       });
   }
   // Função para mapear códigos de erro para mensagens amigáveis

@@ -88,6 +88,26 @@ function checkout() {
 // Função para fechar modal
 function closeModal() {
     document.getElementById('checkout-modal').style.display = 'none';
+    
+    // Salvar compra finalizada no banco de dados
+    const user = firebase.auth().currentUser;
+    if (user) {
+        const cart = JSON.parse(localStorage.getItem('cart')) || [];
+        let total = 0;
+        cart.forEach(item => total += item.price);
+        
+        db.collection('compras_finalizadas').add({
+            userId: user.uid,
+            items: cart,
+            total: total,
+            date: firebase.firestore.Timestamp.now()
+        }).then(() => {
+            console.log('Compra salva com sucesso!');
+        }).catch((error) => {
+            console.error('Erro ao salvar compra:', error);
+        });
+    }
+    
     // Simular que o pagamento foi efetuado e limpar carrinho
     localStorage.removeItem('cart');
     loadCart();

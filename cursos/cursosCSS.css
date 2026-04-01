@@ -104,6 +104,20 @@ a {
     color: var(--orange);
 }
 
+.logout-button {
+    background:none;
+    border: none;
+    text-decoration: none;
+    color: var(--white);
+    font-size: 17px;
+    font-family: "Anton", sans-serif;
+    
+}
+
+.logout-button:hover {
+    color: var(--orange);
+    cursor: pointer;
+}
 /* Cabeçalho */
 .hero-section {
     

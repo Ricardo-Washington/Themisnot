@@ -7,10 +7,8 @@
     <title>Thémis | Home</title>
     <link rel="stylesheet" href="home.css">
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;700&family=Anton&display=swap" rel="stylesheet">
-    <script src="/js/auth-guard.js"></script>
     <script src="https://www.gstatic.com/firebasejs/12.1.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/12.1.0/firebase-auth-compat.js"></script>
-    </script>
     <script src="https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore-compat.js"></script>
     <script src="home.js"></script>
 </head>
@@ -19,7 +17,9 @@
     <nav class="navbar">
         <div class="container nav-content">
             <a href="#" class="logo"><img src="/img/logo.png" alt="logo"></a>
-            <ul class="nav-links">
+            <button class="mobile-menu-btn" aria-label="Abrir menu" id="mobile-menu-btn">&#9776;</button>
+                <ul class="nav-links" id="nav-links">
+                <li class="user-greeting" style="color: var(--orange); font-family: 'Anton', sans-serif; font-size: 1.2rem; display: flex; align-items: center;"></li>
                 <li><a href="/products/products.html">Produtos</a></li>
                 <li><a href="#cursos">Cursos</a></li>
                 <li><a href="#contato">Contato</a></li>
@@ -71,14 +71,14 @@
                 </div>
                 <div class="curso-item">
                     <img src="/img/major-eventes.PNG" alt="Segurança em Grandes Eventos">
-                    <a href="/cursos/segurancaGrandesEventos/segurancaGrandesEventos.html">
+                    <a href="/cursos/grandes eventos/grandesEventos.html">
                         <h3>Segurança em Grandes Eventos</h3>
                         <p>Especialização para atuar em eventos de grande porte.</p>
                     </a>
                 </div>
                 <div class="curso-item">
-                    <a href="">
-                        <img src="/img/recycling.png" alt="Reciclagem de Vigilante">
+                    <img src="/img/recycling.png" alt="Reciclagem de Vigilante">
+                    <a href="/cursos/Reciclagem/reciclagem.html">
                         <h3>Reciclagem de Vigilante</h3>
                         <p>Atualize suas habilidades e conhecimentos.</p>
                     </a>
@@ -174,7 +174,7 @@
             <label>Endereço</label>
             <input type="text" id="endereco">
           </div>
-          <button type="submit" class="btn-modal" onclick="cadastrarDados(event)" >Cadastrar</button>
+          <button type="submit" class="btn-modal">Cadastrar</button>
           
         </form>
         <div id="modalSuccess" class="modal-success" style="display:none;">

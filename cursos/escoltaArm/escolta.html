@@ -18,7 +18,10 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Anton&display=swap" rel="stylesheet">
-
+    <script src="https://www.gstatic.com/firebasejs/12.1.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore-compat.js"></script>
+    <script src="/js/firebase-config-shared.js" defer></script>
+    <script src="/home/home.js"></script>
 </head>
 
 <body>
@@ -26,13 +29,15 @@
     <nav class="navbar">
         <div class="container nav-content">
             <a href="/home/home.html" class="logo"><img src="/img/logo.png" alt="logo"></a>
-            <ul class="nav-links">
+            <button class="mobile-menu-btn" aria-label="Abrir menu" id="mobile-menu-btn">&#9776;</button>
+                <ul class="nav-links" id="nav-links">
+                <li class="user-greeting" style="color: var(--orange); font-family: 'Anton', sans-serif; font-size: 1.2rem; display: flex; align-items: center;"></li>
                 <li><a href="#sobre">Sobre</a></li>
                 <li><a href="#cursos">Cursos</a></li>
                 <li><a href="#depoimentos">Depoimentos</a></li>
                 <li><a href="#contato">Contato</a></li>
-                <li><a href="/login/login.html">login</a></li>
-                <li><a href="/Registrice/registre-se.html">Registre-se</a></li>
+                <li><a href="/home/home.html">Home</a></li>
+                <li><button class="logout-button" type="button" onclick="logout()">Sair</button></li>
             </ul>
         </div>
     </nav>
@@ -45,6 +50,11 @@
         </style>
         <div class="container hero-content">
             <h1>Escolta armada</h1>
+            <div id="course-badges" style="display:flex; gap:15px; justify-content:center; margin-bottom: 20px; flex-wrap:wrap;">
+                <span style="background: var(--orange, #ff5e00); color: #fff; padding: 5px 15px; border-radius: 20px; font-weight: bold; font-family: Montserrat;"><i class="fas fa-tag"></i> <span id="curso-preco">Carregando...</span></span>
+                <span style="background: rgba(0,0,0,0.6); color: #fff; padding: 5px 15px; border-radius: 20px; font-family: Montserrat;"><i class="fas fa-clock"></i> <span id="curso-carga">Carregando...</span></span>
+                <span style="background: rgba(0,0,0,0.6); color: #fff; padding: 5px 15px; border-radius: 20px; font-family: Montserrat;"><i class="fas fa-calendar-alt"></i> Próxima Turma: <span id="curso-data">Carregando...</span></span>
+            </div>
             <p>Transforme sua carreira com treinamentos de ponta e instrutores especializados em segurança patrimonial.</p>
             <a href="#cursos" class="cta-button">Inscreva-se</a>
         </div>
@@ -149,5 +159,16 @@
         <img src="/img/whatsapp.png" alt="WhatsApp">
     </a>
 </body>
-
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+            const courseId = "escoltaArm";
+            firebase.firestore().collection('cursos').doc(courseId).get().then((doc) => {
+                if (doc.exists) {
+                    document.getElementById('curso-preco').textContent = `R$ ${doc.data().preco}`;
+                    document.getElementById('curso-carga').textContent = doc.data().cargaHoraria;
+                    document.getElementById('curso-data').textContent = doc.data().proximaTurma;
+                }
+            }).catch(e => console.error(e));
+        });
+    </script>
 </html>

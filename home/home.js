@@ -39,6 +39,15 @@ firebase.auth().onAuthStateChanged(async (user) => {
         const userDoc = await db.collection('usuarios').doc(user.uid).get();
         if (userDoc.exists) {
             const dados = userDoc.data();
+           // Injeta a saudacao do usuario na navbar
+           if (dados && (dados.nome || dados.nomeCompleto)) {
+               const nomeExibicao = dados.nome || dados.nomeCompleto;
+               const pNome = nomeExibicao.split(' ')[0];
+               document.querySelectorAll('.user-greeting').forEach(el => {
+                   el.innerHTML = `<a href="/meuPerfil/meu_perfil.html" style="color: inherit; text-decoration: none;" title="Ver Meu Perfil">Olá, ${pNome} <i class="fa fa-user-circle"></i></a>`;
+               });
+           }
+
             if (dados.atribuicao === 'adm') {
                 window.location.href = "/adm/adm.html";
                 return;
@@ -111,8 +120,6 @@ function validarCamposObrigatorios() {
         form.cpf(),
         form.rg(),
         form.telefone(),
-        form.estadoCivil(),
-        form.endereco(),
         form.atribuicao(),
     ];
     
@@ -167,6 +174,15 @@ document.addEventListener('DOMContentLoaded', () => {
     if (localStorage.getItem('abrirModalCadastro') === 'true') {
         openModal();
         localStorage.removeItem('abrirModalCadastro');
+    }
+
+    // Toggle menu mobile
+    const mobileMenuBtn = document.getElementById('mobile-menu-btn');
+    const navLinks = document.getElementById('nav-links');
+    if (mobileMenuBtn && navLinks) {
+        mobileMenuBtn.addEventListener('click', () => {
+            navLinks.classList.toggle('active');
+        });
     }
 });
 

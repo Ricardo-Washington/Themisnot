@@ -15,22 +15,45 @@ if (!firebase.apps.length) {
     firebase.app(); // Use a instância já inicializada
 }
 
+const db = firebase.firestore();
+
 document.getElementById('registerForm').addEventListener('submit', function(event) {
     event.preventDefault(); // Impede o envio padrão do formulário
     login(); // Chama a função de login
 });
 
-firebase.auth().onAuthStateChanged((user) => {
+firebase.auth().onAuthStateChanged(async (user) => {
     if (user) {
-        // Usuário está logado
-        console.log('Usuário logado:', user);
-        window.location.href = "/home/home.html"; // Redireciona para a página home
+        // Verifica a atribuição do usuário no Firestore para redirecionar corretamente
+        try {
+            const userDoc = await db.collection("usuarios").doc(user.uid).get();
+            const dados = userDoc.data();
+           // Injeta a saudacao do usuario na navbar
+           if (dados && (dados.nome || dados.nomeCompleto)) {
+               const nomeExibicao = dados.nome || dados.nomeCompleto;
+               const pNome = nomeExibicao.split(' ')[0];
+               document.querySelectorAll('.user-greeting').forEach(el => el.textContent = 'Olá, ' + pNome);
+           }
+
+            
+            if (dados && (dados.atribuicao === "funcionario" || dados.atribuicao === "admin")) {
+                window.location.href = "/rgFuncionario/rgrgfuncionario.html";
+            } else if (dados && dados.atribuicao === "adm") {
+                window.location.href = "/adm/adm.html";
+            } else {
+                window.location.href = "/home/home.html";
+            }
+        } catch (error) {
+            console.error("Erro ao puxar dados do usuário:", error);
+            window.location.href = "/home/home.html";
+        }
     } else {
         // Usuário não está logado
         console.log('Nenhum usuário logado');
     }
 });
 
+// Função para realizar o login
 function login() {
     const email = document.getElementById('email').value.trim();
     const password = document.getElementById('password').value.trim();
@@ -48,9 +71,10 @@ function login() {
     firebase.auth().signInWithEmailAndPassword(email, password)
         .then((userCredential) => {
             // Login bem-sucedido
-            
             console.log('Login bem-sucedido:', userCredential);
-            window.location.href = "/home/home.html"; // Redireciona para a página home
+            messageDiv.textContent = 'Carregando seu painel...';
+            messageDiv.style.color = 'green';
+            // O redirecionamento será tratado pelo onAuthStateChanged acima!
         })
         .catch((error) => {
             // Tratar erros de login
@@ -63,13 +87,14 @@ function login() {
                 messageDiv.textContent = 'Senha incorreta. Tente novamente.';
             } else if (error.code === 'auth/invalid-credential') {
                 messageDiv.textContent = 'Senha incorreta. Tente novamente.';
-            }else {
+            } else {
                 messageDiv.textContent = 'Erro ao fazer login: ' + error.message;
             }
             messageDiv.style.color = 'red';
         });
 
 }
+
 function recoverPassword() {
     showLoading();
     firebase.auth().sendPasswordResetEmail(form.email().value).then(() => {

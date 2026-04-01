@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Thémis | Meu Perfil</title>
+    <link rel="stylesheet" href="meu_perfil.css">
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;700&family=Anton&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://www.gstatic.com/firebasejs/12.1.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/12.1.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore-compat.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="meu_perfil.js" defer></script>
+</head>
+
+<body>
+    <nav class="navbar">
+        <div class="container nav-content">
+            <a href="/home/home.html" class="logo"><img src="/img/logo.png" alt="logo"></a>
+            <ul class="nav-links" id="nav-links">
+                <li class="user-greeting" style="color: var(--orange); font-family: 'Anton', sans-serif; font-size: 1.2rem; display: flex; align-items: center;"></li>
+                <li><a href="/home/home.html">Voltar para Home</a></li>
+                <li><button class="logout-button" type="button" onclick="logout()">Sair</button></li>
+            </ul>
+        </div>
+    </nav>
+
+    <header class="hero-section">
+        <div class="container hero-content">
+            <h1>Painel do Aluno</h1>
+            <p>Seja bem-vindo(a) à sua área exclusiva Thémis.</p>
+        </div>
+    </header>
+
+    <main class="container profile-container">
+        <div id="loading" class="loading-spinner" style="display: block; text-align: center; padding: 50px;">
+            <i class="fa fa-spinner fa-spin fa-3x" style="color: var(--orange);"></i>
+            <p>Carregando sua ficha...</p>
+        </div>
+
+        <div id="profile-content" style="display: none;">
+            <div class="profile-card">
+                <h2>Seus Dados Cadastrais</h2>
+                <div class="info-grid">
+                    <div class="info-item">
+                        <strong>Nome Completo:</strong>
+                        <span id="nome-aluno">-</span>
+                    </div>
+                    <div class="info-item">
+                        <strong>E-mail:</strong>
+                        <span id="email-aluno">-</span>
+                    </div>
+                    <div class="info-item">
+                        <strong>CPF:</strong>
+                        <span id="cpf-aluno">-</span>
+                    </div>
+                    <div class="info-item">
+                        <strong>RG:</strong>
+                        <span id="rg-aluno">-</span>
+                    </div>
+                    <div class="info-item">
+                        <strong>Endereço:</strong>
+                        <span id="endereco-aluno">-</span>
+                    </div>
+                    <div class="info-item">
+                        <strong>Telefone:</strong>
+                        <span id="telefone-aluno">-</span>
+                    </div>
+                </div>
+
+                <div class="action-area">
+                    <h3>Documentos</h3>
+                    <p>Você pode gerar e imprimir seu contrato a qualquer momento clicando no botão abaixo.</p>
+                    <button id="btn-gerar-contrato" class="btn-orange">
+                        <i class="fa fa-file-pdf"></i> Imprimir Meu Contrato
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div id="error-message" style="display: none; text-align: center; color: red; padding: 50px;">
+            <h3>Ficha não encontrada.</h3>
+            <p>Sua matrícula ainda não foi processada pela secretaria. Volte mais tarde!</p>
+        </div>
+    </main>
+
+</body>
+</html>
