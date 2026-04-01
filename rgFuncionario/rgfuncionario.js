@@ -39,6 +39,9 @@ firebase.auth().onAuthStateChanged(async (user) => {
         if (atribuicao !== "funcionario" && atribuicao !== "admin") {
             alert("Você não tem permissão para acessar esta página.");
             window.location.href = "/home/home.html";
+        } else {
+            // Se tiver permissão, aí sim carrega a base de dados
+            carregarAlunos();
         }
     }
 });
@@ -161,8 +164,7 @@ async function excluirAluno(id) {
 
 // Listener btnCursos desativado pós-migração para abas
 
-// Carrega os alunos ao carregar a página
-document.addEventListener("DOMContentLoaded", carregarAlunos);
+// Carregamento agora ocorre após autenticação (onAuthStateChanged)
 
 // Função para criar contrato em PDF
 function criarContrato(nome, idade, cpf, rg, orgaoRg, endereco, telefone, telefoneAlt, formaPagamento, cursoSolicitado, dataInicio, turno) {
