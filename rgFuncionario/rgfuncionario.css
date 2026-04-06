@@ -147,6 +147,15 @@ li button{
     box-shadow: 0 4px 15px rgba(255, 94, 0, 0.3);
 }
 
+.tab-content {
+    display: none;
+}
+
+.tab-content.active {
+    display: block;
+    animation: fadeIn 0.3s ease-out;
+}
+
 .tab-top-actions {
     display: flex;
     justify-content: space-between;

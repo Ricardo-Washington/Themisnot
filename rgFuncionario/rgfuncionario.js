@@ -102,26 +102,43 @@ document.getElementById("alunoForm").addEventListener("submit", async (event) =>
 // Função para carregar alunos na tabela
 async function carregarAlunos() {
     const alunosTableBody = document.getElementById("alunosTableBody");
+    if(!alunosTableBody) {
+        console.error("Tabela de alunos não encontrada na tela!");
+        return;
+    }
     alunosTableBody.innerHTML = "";
 
-    const snapshot = await db.collection("usuarios").where("atribuicao", "==", "aluno").get();
-    snapshot.forEach((doc) => {
-        const aluno = doc.data();
-        const row = `
-            <tr>
-                <td><strong>${aluno.nome}</strong></td>
-                <td>${aluno.cpf || ''}</td>
-                <td>${aluno.rg || ''}</td>
-                <td>${aluno.idade || ''}</td>
-                <td>
-                    <button class="action-btn edit-btn" onclick="editarAluno('${doc.id}', '${aluno.nome}', '${aluno.email}', '${aluno.cpf}', '${aluno.rg}', '${aluno.orgaoRg}', '${aluno.endereco}', '${aluno.telefone}', '${aluno.telefoneAlt}', '${aluno.cursoSolicitado}', '${aluno.idade}', '${aluno.dataInicio}', '${aluno.formaPagamento}', '${aluno.turno || ''}')" title="Editar Aluno"><i class="fa-solid fa-pen"></i></button>
-                    <button class="action-btn doc-btn" onclick="criarContrato('${aluno.nome}', '${aluno.idade}', '${aluno.cpf}', '${aluno.rg}', '${aluno.orgaoRg}', '${aluno.endereco}', '${aluno.telefone}', '${aluno.telefoneAlt}', '${aluno.formaPagamento}', '${aluno.cursoSolicitado}', '${aluno.dataInicio}', '${aluno.turno || ''}')" title="Gerar Contrato PDF"><i class="fa-solid fa-file-signature"></i></button>
-                    <button class="action-btn delete-btn" onclick="excluirAluno('${doc.id}')" title="Excluir Aluno"><i class="fa-solid fa-trash"></i></button>
-                </td>
-            </tr>
-        `;
-        alunosTableBody.innerHTML += row;
-    });
+    try {
+        console.log("Buscando lista de alunos no Firestore...");
+        const snapshot = await db.collection("usuarios").where("atribuicao", "==", "Aluno").get();
+        console.log("Total de alunos encontrados:", snapshot.size);
+        
+        if (snapshot.empty) {
+            alunosTableBody.innerHTML = "<tr><td colspan='5' style='text-align:center;'>Nenhum aluno encontrado.</td></tr>";
+            return;
+        }
+
+        snapshot.forEach((doc) => {
+            const aluno = doc.data();
+            const row = `
+                <tr>
+                    <td><strong>${aluno.nome}</strong></td>
+                    <td>${aluno.cpf || ''}</td>
+                    <td>${aluno.rg || ''}</td>
+                    <td>${aluno.idade || ''}</td>
+                    <td>
+                        <button class="action-btn edit-btn" onclick="editarAluno('${doc.id}', '${aluno.nome}', '${aluno.email}', '${aluno.cpf}', '${aluno.rg}', '${aluno.orgaoRg}', '${aluno.endereco}', '${aluno.telefone}', '${aluno.telefoneAlt}', '${aluno.cursoSolicitado}', '${aluno.idade}', '${aluno.dataInicio}', '${aluno.formaPagamento}', '${aluno.turno || ''}')" title="Editar Aluno"><i class="fa-solid fa-pen"></i></button>
+                        <button class="action-btn doc-btn" onclick="criarContrato('${aluno.nome}', '${aluno.idade}', '${aluno.cpf}', '${aluno.rg}', '${aluno.orgaoRg}', '${aluno.endereco}', '${aluno.telefone}', '${aluno.telefoneAlt}', '${aluno.formaPagamento}', '${aluno.cursoSolicitado}', '${aluno.dataInicio}', '${aluno.turno || ''}')" title="Gerar Contrato PDF"><i class="fa-solid fa-file-signature"></i></button>
+                        <button class="action-btn delete-btn" onclick="excluirAluno('${doc.id}')" title="Excluir Aluno"><i class="fa-solid fa-trash"></i></button>
+                    </td>
+                </tr>
+            `;
+            alunosTableBody.innerHTML += row;
+        });
+    } catch (error) {
+        console.error("Erro ao carregar alunos:", error);
+        alunosTableBody.innerHTML = "<tr><td colspan='5' style='text-align:center; color:red;'>Erro ao recarregar a lista.</td></tr>";
+    }
 }
 
 // Função para preencher o formulário com os dados do aluno para edição
@@ -336,6 +353,7 @@ function openTab(tabName) {
     // Ativa o botao
     if(tabName === 'tabAlunos') {
         document.querySelector('.tab-btn[onclick="openTab(\'tabAlunos\')"]').classList.add('active');
+        carregarAlunos();
     } else {
         document.querySelector('.tab-btn[onclick="openTab(\'tabCursos\')"]').classList.add('active');
         carregarCursos();
