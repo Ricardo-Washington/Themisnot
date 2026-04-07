@@ -118,8 +118,20 @@ async function carregarAlunos() {
             return;
         }
 
+        // Armazena alunos num array para ordenar localmente
+        const listaAlunos = [];
         snapshot.forEach((doc) => {
-            const aluno = doc.data();
+            listaAlunos.push({ id: doc.id, ...doc.data() });
+        });
+
+        // Ordenar alfabeticamente usando o campo "nome"
+        listaAlunos.sort((a, b) => {
+            const nomeA = a.nome || "";
+            const nomeB = b.nome || "";
+            return nomeA.localeCompare(nomeB);
+        });
+
+        listaAlunos.forEach((aluno) => {
             const row = `
                 <tr>
                     <td><strong>${aluno.nome}</strong></td>
@@ -127,9 +139,9 @@ async function carregarAlunos() {
                     <td>${aluno.rg || ''}</td>
                     <td>${aluno.idade || ''}</td>
                     <td>
-                        <button class="action-btn edit-btn" onclick="editarAluno('${doc.id}', '${aluno.nome}', '${aluno.email}', '${aluno.cpf}', '${aluno.rg}', '${aluno.orgaoRg}', '${aluno.endereco}', '${aluno.telefone}', '${aluno.telefoneAlt}', '${aluno.cursoSolicitado}', '${aluno.idade}', '${aluno.dataInicio}', '${aluno.formaPagamento}', '${aluno.turno || ''}')" title="Editar Aluno"><i class="fa-solid fa-pen"></i></button>
+                        <button class="action-btn edit-btn" onclick="editarAluno('${aluno.id}', '${aluno.nome}', '${aluno.email}', '${aluno.cpf}', '${aluno.rg}', '${aluno.orgaoRg}', '${aluno.endereco}', '${aluno.telefone}', '${aluno.telefoneAlt}', '${aluno.cursoSolicitado}', '${aluno.idade}', '${aluno.dataInicio}', '${aluno.formaPagamento}', '${aluno.turno || ''}')" title="Editar Aluno"><i class="fa-solid fa-pen"></i></button>
                         <button class="action-btn doc-btn" onclick="criarContrato('${aluno.nome}', '${aluno.idade}', '${aluno.cpf}', '${aluno.rg}', '${aluno.orgaoRg}', '${aluno.endereco}', '${aluno.telefone}', '${aluno.telefoneAlt}', '${aluno.formaPagamento}', '${aluno.cursoSolicitado}', '${aluno.dataInicio}', '${aluno.turno || ''}')" title="Gerar Contrato PDF"><i class="fa-solid fa-file-signature"></i></button>
-                        <button class="action-btn delete-btn" onclick="excluirAluno('${doc.id}')" title="Excluir Aluno"><i class="fa-solid fa-trash"></i></button>
+                        <button class="action-btn delete-btn" onclick="excluirAluno('${aluno.id}')" title="Excluir Aluno"><i class="fa-solid fa-trash"></i></button>
                     </td>
                 </tr>
             `;
