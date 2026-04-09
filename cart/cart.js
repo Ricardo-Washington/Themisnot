@@ -129,31 +129,70 @@ function checkout() {
 // Função para fechar modal
 function closeModal() {
     document.getElementById('checkout-modal').style.display = 'none';
-    
-    // Salvar compra finalizada no banco de dados
+}
+
+// Integração com Servidor Python (Flask) & Mercado Pago
+async function pagarMercadoPago() {
     const user = firebase.auth().currentUser;
-    if (user) {
-        const cart = JSON.parse(localStorage.getItem('cart')) || [];
-        let total = 0;
-        cart.forEach(item => total += item.price * (item.quantity || 1));
-        
-        db.collection('compras_finalizadas').add({
+    if (!user) {
+        alert("Você precisa estar logado!");
+        return;
+    }
+
+    // Pega as coisas que estão no localStorage (A memória do navegador)
+    const cart = JSON.parse(localStorage.getItem('cart')) || [];
+    if (cart.length === 0) return;
+
+    let total = 0;
+    cart.forEach(item => total += item.price * (item.quantity || 1));
+
+    // Desabilitar o botão e botar ícone girando para o usuário não clicar duas vezes ansioso
+    const btnMp = document.getElementById('btn-mp');
+    btnMp.disabled = true;
+    btnMp.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Gerando Link...';
+
+    try {
+        // [FUTURO]: Salva a intenção de compra no banco ANTES de ir para o Mercado Pago, pra ter o registro.
+        const docRef = await db.collection('compras_finalizadas').add({
             userId: user.uid,
             items: cart,
             total: total,
+            status: "pendente",
             date: firebase.firestore.Timestamp.now()
-        }).then(() => {
-            if (window.registrarLogAudit) registrarLogAudit(`Finalizou Compra: R$ ${total.toFixed(2)}`, 'aluno/cliente', {qtdItens: cart.length});
-            console.log('Compra salva com sucesso!');
-        }).catch((error) => {
-            console.error('Erro ao salvar compra:', error);
         });
+        
+        if (window.registrarLogAudit) registrarLogAudit(`Gerou Link Pagamento: R$ ${total.toFixed(2)}`, 'aluno/cliente', {qtdItens: cart.length});
+
+        // A PONTE DE REDE: Bate na porta do servidor Python que montamos passando o carrinho via 'JSON'
+        const response = await fetch("http://localhost:5000/create_preference", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({ itensCart: cart })
+        });
+
+        // Abre o json que o Python respondeu
+        const resultado = await response.json();
+
+        // Verifica se o Python deu a bandeira verde
+        if (resultado.status === "success") {
+            // Limpa o carrinho pro cliente não pagar duas vezes sem querer
+            localStorage.removeItem('cart');
+            loadCart();
+
+            // EJETAR! O Navegador puxa o usuário para fora do site, caindo na Tela de CheckOut do MP.
+            window.location.href = resultado.init_point || resultado.sandbox_init_point;
+        } else {
+            // Se o Python reclamou de algo, joga a bomba pro 'catch' ali embaixo mostrar o Alerta Vermelho
+            throw new Error(resultado.message || "Erro desconhecido ao gerar o link.");
+        }
+    } catch (error) {
+        console.error("Erro na integração com Mercado Pago: ", error);
+        alert("Desculpe, ocorreu um erro ao gerar o pagamento. Tente novamente.");
+        btnMp.disabled = false;
+        btnMp.innerHTML = '<i class="fas fa-handshake"></i> Pagar via MP';
     }
-    
-    // Simular que o pagamento foi efetuado e limpar carrinho
-    localStorage.removeItem('cart');
-    loadCart();
-    alert('Pagamento confirmado! Retire seus produtos na Academia Thémis em Águas Lindas de Goiás.');
 }
 
 // Função logout (copiada de home.js)

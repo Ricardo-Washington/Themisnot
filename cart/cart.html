@@ -11,6 +11,7 @@
     <script src="https://www.gstatic.com/firebasejs/12.1.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/12.1.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore-compat.js"></script>
+
     <script src="/js/logger.js" defer></script>
     <script src="cart.js" defer></script>
 </head>
@@ -73,10 +74,15 @@
         <div class="modal-content">
             <h2>Finalizar Compra</h2>
             <p>Valor Total: R$ <span id="modal-total">0,00</span></p>
-            <p>Escaneie o QR Code abaixo para efetuar o pagamento via PIX:</p>
-            <img id="pix-qrcode" src="/img/qr-code.png" alt="QR Code PIX" style="width: 200px; height: 200px;">
-            <p><strong>Retirada dos produtos:</strong> Na Academia Thémis, localizada em Águas Lindas de Goiás.</p>
-            <button onclick="closeModal()">Fechar</button>
+
+
+
+            <div style="display: flex; justify-content: center; gap: 15px; margin-top: 25px;">
+                <button onclick="closeModal()" style="background: transparent; border: 1px solid var(--orange); color: var(--orange); padding: 10px 20px; border-radius: 5px;">Cancelar</button>
+                <button onclick="pagarMercadoPago()" id="btn-mp" style="background: #009EE3; border: none; color: white; padding: 10px 20px; border-radius: 5px; font-weight: bold; display: flex; align-items: center; gap: 8px;">
+                    <i class="fas fa-handshake"></i> Pagar via MP
+                </button>
+            </div>
         </div>
     </div>
 
