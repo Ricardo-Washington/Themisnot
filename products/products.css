@@ -16,7 +16,7 @@
     margin: 0;
     padding: 0;
     box-sizing: border-box;
-    font-family: 'Anton', sans-serif;
+    font-family: 'Montserrat', sans-serif;
 }
 
 html {
@@ -160,18 +160,24 @@ h2 {
 }
 
 .produto-item button {
-    background-color: var(--orange);
-    color: var(--white);
-    border: none;
-    padding: 10px 20px;
-    border-radius: 4px;
+    width: 100%;
+    margin-top: 15px;
+    background-color: transparent;
+    color: var(--orange);
+    border: 1px solid var(--orange);
+    padding: 12px 20px;
+    border-radius: 6px;
     cursor: pointer;
-    font-weight: 500;
-    transition: background-color 0.3s;
+    font-weight: 600;
+    font-size: 0.95rem;
+    transition: all 0.3s ease;
 }
 
 .produto-item button:hover {
-    background-color: #e55a00;
+    background-color: var(--orange);
+    color: var(--white);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(255, 94, 0, 0.3);
 }
 
 /* Footer */

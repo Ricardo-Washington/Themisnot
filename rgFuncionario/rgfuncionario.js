@@ -366,9 +366,12 @@ function openTab(tabName) {
     if(tabName === 'tabAlunos') {
         document.querySelector('.tab-btn[onclick="openTab(\'tabAlunos\')"]').classList.add('active');
         carregarAlunos();
-    } else {
+    } else if (tabName === 'tabCursos') {
         document.querySelector('.tab-btn[onclick="openTab(\'tabCursos\')"]').classList.add('active');
         carregarCursos();
+    } else if (tabName === 'tabProdutos') {
+        document.querySelector('.tab-btn[onclick="openTab(\'tabProdutos\')"]').classList.add('active');
+        carregarProdutos();
     }
 }
 
@@ -460,6 +463,135 @@ if (formCursos) {
         } catch (error) {
             console.error("Erro ao atualizar curso:", error);
             alert("Falha ao atualizar curso. Tente novamente.");
+        }
+    });
+}
+
+// --- LÓGICA DE GERENCIAMENTO DE PRODUTOS ---
+async function carregarProdutos() {
+    const produtosTableBody = document.getElementById("produtosTableBody");
+    if (!produtosTableBody) return;
+    produtosTableBody.innerHTML = "";
+
+    try {
+        const snapshot = await db.collection("produtos").get();
+        if (snapshot.empty) {
+            initProdutos();
+            return;
+        }
+
+        snapshot.forEach((doc) => {
+            const produto = doc.data();
+            const row = `
+                <tr>
+                    <td style="width: 60px;"><img src="${produto.imagem || '/img/logo.png'}" alt="Produto" style="width: 40px; height: 40px; object-fit: cover; border-radius: 4px;"></td>
+                    <td>${produto.idExt || '--'}</td>
+                    <td><strong>${produto.nome}</strong></td>
+                    <td>R$ ${produto.valorCusto || '0,00'} / R$ ${produto.preco || '0,00'}</td>
+                    <td>${produto.estoque || '0'} un.</td>
+                    <td style="text-align: center;">
+                        <button class="action-btn edit-btn" onclick="editarProduto('${doc.id}', '${produto.idExt || ''}', '${produto.nome}', '${produto.preco}', '${produto.valorCusto || ''}', '${produto.estoque || ''}', '${produto.imagem || ''}', '${produto.descricao || ''}')" title="Editar Produto">
+                            <i class="fa-solid fa-pen"></i>
+                        </button>
+                        <button class="action-btn delete-btn" onclick="excluirProduto('${doc.id}')" title="Excluir Produto">
+                            <i class="fa-solid fa-trash"></i>
+                        </button>
+                    </td>
+                </tr>
+            `;
+            produtosTableBody.innerHTML += row;
+        });
+    } catch (error) {
+        console.error("Erro ao carregar produtos:", error);
+    }
+}
+
+async function initProdutos() {
+    const produtosPadrao = [
+        { idExt: 'UNIF-001', nome: 'Uniformes', valorCusto: '75,00', preco: '150,00', estoque: '50', imagem: '/img/uniaula.png', descricao: 'Uniformes profissionais para vigilantes e equipes de segurança.' },
+        { idExt: 'KIT-001', nome: 'Kit de Autodefesa', valorCusto: '100,00', preco: '200,00', estoque: '20', imagem: '/img/kit1.png', descricao: 'Equipamentos essenciais para sua proteção pessoal.' },
+        { idExt: 'CAP-001', nome: 'Capacete de Segurança', valorCusto: '40,00', preco: '80,00', estoque: '30', imagem: '/img/capacete.png', descricao: 'Capacete resistente para proteção em operações de segurança.' },
+        { idExt: 'COL-001', nome: 'Colete Balístico', valorCusto: '150,00', preco: '300,00', estoque: '15', imagem: '/img/colete.png', descricao: 'Colete de proteção contra projéteis para máxima segurança.' },
+        { idExt: 'LAN-001', nome: 'Lanterna Tática', valorCusto: '20,00', preco: '50,00', estoque: '100', imagem: '/img/lanterna.png', descricao: 'Lanterna de alta potência para operações noturnas.' },
+        { idExt: 'ALG-001', nome: 'Algemas', valorCusto: '15,00', preco: '40,00', estoque: '60', imagem: '/img/algemas.png', descricao: 'Algemas de aço inoxidável para contenção segura.' }
+    ];
+    for (const produto of produtosPadrao) {
+        await db.collection("produtos").add(produto);
+    }
+    carregarProdutos();
+}
+
+function abrirModalProduto() {
+    document.getElementById("produtoForm").reset();
+    document.getElementById("produtoFirebaseId").value = "";
+    document.getElementById('modalProdutoTitle').innerHTML = '<i class="fa-solid fa-box"></i> Adicionar Produto';
+    document.getElementById('modalProduto').classList.add('active');
+}
+
+function fecharModalProduto() {
+    const modal = document.getElementById('modalProduto');
+    if (modal) modal.classList.remove('active');
+}
+
+function editarProduto(id, idExt, nome, preco, valorCusto, estoque, imagem, descricao) {
+    document.getElementById("produtoFirebaseId").value = id;
+    document.getElementById("produtoIdExt").value = idExt;
+    document.getElementById("produtoNome").value = nome;
+    document.getElementById("produtoPreco").value = preco;
+    document.getElementById("produtoValorCusto").value = valorCusto;
+    document.getElementById("produtoEstoque").value = estoque;
+    document.getElementById("produtoImagem").value = imagem;
+    document.getElementById("produtoDescricao").value = descricao;
+
+    document.getElementById('modalProdutoTitle').innerHTML = '<i class="fa-solid fa-pen"></i> Editar Produto';
+    document.getElementById('modalProduto').classList.add('active');
+}
+
+async function excluirProduto(id) {
+    if (confirm("Tem certeza que deseja excluir este produto?")) {
+        try {
+            await db.collection("produtos").doc(id).delete();
+            alert("Produto excluído com sucesso!");
+            carregarProdutos();
+        } catch (error) {
+            console.error("Erro ao excluir produto:", error);
+            alert("Erro ao excluir produto. Tente novamente.");
+        }
+    }
+}
+
+// Listener para o form de produto
+const formProdutos = document.getElementById("produtoForm");
+if (formProdutos) {
+    formProdutos.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        
+        const id = document.getElementById("produtoFirebaseId").value;
+        const produtoData = {
+            idExt: document.getElementById("produtoIdExt").value,
+            nome: document.getElementById("produtoNome").value,
+            valorCusto: document.getElementById("produtoValorCusto").value,
+            preco: document.getElementById("produtoPreco").value,
+            estoque: document.getElementById("produtoEstoque").value,
+            imagem: document.getElementById("produtoImagem").value,
+            descricao: document.getElementById("produtoDescricao").value
+        };
+
+        try {
+            if (id) {
+                // Atualiza produto existente
+                await db.collection("produtos").doc(id).update(produtoData);
+                alert("Produto atualizado com sucesso!");
+            } else {
+                // Adiciona novo produto
+                await db.collection("produtos").add(produtoData);
+                alert("Produto cadastrado com sucesso!");
+            }
+            fecharModalProduto();
+            carregarProdutos();
+        } catch (error) {
+            console.error("Erro ao salvar produto:", error);
+            alert("Falha ao salvar produto. Tente novamente.");
         }
     });
 }

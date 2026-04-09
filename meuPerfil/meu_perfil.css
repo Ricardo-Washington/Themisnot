@@ -85,7 +85,7 @@ body {
 }
 
 .hero-content h1 {
-    font-family: 'Anton', sans-serif;
+    font-family: 'Montserrat', sans-serif;
     font-size: 3rem;
     color: var(--orange);
     letter-spacing: 2px;
@@ -114,7 +114,7 @@ body {
     color: var(--orange);
     margin-bottom: 20px;
     font-size: 1.8rem;
-    font-family: 'Anton', sans-serif;
+    font-family: 'Montserrat', sans-serif;
     letter-spacing: 1px;
 }
 

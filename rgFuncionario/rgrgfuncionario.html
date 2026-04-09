@@ -11,7 +11,7 @@
     <script src="https://www.gstatic.com/firebasejs/12.1.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore-compat.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="rgfuncionario.js?v=2"></script>
+    <script src="rgfuncionario.js?v=2" defer></script>
 
     <title>Gerenciar Funcionarios</title>
 </head>
@@ -37,6 +37,7 @@
             <div class="tabs-header">
                 <button class="tab-btn active" onclick="openTab('tabAlunos')"><i class="fa-solid fa-users"></i> Alunos</button>
                 <button class="tab-btn" onclick="openTab('tabCursos')"><i class="fa-solid fa-book-open"></i> Cursos</button>
+                <button class="tab-btn" onclick="openTab('tabProdutos')"><i class="fa-solid fa-box"></i> Produtos</button>
             </div>
 
             <!-- CONTEÚDO DA ABA: ALUNOS -->
@@ -80,6 +81,31 @@
                             </tr>
                         </thead>
                         <tbody id="cursosTableBody">
+                            <!-- Inserido via JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- CONTEÚDO DA ABA: PRODUTOS -->
+            <div id="tabProdutos" class="tab-content">
+                <div class="tab-top-actions">
+                    <h2><i class="fa-solid fa-box-open"></i> Estoque e Produtos</h2>
+                    <button class="action-btn new-btn" onclick="abrirModalProduto()"><i class="fa-solid fa-plus"></i> Novo Produto</button>
+                </div>
+                <div class="tabela-scroll">
+                    <table class="tabela-alunos">
+                        <thead>
+                            <tr>
+                                <th>Foto</th>
+                                <th>Código</th>
+                                <th>Produto</th>
+                                <th>Custo / Venda</th>
+                                <th>Estoque</th>
+                                <th style="text-align: center;">Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="produtosTableBody">
                             <!-- Inserido via JS -->
                         </tbody>
                     </table>
@@ -202,6 +228,57 @@
                         <div class="modal-actions">
                             <button type="submit" class="action-btn save-btn"><i class="fa-solid fa-check"></i> Atualizar Curso</button>
                             <button type="button" class="action-btn cancel-btn" onclick="fecharModalCurso()">Cancelar</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal: Cadastrar / Editar Produto -->
+        <div id="modalProduto" class="modal-overlay">
+            <div class="modal-box">
+                <div class="modal-header">
+                    <h2 id="modalProdutoTitle"><i class="fa-solid fa-box"></i> Adicionar Produto</h2>
+                    <button class="close-modal-btn" type="button" onclick="fecharModalProduto()"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+                <div class="modal-body">
+                    <form id="produtoForm">
+                        <input type="hidden" id="produtoFirebaseId">
+                        
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label for="produtoIdExt">Código do Produto</label>
+                                <input type="text" id="produtoIdExt" required placeholder="Ex: COD-001">
+                            </div>
+                            <div class="form-group">
+                                <label for="produtoNome">Nome do Produto</label>
+                                <input type="text" id="produtoNome" required placeholder="Ex: Colete Tático">
+                            </div>
+                            <div class="form-group">
+                                <label for="produtoValorCusto">Custo (R$)</label>
+                                <input type="text" id="produtoValorCusto" required placeholder="Ex: 150,00">
+                            </div>
+                            <div class="form-group">
+                                <label for="produtoPreco">Venda (R$)</label>
+                                <input type="text" id="produtoPreco" required placeholder="Ex: 300,00">
+                            </div>
+                            <div class="form-group">
+                                <label for="produtoEstoque">Quantidade em Estoque</label>
+                                <input type="number" id="produtoEstoque" required min="0" placeholder="Ex: 10">
+                            </div>
+                            <div class="form-group" style="grid-column: span 2;">
+                                <label for="produtoImagem">URL da Imagem</label>
+                                <input type="text" id="produtoImagem" required placeholder="Ex: /img/colete.png">
+                            </div>
+                            <div class="form-group" style="grid-column: span 2;">
+                                <label for="produtoDescricao">Descrição Curta</label>
+                                <input type="text" id="produtoDescricao" required placeholder="Ex: Colete balístico resistente para...">
+                            </div>
+                        </div>
+                        
+                        <div class="modal-actions">
+                            <button type="submit" class="action-btn save-btn"><i class="fa-solid fa-check"></i> Salvar Produto</button>
+                            <button type="button" class="action-btn cancel-btn" onclick="fecharModalProduto()">Cancelar</button>
                         </div>
                     </form>
                 </div>

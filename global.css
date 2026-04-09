@@ -16,7 +16,7 @@
     margin: 0;
     padding: 0;
     box-sizing: border-box;
-    font-family: 'Anton', sans-serif;
+    font-family: 'Montserrat', sans-serif;
 }
 
 html {
@@ -24,7 +24,7 @@ html {
 }
 
 body {
-    font-family: 'Anton', sans-serif;
+    font-family: 'Montserrat', sans-serif;
     background-color: var(--black);
     color: var(--white);
     line-height: 1.6;
@@ -99,7 +99,7 @@ a {
 }
 
 .nav-links {
-    font-family: 'Anton', sans-serif;
+    font-family: 'Montserrat', sans-serif;
     list-style: none;
     display: flex;
     gap: 30px;

@@ -16,7 +16,7 @@
     margin: 0;
     padding: 0;
     box-sizing: border-box;
-    font-family: 'Anton', sans-serif;
+    font-family: 'Montserrat', sans-serif;
 }
 
 html {
@@ -254,4 +254,37 @@ h2 {
 
 .modal-content button:hover {
     background-color: #e55a00;
+}
+
+/* Quantity Controls */
+.quantity-controls {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 10px 0;
+}
+
+.qty-btn {
+    background-color: var(--orange);
+    color: var(--white);
+    border: none;
+    width: 30px;
+    height: 30px;
+    font-size: 1.2rem;
+    cursor: pointer;
+    border-radius: 4px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.qty-btn:hover {
+    background-color: #e55a00;
+}
+
+.qty-value {
+    font-size: 1.2rem;
+    font-weight: bold;
+    min-width: 30px;
+    text-align: center;
 }

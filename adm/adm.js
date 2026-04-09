@@ -40,27 +40,26 @@ let tipoAtual = null;
 
 // A função principal para buscar e separar os dados
 function findUsers() {
-  firebase.firestore()
+  firebase.firestore()// busca do fire base 
     .collection('usuarios')
     .orderBy('dataCadastro', 'desc')
     .get()
     .then(snapshot => {
       const todosUsuarios = snapshot.docs.map(doc => ({...doc.data(), id: doc.id}));
 
-      usuariosFuncionarios = todosUsuarios.filter(user => user.atribuicao === 'funcionario');
+      usuariosFuncionarios = todosUsuarios.filter(user => user.atribuicao === 'funcionario');// faz a verificação do campo atribuicao do usuario
       usuariosAlunos = todosUsuarios.filter(user => user.atribuicao === 'aluno' || user.atribuicao === 'Aluno');
-
       renderizarLista('dadosfuincionario', usuariosFuncionarios);
       renderizarLista('dadosaluno', usuariosAlunos);
     })
     .catch(error => {
-      console.error("Erro ao buscar usuários: ", error);
+      console.error("Erro ao buscar usuários: ", error);//tratamento de erro 
     });
   
-  fetchCursos();
+  fetchCursos();//inicia a busca dos cursos
 }
 
-function fetchCursos() {
+function fetchCursos() {//busca os cursos no fire base 
   firebase.firestore()
     .collection('cursos')
     .get()
@@ -69,14 +68,14 @@ function fetchCursos() {
       if (cursosList.length === 0) {
         initCursos();
       } else {
-        renderizarCursos('dadoscursos', cursosList);
+        renderizarCursos('dadoscursos', cursosList);//renderiza os cursos
       }
     })
     .catch(error => {
-      console.error("Erro ao buscar cursos: ", error);
+      console.error("Erro ao buscar cursos: ", error);//tratamento de erro 
     });
 }
-
+//função para iniciar os cursos caso não exista
 function initCursos() {
     const cursosPadrao = [
         { id: "armasNaoLetais", nome: "Armamento Não Letal", preco: "500,00", cargaHoraria: "80 horas", proximaTurma: "A definir" },
@@ -183,12 +182,37 @@ function openModal(tipo) {
 
   select.innerHTML = '';
 
-  if (tipo === 'curso') {
+  if (tipo === 'curso' || tipo === 'curso_novo') {
     camposUsuario.style.display = 'none';
     camposCurso.style.display = 'flex';
     camposCurso.style.flexDirection = 'column';
     camposCurso.style.gap = '18px';
-    modalTitle.textContent = 'Editar Curso';
+    
+    if (tipo === 'curso_novo') {
+        modalTitle.textContent = 'Criar Novo Curso';
+        select.style.display = 'none';
+        document.querySelector('.requiredq').style.display = 'none'; // Oculta label 'Selecione o registro'
+        
+        // Ativa ediçao do nome para novos
+        nomeCursoInput.disabled = false;
+        nomeCursoInput.style.background = '';
+        nomeCursoInput.style.cursor = 'text';
+        
+        usuarioAtual = null;
+        nomeCursoInput.value = '';
+        precoInput.value = '';
+        cargaHrInput.value = '';
+        dataTurmaInput.value = '';
+        deleteBtn.style.display = 'none';
+    } else {
+        modalTitle.textContent = 'Editar Curso';
+        select.style.display = 'block';
+        document.querySelector('.requiredq').style.display = 'block';
+        
+        // Bloqueia edição do nome
+        nomeCursoInput.disabled = true;
+        nomeCursoInput.style.background = '#333';
+        nomeCursoInput.style.cursor = 'not-allowed';
     
     cursosList.forEach(item => {
       const option = document.createElement('option');
@@ -205,8 +229,12 @@ function openModal(tipo) {
       dataTurmaInput.value = usuarioAtual.proximaTurma || '';
       deleteBtn.style.display = 'none';
     }
+  } // fim do bloco de edicao de curso
   } else {
+    // Bloco de Usuarios (Funcionario e Aluno)
     camposUsuario.style.display = 'flex';
+    select.style.display = 'block';
+    document.querySelector('.requiredq').style.display = 'block';
     camposUsuario.style.flexDirection = 'column';
     camposUsuario.style.gap = '18px';
     camposCurso.style.display = 'none';
@@ -275,6 +303,38 @@ document.getElementById('selectUsuario').addEventListener('change', function() {
 // Editar usuário ou curso
 document.getElementById('editForm').addEventListener('submit', function(e) {
   e.preventDefault();
+
+  if (tipoAtual === 'curso_novo') {
+      const nomeCurso = document.getElementById('editNomeCurso').value;
+      const preco = document.getElementById('editPreco').value;
+      const cargaHr = document.getElementById('editCargaHr').value;
+      const dataTurma = document.getElementById('editDataTurma').value;
+      
+      if (!nomeCurso) {
+          alert('Por favor, digite o nome do curso.');
+          return;
+      }
+      
+      firebase.firestore()
+        .collection('cursos')
+        .add({
+          nome: nomeCurso,
+          preco: preco || '',
+          cargaHoraria: cargaHr || '',
+          proximaTurma: dataTurma || ''
+        })
+        .then(() => {
+          showToast("Curso criado com sucesso!", "success");
+          closeModal();
+          fetchCursos();
+        })
+        .catch(error => {
+          showToast("Erro ao criar: " + error.message, "error");
+        });
+      return; 
+  }
+
+  // Se nao for novo curso, requer que tenha um selecionado
   if (!usuarioAtual) return;
 
   if (tipoAtual === 'curso') {

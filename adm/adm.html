@@ -21,8 +21,6 @@
             
                 <ul class="nav-links">
                 <li class="user-greeting" style="color: var(--orange); font-family: 'Anton', sans-serif; font-size: 1.2rem; display: flex; align-items: center;"></li>
-                <li><a href="#funcionarios">Lista de Funcionários</a></li>
-                <li><a href="#cursos">Lista de Alunos</a></li>
                 <li><a href="#contato">Contrato</a></li>
                 <li><button class="nav-button" type="button" onclick="logout()">Sair</button></li>
             </ul>
@@ -65,9 +63,10 @@
 
         <!-- Botões de Ação Global -->
         <div class="buttons-container admin-actions">
-            <button class="details-button action-btn"  onclick="openModal('funcionario')"><i class="fas fa-pen"></i>Editar Funcionário</button>
-            <button class="details-button action-btn"  onclick="openModal('aluno')"><i class="fas fa-pen"></i>Editar Aluno</button>
-            <button class="details-button action-btn"  onclick="openModal('curso')"><i class="fas fa-pen"></i>Editar Curso</button>
+            <button class="action-btn" onclick="openModal('funcionario')"><i class="fas fa-pen"></i>Editar Funcionário</button>
+            <button class="action-btn" onclick="openModal('aluno')"><i class="fas fa-pen"></i>Editar Aluno</button>
+            <button class="action-btn" onclick="openModal('curso')"><i class="fas fa-pen"></i>Editar Curso</button>
+            <button class="action-btn primary-btn" onclick="openModal('curso_novo')"><i class="fas fa-plus"></i> Novo Curso</button>
         </div>
     </main>
 
@@ -121,7 +120,7 @@
 
             <div id="camposCurso" style="display:none;">
                 <label class="requiredq">Nome do Curso</label>
-                <input type="text" id="editNomeCurso" placeholder="Nome..." disabled style="background:#333; cursor:not-allowed;">
+                <input type="text" id="editNomeCurso" placeholder="Nome do Curso...">
                 <label class="requiredq">Valor do Curso (R$)</label>
                 <input type="text" id="editPreco" placeholder="Ex: R$ 600,00">
                 <label class="requiredq">Carga Horária</label>

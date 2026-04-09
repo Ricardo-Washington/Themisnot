@@ -40,19 +40,19 @@
         <div class="container"> 
             <h2 class="section-title"><a class="Produtos" href="/products/products.html">Produtos</a></h2>
             <div class="produtos-grid">
-                <div class="produto-item">
+                <div class="produto-item" onclick="window.location.href='/products/products.html'" style="cursor: pointer;">
                     <img src="/img/uniaula.png" alt="Uniforme">
                     <h3>Uniformes</h3>
                     <p>Uniformes profissionais para vigilantes e equipes de segurança.</p>
                     <p>Preço: R$ 150,00</p>
-                    <button onclick="addToCart('Uniformes', 150)">Adicionar ao Carrinho</button>
+                    <button onclick="event.stopPropagation(); addToCart('Uniformes', 150)">Adicionar ao Carrinho</button>
                 </div>
-                <div class="produto-item">
+                <div class="produto-item" onclick="window.location.href='/products/products.html'" style="cursor: pointer;">
                     <img src="/img/kit1.png" alt="Kit de Autodefesa">
                     <h3>Kit de Autodefesa</h3>
                     <p>Equipamentos essenciais para sua proteção pessoal.</p>
                     <p>Preço: R$ 200,00</p>
-                    <button onclick="addToCart('Kit de Autodefesa', 200)">Adicionar ao Carrinho</button>
+                    <button onclick="event.stopPropagation(); addToCart('Kit de Autodefesa', 200)">Adicionar ao Carrinho</button>
                 </div>
             </div>
         </div>

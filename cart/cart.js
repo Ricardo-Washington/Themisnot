@@ -26,7 +26,7 @@ firebase.auth().onAuthStateChanged((user) => {
 
 // Função para carregar o carrinho
 function loadCart() {
-    const cart = JSON.parse(localStorage.getItem('cart')) || [];
+    let cart = JSON.parse(localStorage.getItem('cart')) || [];
     const cartItems = document.getElementById('cart-items');
     const totalPrice = document.getElementById('total-price');
     let total = 0;
@@ -39,18 +39,46 @@ function loadCart() {
         return;
     }
 
+    // Migra a estrutura antiga do carrinho, se necessário
+    let migrated = false;
+    let newCart = [];
+    cart.forEach(item => {
+        if (!item.quantity) {
+             let existing = newCart.find(i => i.name === item.name);
+             if (existing) {
+                 existing.quantity++;
+             } else {
+                 newCart.push({ ...item, quantity: 1 });
+             }
+             migrated = true;
+        } else {
+            newCart.push(item);
+        }
+    });
+
+    if (migrated) {
+        cart = newCart;
+        localStorage.setItem('cart', JSON.stringify(cart));
+    }
+
     cart.forEach((item, index) => {
         const itemDiv = document.createElement('div');
         itemDiv.className = 'cart-item';
         itemDiv.innerHTML = `
             <div>
                 <h4>${item.name}</h4>
-                <p>Preço: R$ ${item.price.toFixed(2).replace('.', ',')}</p>
+                <p>Preço unitário: R$ ${item.price.toFixed(2).replace('.', ',')}</p>
+                <div class="quantity-controls">
+                    <button class="qty-btn" onclick="updateQuantity(${index}, -1)">-</button>
+                    <span class="qty-value">${item.quantity}</span>
+                    <button class="qty-btn" onclick="updateQuantity(${index}, 1)">+</button>
+                </div>
+                <p>Subtotal: R$ ${(item.price * item.quantity).toFixed(2).replace('.', ',')}</p>
             </div>
             <button class="remove-button" onclick="removeFromCart(${index})">Remover</button>
         `;
         cartItems.appendChild(itemDiv);
-        total += item.price;
+        total += item.price * item.quantity;
     });
 
     totalPrice.textContent = total.toFixed(2).replace('.', ',');
@@ -64,6 +92,19 @@ function removeFromCart(index) {
     loadCart();
 }
 
+// Função para atualizar a quantidade do item
+function updateQuantity(index, change) {
+    let cart = JSON.parse(localStorage.getItem('cart')) || [];
+    if (cart[index]) {
+        cart[index].quantity += change;
+        if (cart[index].quantity <= 0) {
+            cart.splice(index, 1);
+        }
+        localStorage.setItem('cart', JSON.stringify(cart));
+        loadCart();
+    }
+}
+
 // Função para finalizar compra
 function checkout() {
     const cart = JSON.parse(localStorage.getItem('cart')) || [];
@@ -74,7 +115,7 @@ function checkout() {
 
     // Calcular total
     let total = 0;
-    cart.forEach(item => total += item.price);
+    cart.forEach(item => total += item.price * (item.quantity || 1));
 
     // Mostrar modal
     document.getElementById('modal-total').textContent = total.toFixed(2).replace('.', ',');
@@ -94,7 +135,7 @@ function closeModal() {
     if (user) {
         const cart = JSON.parse(localStorage.getItem('cart')) || [];
         let total = 0;
-        cart.forEach(item => total += item.price);
+        cart.forEach(item => total += item.price * (item.quantity || 1));
         
         db.collection('compras_finalizadas').add({
             userId: user.uid,

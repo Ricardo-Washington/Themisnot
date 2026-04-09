@@ -44,14 +44,20 @@ firebase.auth().onAuthStateChanged(async (user) => {
                const nomeExibicao = dados.nome || dados.nomeCompleto;
                const pNome = nomeExibicao.split(' ')[0];
                document.querySelectorAll('.user-greeting').forEach(el => {
-                   el.innerHTML = `<a href="/meuPerfil/meu_perfil.html" style="color: inherit; text-decoration: none;" title="Ver Meu Perfil">Olá, ${pNome} <i class="fa fa-user-circle"></i></a>`;
+                   let greetingHTML = `<a href="/meuPerfil/meu_perfil.html" style="color: inherit; text-decoration: none;" title="Ver Meu Perfil">Olá, ${pNome} <i class="fa fa-user-circle"></i></a>`;
+                   
+                   // Se for funcionário, mostra o atalho
+                   if (dados.atribuicao === 'funcionario' || dados.atribuicao === 'admin' || dados.atribuicao === 'adm') {
+                       greetingHTML += `<a href="/rgFuncionario/rgrgfuncionario.html" style="margin-left: 15px; color: var(--orange); font-size: 0.85em; text-decoration: underline; font-weight: bold;"><i class="fas fa-tools"></i> Painel Funcionário</a>`;
+                   }
+                   // Se for administrador top-level, mostra o atalho extra
+                   if (dados.atribuicao === 'adm') {
+                       greetingHTML += `<a href="/adm/adm.html" style="margin-left: 15px; color: #ff3333; font-size: 0.85em; text-decoration: underline; font-weight: bold;"><i class="fas fa-crown"></i> Painel Master</a>`;
+                   }
+                   
+                   el.innerHTML = greetingHTML;
                });
            }
-
-            if (dados.atribuicao === 'adm') {
-                window.location.href = "/adm/adm.html";
-                return;
-            }
             // Se já existe cadastro, NÃO abre o modal!
             return;
         }
