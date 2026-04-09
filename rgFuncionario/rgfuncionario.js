@@ -36,7 +36,24 @@ firebase.auth().onAuthStateChanged(async (user) => {
             return;
         }
 
-        if (atribuicao !== "funcionario" && atribuicao !== "admin") {
+        // NOVO: Se for ADM navegando no painel de funcionário, dar atalho de volta!
+        if (atribuicao === 'adm') {
+            const navLinks = document.querySelector('.nav-links');
+            if (navLinks && !document.getElementById('link-volta-adm')) {
+                const li = document.createElement('li');
+                li.id = 'link-volta-adm';
+                li.innerHTML = '<a href="/adm/adm.html"><i class="fa-solid fa-crown" style="color:var(--orange);"></i> Painel Master</a>';
+                // Insere depois da saudação do usuário (antes do Sair)
+                const userGreeting = navLinks.querySelector('.user-greeting');
+                if (userGreeting && userGreeting.nextSibling) {
+                    navLinks.insertBefore(li, userGreeting.nextSibling);
+                } else {
+                    navLinks.appendChild(li);
+                }
+            }
+        }
+
+        if (atribuicao !== "funcionario" && atribuicao !== "admin" && atribuicao !== "adm") {
             alert("Você não tem permissão para acessar esta página.");
             window.location.href = "/home/home.html";
         } else {
@@ -84,10 +101,12 @@ document.getElementById("alunoForm").addEventListener("submit", async (event) =>
         if (alunoId) {
             // Atualiza aluno existente
             await db.collection("usuarios").doc(alunoId).update(alunoData);
+            if (window.registrarLogAudit) registrarLogAudit(`Atualizou Aluno: ${alunoData.nome}`, 'gestão', {alunoId});
             alert("Aluno atualizado com sucesso!");
         } else {
             // Cadastra novo aluno
             await db.collection("usuarios").add({ ...alunoData, atribuicao: "aluno" });
+            if (window.registrarLogAudit) registrarLogAudit(`Cadastrou Aluno: ${alunoData.nome}`, 'gestão', {cpf: alunoData.cpf});
             alert("Aluno cadastrado com sucesso!");
         }
         document.getElementById("alunoForm").reset();
@@ -182,6 +201,7 @@ async function excluirAluno(id) {
     if (confirm("Tem certeza que deseja excluir este aluno?")) {
         try {
             await db.collection("usuarios").doc(id).delete();
+            if (window.registrarLogAudit) registrarLogAudit(`Excluiu Aluno ID: ${id}`, 'gestão', {id});
             alert("Aluno excluído com sucesso!");
             carregarAlunos();
         } catch (error) {
@@ -197,6 +217,8 @@ async function excluirAluno(id) {
 
 // Função para criar contrato em PDF
 function criarContrato(nome, idade, cpf, rg, orgaoRg, endereco, telefone, telefoneAlt, formaPagamento, cursoSolicitado, dataInicio, turno) {
+    if (window.registrarLogAudit) registrarLogAudit(`Gerou Contrato: ${nome}`, 'gestão', {cursoSolicitado});
+    
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF({
         orientation: "portrait",
@@ -551,6 +573,7 @@ async function excluirProduto(id) {
     if (confirm("Tem certeza que deseja excluir este produto?")) {
         try {
             await db.collection("produtos").doc(id).delete();
+            if (window.registrarLogAudit) registrarLogAudit(`Excluiu Produto ID: ${id}`, 'gestão', {id});
             alert("Produto excluído com sucesso!");
             carregarProdutos();
         } catch (error) {
@@ -581,10 +604,12 @@ if (formProdutos) {
             if (id) {
                 // Atualiza produto existente
                 await db.collection("produtos").doc(id).update(produtoData);
+                if (window.registrarLogAudit) registrarLogAudit(`Atualizou Produto: ${produtoData.nome}`, 'gestão', {idExt: produtoData.idExt});
                 alert("Produto atualizado com sucesso!");
             } else {
                 // Adiciona novo produto
                 await db.collection("produtos").add(produtoData);
+                if (window.registrarLogAudit) registrarLogAudit(`Criou Produto: ${produtoData.nome}`, 'gestão', {idExt: produtoData.idExt});
                 alert("Produto cadastrado com sucesso!");
             }
             fecharModalProduto();

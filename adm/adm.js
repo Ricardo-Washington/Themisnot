@@ -53,10 +53,26 @@ function findUsers() {
       renderizarLista('dadosaluno', usuariosAlunos);
     })
     .catch(error => {
-      console.error("Erro ao buscar usuários: ", error);//tratamento de erro 
+      console.error("Erro ao buscar usuários: ", error);
     });
   
-  fetchCursos();//inicia a busca dos cursos
+  fetchCursos();
+  fetchLogs(); // inicia a busca de logs
+}
+
+function fetchLogs() {
+  firebase.firestore()
+    .collection('logs_auditoria')
+    .orderBy('timestamp', 'desc')
+    .limit(30)
+    .get()
+    .then(snapshot => {
+      const logsList = snapshot.docs.map(doc => doc.data());
+      renderizarLogs('dadosauditoria', logsList);
+    })
+    .catch(error => {
+      console.error("Erro ao buscar logs: ", error);
+    });
 }
 
 function fetchCursos() {//busca os cursos no fire base 
@@ -151,6 +167,38 @@ function renderizarCursos(idDaLista, dados) {
     li.appendChild(turma);
 
     lista.appendChild(li);
+  });
+}
+
+function renderizarLogs(idDaLista, dados) {
+  const lista = document.getElementById(idDaLista);
+  lista.innerHTML = '';
+  
+  if (dados.length === 0) {
+      lista.innerHTML = '<p style="color:var(--white); text-align:center;">Nenhum log recente.</p>';
+      return;
+  }
+
+  dados.forEach(log => {
+      const li = document.createElement('li');
+      li.classList.add('item');
+      li.style.borderLeftColor = '#888';
+      
+      const p1 = document.createElement('p');
+      p1.innerHTML = `<strong style="color:var(--orange)">Ação:</strong> ${log.acao}`;
+      
+      const p2 = document.createElement('p');
+      p2.innerHTML = `<strong>Por:</strong> ${log.email} (${log.tipoUsuario})`;
+      
+      const p3 = document.createElement('p');
+      // Firebase serverTimestamp() may be null during local optimistic updates
+      const dataStr = log.timestamp && log.timestamp.toDate ? log.timestamp.toDate().toLocaleString('pt-BR') : 'agora mesmo';
+      p3.textContent = `Em: ${dataStr}`;
+      
+      li.appendChild(p1);
+      li.appendChild(p2);
+      li.appendChild(p3);
+      lista.appendChild(li);
   });
 }
 
@@ -324,9 +372,11 @@ document.getElementById('editForm').addEventListener('submit', function(e) {
           proximaTurma: dataTurma || ''
         })
         .then(() => {
+          if (window.registrarLogAudit) registrarLogAudit(`Criou Curso: ${nomeCurso}`, 'adm', {preco, cargaHr});
           showToast("Curso criado com sucesso!", "success");
           closeModal();
           fetchCursos();
+          fetchLogs();
         })
         .catch(error => {
           showToast("Erro ao criar: " + error.message, "error");
@@ -351,9 +401,11 @@ document.getElementById('editForm').addEventListener('submit', function(e) {
           proximaTurma: dataTurma
         })
         .then(() => {
+          if (window.registrarLogAudit) registrarLogAudit(`Atualizou Curso: ${usuarioAtual.nome}`, 'adm', {preco, cargaHr});
           showToast("Curso atualizado com sucesso!", "success");
           closeModal();
           fetchCursos();
+          fetchLogs();
         })
         .catch(error => {
           showToast("Erro ao atualizar: " + error.message, "error");
@@ -380,6 +432,7 @@ document.getElementById('editForm').addEventListener('submit', function(e) {
           atribuicao: novaAtribuicao
         })
         .then(() => {
+          if (window.registrarLogAudit) registrarLogAudit(`Editou o Usuário: ${novoNome} | ${novoCpf}`, 'adm', {novaAtribuicao});
           showToast("Usuário atualizado com sucesso!", "success");
           closeModal();
           findUsers(); // already calls fetchCursos but that's fine
@@ -415,11 +468,15 @@ function showToast(message, type = 'success') {
 document.getElementById('deleteButton').addEventListener('click', function() {
   if (!usuarioAtual) return;
   if (confirm(`Excluir ${usuarioAtual.nome}?`)) {
+    const nomeExcluido = usuarioAtual.nome;
+    const cpfExcluido = usuarioAtual.cpf;
+    
     firebase.firestore()
       .collection('usuarios')
       .doc(usuarioAtual.id)
       .delete()
       .then(() => {
+        if (window.registrarLogAudit) registrarLogAudit(`Excluiu o Usuário: ${nomeExcluido} | ${cpfExcluido}`, 'adm', {});
         showToast("Usuário excluído!", "success");
         closeModal();
         findUsers();

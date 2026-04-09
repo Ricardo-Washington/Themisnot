@@ -143,6 +143,7 @@ function closeModal() {
             total: total,
             date: firebase.firestore.Timestamp.now()
         }).then(() => {
+            if (window.registrarLogAudit) registrarLogAudit(`Finalizou Compra: R$ ${total.toFixed(2)}`, 'aluno/cliente', {qtdItens: cart.length});
             console.log('Compra salva com sucesso!');
         }).catch((error) => {
             console.error('Erro ao salvar compra:', error);
