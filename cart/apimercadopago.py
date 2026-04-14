@@ -10,12 +10,9 @@ app = Flask(__name__)
 CORS(app)
 
 # Aqui configuramos a chave secreta que abre as portas do Mercado Pago.
-# O TOKEN DE SANDBOX significa que os pagamentos feitos por este link usarão cartões falsos 
-# e não cobrarão dinheiro real. Ele é a prova de que a sua loja é quem a sua loja diz ser.
 sdk = mercadopago.SDK("APP_USR-2038131907264049-040917-9954facb093322de58407758c8bc6eb0-3326778292")
 
 # Definimos uma "Rota", que é tipo um endereço de atendimento.
-# O JavaScript vai bater na porta '/create_preference' mandando o carrinho (POST).
 @app.route('/create_preference', methods=['POST'])
 def create_preference():
     try:
@@ -85,3 +82,6 @@ if __name__ == '__main__':
     print("Mantenha esta janela aberta e faça a compra no site.")
     # host 0.0.0.0 diz que ele escuta tanto comandos de '127.0.0.1' quanto de 'localhost'.
     app.run(host='0.0.0.0', port=5000, debug=True)
+
+
+# linck çdo video de referencia https://www.youtube.com/watch?v=HNCjXGJxelI
