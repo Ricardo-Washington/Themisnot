@@ -13,6 +13,26 @@ if (!firebase.apps.length) {
 }
 const db = firebase.firestore();
 
+const defaultProductImage = '/img/logo.png';
+
+function getProdutoImagem(produto) {
+    if (produto.imagem && produto.imagem.trim()) return produto.imagem;
+    const nome = (produto.nome || '').toLowerCase();
+    const desc = (produto.descricao || '').toLowerCase();
+
+    if (nome.includes('uniform') || desc.includes('uniform')) return '/img/uniaula.png';
+    if (nome.includes('kit')) return '/img/kit1.png';
+    if (nome.includes('capacete')) return '/img/capacete.png';
+    if (nome.includes('colete')) return '/img/colete.png';
+    if (nome.includes('lanterna')) return '/img/lanterna.png';
+    if (nome.includes('algema')) return '/img/algemas.png';
+    if (nome.includes('cinto')) return '/img/cinto_tatico.jpg';
+    if (nome.includes('coldre')) return '/img/coldre.png';
+    if (nome.includes('mochila')) return '/img/mochilas.png';
+    if (nome.includes('farda') || nome.includes('equipamento') || nome.includes('armamento')) return '/img/guns-notkill.png';
+    return defaultProductImage;
+}
+
 // Verifica se o usuário tem permissão para acessar a página
 firebase.auth().onAuthStateChanged(async (user) => {
     if (!user) {
@@ -506,7 +526,7 @@ async function carregarProdutos() {
             const produto = doc.data();
             const row = `
                 <tr>
-                    <td style="width: 60px;"><img src="${produto.imagem || '/img/logo.png'}" alt="Produto" style="width: 40px; height: 40px; object-fit: cover; border-radius: 4px;"></td>
+                    <td style="width: 60px;"><img src="${getProdutoImagem(produto)}" alt="Produto" style="width: 40px; height: 40px; object-fit: cover; border-radius: 4px;"></td>
                     <td>${produto.idExt || '--'}</td>
                     <td><strong>${produto.nome}</strong></td>
                     <td>R$ ${produto.valorCusto || '0,00'} / R$ ${produto.preco || '0,00'}</td>

@@ -51,6 +51,8 @@ function findUsers() {
       usuariosAlunos = todosUsuarios.filter(user => user.atribuicao === 'aluno' || user.atribuicao === 'Aluno');
       renderizarLista('dadosfuincionario', usuariosFuncionarios);
       renderizarLista('dadosaluno', usuariosAlunos);
+      // Atualiza o gráfico de inscrições mensais usando apenas os alunos
+      renderarGraficoInscricoes(usuariosAlunos);
     })
     .catch(error => {
       console.error("Erro ao buscar usuários: ", error);
@@ -90,6 +92,109 @@ function fetchCursos() {//busca os cursos no fire base
     .catch(error => {
       console.error("Erro ao buscar cursos: ", error);//tratamento de erro 
     });
+}
+
+// Variável global para manter o gráfico vivo entre atualizações.
+let inscricoesChart = null;
+
+// Nomes dos meses em português para exibir na escala X do gráfico.
+const monthNamesPT = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+
+/**
+ * Gera os rótulos dos últimos meses.
+ * Exemplo: ["Nov 2025", "Dez 2025", "Jan 2026", "Fev 2026", "Mar 2026", "Abr 2026"]
+ */
+function gerarUltimosMeses(qtd = 6) {
+  const meses = [];
+  const hoje = new Date();
+  for (let i = qtd - 1; i >= 0; i--) {
+    const data = new Date(hoje.getFullYear(), hoje.getMonth() - i, 1);
+    meses.push(`${monthNamesPT[data.getMonth()]} ${data.getFullYear()}`);
+  }
+  return meses;
+}
+
+/**
+ * Conta quantos alunos foram cadastrados em cada mês exibido no gráfico.
+ * Recebe a lista de alunos e os labels de mês já gerados.
+ */
+function contarInscricoesPorMes(alunos, labels) {
+  const contagem = labels.map(() => 0);
+  alunos.forEach(aluno => {
+    const dataCadastro = aluno.dataCadastro;
+    if (!dataCadastro) return;
+
+    let data = null;
+    if (typeof dataCadastro === 'string') {
+      data = new Date(dataCadastro);
+    } else if (dataCadastro.toDate) {
+      data = dataCadastro.toDate();
+    }
+
+    if (!data || isNaN(data.getTime())) return;
+
+    const mesLabel = `${monthNamesPT[data.getMonth()]} ${data.getFullYear()}`;
+    const index = labels.indexOf(mesLabel);
+    if (index !== -1) contagem[index] += 1;
+  });
+  return contagem;
+}
+
+/**
+ * Cria ou atualiza o gráfico de barras com as inscrições mensais.
+ * Se o gráfico já existir, apenas atualiza os dados.
+ */
+function renderarGraficoInscricoes(alunos) {
+  const labels = gerarUltimosMeses(6);
+  const valores = contarInscricoesPorMes(alunos, labels);
+  const ctx = document.getElementById('inscricoesChart');
+  if (!ctx) return;
+
+  if (inscricoesChart) {
+    inscricoesChart.data.labels = labels;
+    inscricoesChart.data.datasets[0].data = valores;
+    inscricoesChart.update();
+    return;
+  }
+
+  inscricoesChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        label: 'Alunos inscritos',
+        data: valores,
+        backgroundColor: 'rgba(255, 94, 0, 0.85)',
+        borderColor: 'rgba(255, 158, 0, 1)',
+        borderWidth: 1,
+        borderRadius: 12,
+        maxBarThickness: 36
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: context => `${context.dataset.label}: ${context.parsed.y} aluno(s)`
+          }
+        }
+      },
+      scales: {
+        x: {
+          grid: { display: false },
+          ticks: { color: '#f0f0f0' }
+        },
+        y: {
+          beginAtZero: true,
+          grid: { color: 'rgba(255,255,255,0.10)' },
+          ticks: { color: '#f0f0f0', stepSize: 1 }
+        }
+      }
+    }
+  });
 }
 //função para iniciar os cursos caso não exista
 function initCursos() {

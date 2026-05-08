@@ -26,7 +26,12 @@ const form = {
     telefone: () => document.getElementById('telefone'),
     nome: () => document.getElementById('nome'),
     estadoCivil: () => document.getElementById('estadoCivil'),
-    endereco: () => document.getElementById('endereco'),
+    cep: () => document.getElementById('cep'),
+    numero: () => document.getElementById('numero'),
+    logradouro: () => document.getElementById('logradouro'),
+    bairro: () => document.getElementById('bairro'),
+    cidade: () => document.getElementById('cidade'),
+    uf: () => document.getElementById('uf'),
     atribuicao: () => document.getElementById('atribuicao'),
 }
 
@@ -92,6 +97,8 @@ async function cadastrarDados(event) {
         return;
     }
     
+    const enderecoCompleto = `${form.logradouro().value}, ${form.numero().value} - ${form.bairro().value}, ${form.cidade().value}/${form.uf().value}`;
+
     const userData = {
         nome: form.nome().value,
         cpf: form.cpf().value,
@@ -99,7 +106,13 @@ async function cadastrarDados(event) {
         telefone: form.telefone().value,
         nascimento: form.nascimento().value,
         estadoCivil: form.estadoCivil().value,
-        endereco: form.endereco().value,
+        cep: form.cep().value,
+        logradouro: form.logradouro().value,
+        numero: form.numero().value,
+        bairro: form.bairro().value,
+        cidade: form.cidade().value,
+        uf: form.uf().value,
+        endereco: enderecoCompleto,
         atribuicao: form.atribuicao().value,
         user: {
             uid: firebase.auth().currentUser.uid,
@@ -126,6 +139,12 @@ function validarCamposObrigatorios() {
         form.cpf(),
         form.rg(),
         form.telefone(),
+        form.cep(),
+        form.numero(),
+        form.logradouro(),
+        form.bairro(),
+        form.cidade(),
+        form.uf(),
         form.atribuicao(),
     ];
     
@@ -174,6 +193,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             });
         });
+
+        // Preenche dados do endereço automaticamente quando o CEP é completo
+        const cepInput = document.getElementById('cep');
+        if (cepInput) {
+            cepInput.addEventListener('input', function() {
+                const somenteDigitos = this.value.replace(/\D/g, '');
+                if (somenteDigitos.length === 8) {
+                    buscarEnderecoPorCep(somenteDigitos);
+                }
+            });
+        }
     }
 
     // Verifica se deve abrir o modal de cadastro
@@ -207,6 +237,38 @@ function logout() {
     }).catch((error) => {
         console.error("Erro ao fazer logout:", error);
     });
+}
+
+// Busca de endereço automático pelo CEP usando ViaCEP
+async function buscarEnderecoPorCep(cep) {
+    const cepLimpo = cep.replace(/\D/g, '');
+    if (cepLimpo.length !== 8) {
+        return;
+    }
+
+    try {
+        const response = await fetch(`https://viacep.com.br/ws/${cepLimpo}/json/`);
+        const data = await response.json();
+
+        if (data.erro) {
+            throw new Error('CEP não encontrado');
+        }
+
+        form.logradouro().value = data.logradouro || '';
+        form.bairro().value = data.bairro || '';
+        form.cidade().value = data.localidade || '';
+        form.uf().value = data.uf || '';
+
+        // Remove erros antigos se o CEP foi preenchido com sucesso
+        ['logradouro', 'bairro', 'cidade', 'uf', 'cep'].forEach(fieldId => {
+            const errorElement = document.getElementById(fieldId + 'Error');
+            if (errorElement) errorElement.textContent = '';
+        });
+    } catch (error) {
+        console.error('Erro ao buscar CEP:', error);
+        const cepError = document.getElementById('cepError');
+        if (cepError) cepError.textContent = 'Não foi possível buscar o CEP. Verifique e tente novamente.';
+    }
 }
 
 // Validação simples de CPF (sem mudanças)

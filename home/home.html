@@ -145,7 +145,7 @@
             <span class="error-message" id="cpfError"></span>
           </div>
           <div class="form-group">
-            <label>RG*</label>
+            <label>RG</label>
             <input type="text" id="rg" required>
             <span class="error-message" id="rgError"></span>
           </div>
@@ -171,8 +171,34 @@
                 </select>
           </div>
           <div class="form-group">
-            <label>Endereço</label>
-            <input type="text" id="endereco">
+            <label>CEP*</label>
+            <input type="text" id="cep" maxlength="9" required placeholder="00000-000" />
+            <span class="error-message" id="cepError"></span>
+          </div>
+          <div class="form-group">
+            <label>Número*</label>
+            <input type="text" id="numero" required placeholder="Número" />
+            <span class="error-message" id="numeroError"></span>
+          </div>
+          <div class="form-group">
+            <label>Logradouro*</label>
+            <input type="text" id="logradouro" required placeholder="Rua, Avenida, Travessa" />
+            <span class="error-message" id="logradouroError"></span>
+          </div>
+          <div class="form-group">
+            <label>Bairro*</label>
+            <input type="text" id="bairro" required placeholder="Bairro" />
+            <span class="error-message" id="bairroError"></span>
+          </div>
+          <div class="form-group">
+            <label>Cidade*</label>
+            <input type="text" id="cidade" required placeholder="Cidade" />
+            <span class="error-message" id="cidadeError"></span>
+          </div>
+          <div class="form-group">
+            <label>UF*</label>
+            <input type="text" id="uf" maxlength="2" required placeholder="UF" />
+            <span class="error-message" id="ufError"></span>
           </div>
           <button type="submit" class="btn-modal">Cadastrar</button>
           

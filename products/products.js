@@ -15,6 +15,26 @@ if (!firebase.apps.length) {
 
 const db = firebase.firestore();
 
+const defaultProductImage = '/img/logo.png';
+
+function getProdutoImagem(produto) {
+    if (produto.imagem && produto.imagem.trim()) return produto.imagem;
+    const nome = (produto.nome || '').toLowerCase();
+    const desc = (produto.descricao || '').toLowerCase();
+
+    if (nome.includes('uniform') || desc.includes('uniform')) return '/img/uniaula.png';
+    if (nome.includes('kit')) return '/img/kit1.png';
+    if (nome.includes('capacete')) return '/img/capacete.png';
+    if (nome.includes('colete')) return '/img/colete.png';
+    if (nome.includes('lanterna')) return '/img/lanterna.png';
+    if (nome.includes('algema')) return '/img/algemas.png';
+    if (nome.includes('cinto')) return '/img/cinto_tatico.jpg';
+    if (nome.includes('coldre')) return '/img/coldre.jpg';
+    if (nome.includes('mochila')) return '/img/mochila_idratacao.jpg';
+    if (nome.includes('farda') || nome.includes('equipamento') || nome.includes('armamento')) return '/img/guns-notkill.png';
+    return defaultProductImage;
+}
+
 // Verifica autenticação
 firebase.auth().onAuthStateChanged((user) => {
     if (!user) {
@@ -80,7 +100,7 @@ async function carregarLojaProdutos() {
 
             const item = `
                 <div class="produto-item">
-                    <img src="${produto.imagem || '/img/logo.png'}" alt="${produto.nome}">
+                    <img src="${getProdutoImagem(produto)}" alt="${produto.nome}">
                     <h3>${produto.nome}</h3>
                     <p style="font-size: 0.9em; opacity: 0.8; margin-bottom: 10px;">${produto.descricao || ''}</p>
                     <p>Preço: R$ ${produto.preco || '0,00'}</p>
