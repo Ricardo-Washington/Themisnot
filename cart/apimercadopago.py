@@ -2,11 +2,11 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 import mercadopago
 
-# Inicializa o aplicativo servidor usando o framework Flask (O Cérebro)
+# Inicializa o aplicativo servidor usando o framework Flask 
 app = Flask(__name__)
 
 # Ativa o CORS: Isso permite que navegadores e sites abertos localmente (como seu Live Server no http://127.0.0.1:5500) 
-# consigam bater nesta porta 5000 sem que o site ache que é uma tentativa de invasão (Cross-Origin).
+# consigam bater nesta porta 5000 sem que o site ache que é uma tentativa de invasão.
 CORS(app)
 
 # Aqui configuramos a chave secreta que abre as portas do Mercado Pago.

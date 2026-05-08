@@ -36,7 +36,7 @@ const firebaseConfig = {
         console.log('Nenhum usuário logado');
     }
 });
-
+  //Registrar o usuario 
   function registerUser() {
     const email = document.getElementById('email').value.trim();
     const confirmEmail = document.getElementById('confirmEmail').value.trim();

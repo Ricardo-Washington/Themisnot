@@ -141,7 +141,10 @@ async function pagarMercadoPago() {
 
     // Pega as coisas que estão no localStorage (A memória do navegador)
     const cart = JSON.parse(localStorage.getItem('cart')) || [];
-    if (cart.length === 0) return;
+    if (cart.length === 0) {
+        alert("Carrinho vazio!");
+        return;
+    }
 
     let total = 0;
     cart.forEach(item => total += item.price * (item.quantity || 1));
