@@ -128,6 +128,75 @@ h2 {
     margin-bottom: 20px;
 }
 
+.purchase-card {
+    background-color: var(--medium-grey);
+    padding: 20px;
+    margin-bottom: 15px;
+    border-radius: 10px;
+    border: 1px solid rgba(255,255,255,0.08);
+}
+
+.purchase-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 15px;
+    margin-bottom: 15px;
+}
+
+.purchase-status {
+    padding: 8px 14px;
+    border-radius: 999px;
+    font-size: 0.95rem;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+.purchase-status.paid {
+    background-color: rgba(255, 165, 0, 0.18);
+    color: #ffe7c1;
+    border: 1px solid #ff8c00;
+}
+
+.purchase-status.received {
+    background-color: rgba(0, 170, 0, 0.18);
+    color: #d5ffd5;
+    border: 1px solid #00aa00;
+}
+
+.purchase-details {
+    display: flex;
+    justify-content: space-between;
+    gap: 20px;
+    flex-wrap: wrap;
+    margin-bottom: 15px;
+}
+
+.purchase-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+
+.purchase-item:last-child {
+    border-bottom: none;
+}
+
+.action-btn {
+    background-color: var(--orange);
+    color: var(--white);
+    border: none;
+    padding: 10px 18px;
+    border-radius: 6px;
+    cursor: pointer;
+    margin-top: 15px;
+}
+
+.action-btn:hover {
+    background-color: #e55a00;
+}
+
 .cart-item {
     display: flex;
     justify-content: space-between;
@@ -170,6 +239,52 @@ h2 {
     border-radius: 8px;
     display: block;
     margin: 0 auto;
+}
+
+.loading-overlay {
+    position: fixed;
+    inset: 0;
+    background-color: rgba(0, 0, 0, 0.75);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 3000;
+}
+
+.loading-message {
+    background-color: rgba(0, 0, 0, 0.85);
+    color: #ffffff;
+    padding: 20px 30px;
+    border-radius: 12px;
+    font-size: 1.1rem;
+    text-align: center;
+    max-width: 90%;
+}
+
+.payment-status {
+    display: none;
+    margin-bottom: 20px;
+    padding: 15px 20px;
+    border-radius: 8px;
+    font-weight: 600;
+}
+
+.payment-status.success {
+    background-color: rgba(0, 170, 0, 0.15);
+    color: #e6ffea;
+    border: 1px solid #00aa00;
+}
+
+.payment-status.error {
+    background-color: rgba(255, 0, 0, 0.12);
+    color: #ffd2d2;
+    border: 1px solid #ff0000;
+}
+
+.payment-status.pending {
+    background-color: rgba(255, 165, 0, 0.12);
+    color: #fff1c9;
+    border: 1px solid #ff8c00;
 }
 
 /* Footer */

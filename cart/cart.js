@@ -20,9 +20,84 @@ firebase.auth().onAuthStateChanged((user) => {
     if (!user) {
         window.location.href = "/login/login.html";
     } else {
+        handlePaymentStatus();
         loadCart();
     }
 });
+
+// Ouvinte para mudanças no localStorage (comunicação entre guias)
+window.addEventListener('storage', (e) => {
+    if (e.key === 'payment_status') {
+        handlePaymentStatusFromStorage(e.newValue);
+    }
+});
+
+function getQueryParam(name) {
+    return new URLSearchParams(window.location.search).get(name);
+}
+
+async function handlePaymentStatus() {
+    const status = getQueryParam('payment');
+    const statusBox = document.getElementById('payment-status');
+    if (!statusBox || !status) return;
+
+    statusBox.style.display = 'block';
+    if (status === 'success') {
+        statusBox.className = 'payment-status success';
+        statusBox.textContent = 'Compra finalizada com sucesso.';
+        localStorage.setItem('payment_status', 'success');
+        // Carrinho será limpo automaticamente após sucesso
+    } else if (status === 'pending') {
+        statusBox.className = 'payment-status pending';
+        statusBox.textContent = 'Pagamento pendente. Verifique seu Mercado Pago; o carrinho permanece salvo para você.';
+        alert('A compra não foi concluída ainda. O pagamento está pendente e o carrinho permanece salvo.');
+    } else {
+        statusBox.className = 'payment-status error';
+        statusBox.textContent = 'Pagamento não concluído. O carrinho permanece salvo e você pode tentar novamente.';
+        alert('A compra não foi efetuada com sucesso. Por favor, tente novamente ou revise os dados do pagamento.');
+    }
+
+    window.history.replaceState({}, document.title, window.location.pathname);
+}
+
+function handlePaymentStatusFromStorage(status) {
+    const statusBox = document.getElementById('payment-status');
+    if (!statusBox) return;
+
+    statusBox.style.display = 'block';
+    if (status === 'success') {
+        statusBox.className = 'payment-status success';
+        statusBox.textContent = 'Compra finalizada com sucesso.';
+    }
+    // Limpar o localStorage após mostrar
+    localStorage.removeItem('payment_status');
+}
+
+// Função para carregar o carrinho
+
+function disablePaymentButtons() {
+    const btnMp = document.getElementById('btn-mp');
+    if (btnMp) {
+        btnMp.disabled = true;
+        btnMp.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Gerando Link...';
+    }
+    const checkoutButton = document.getElementById('checkout-button');
+    if (checkoutButton) {
+        checkoutButton.disabled = true;
+    }
+}
+
+function enablePaymentButtons() {
+    const btnMp = document.getElementById('btn-mp');
+    if (btnMp) {
+        btnMp.disabled = false;
+        btnMp.innerHTML = '<i class="fas fa-handshake"></i> Pagar via MP';
+    }
+    const checkoutButton = document.getElementById('checkout-button');
+    if (checkoutButton) {
+        checkoutButton.disabled = false;
+    }
+}
 
 // Função para carregar o carrinho
 function loadCart() {
@@ -155,46 +230,43 @@ async function pagarMercadoPago() {
     btnMp.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Gerando Link...';
 
     try {
-        // [FUTURO]: Salva a intenção de compra no banco ANTES de ir para o Mercado Pago, pra ter o registro.
-        const docRef = await db.collection('compras_finalizadas').add({
-            userId: user.uid,
-            items: cart,
-            total: total,
-            status: "pendente",
-            date: firebase.firestore.Timestamp.now()
-        });
-        
-        if (window.registrarLogAudit) registrarLogAudit(`Gerou Link Pagamento: R$ ${total.toFixed(2)}`, 'aluno/cliente', {qtdItens: cart.length});
+        const paymentWindow = window.open('about:blank', '_blank');
+        if (!paymentWindow) {
+            enablePaymentButtons();
+            alert('O navegador bloqueou a abertura da janela de pagamento. Permita pop-ups para continuar.');
+            return;
+        }
 
-        // A PONTE DE REDE: Bate na porta do servidor Python que montamos passando o carrinho via 'JSON'
-        const response = await fetch("http://localhost:5000/create_preference", {
+        const payload = {
+            itensCart: cart.map(item => ({
+                name: item.name || item.nome || 'Produto Thémis',
+                price: Number(String(item.price).replace(',', '.')) || 0,
+                quantity: Number(item.quantity) || 1
+            }))
+        };
+
+        const backendUrl = "http://127.0.0.1:5000/create_preference";
+        const response = await fetch(backendUrl, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json"
             },
-            body: JSON.stringify({ itensCart: cart })
+            body: JSON.stringify(payload)
         });
 
-        // Abre o json que o Python respondeu
         const resultado = await response.json();
 
-        // Verifica se o Python deu a bandeira verde
-        if (resultado.status === "success") {
-            // Limpa o carrinho pro cliente não pagar duas vezes sem querer
-            localStorage.removeItem('cart');
-            loadCart();
-
-            // EJETAR! O Navegador puxa o usuário para fora do site, caindo na Tela de CheckOut do MP.
-            window.location.href = resultado.init_point || resultado.sandbox_init_point;
-        } else {
-            // Se o Python reclamou de algo, joga a bomba pro 'catch' ali embaixo mostrar o Alerta Vermelho
-            throw new Error(resultado.message || "Erro desconhecido ao gerar o link.");
+        if (!response.ok || resultado.status !== "success") {
+            throw new Error(resultado.message || `Erro ao gerar preferência (${response.status})`);
         }
+
+        paymentWindow.location.href = resultado.init_point || resultado.sandbox_init_point;
+        closeModal();
+        enablePaymentButtons();
     } catch (error) {
+        enablePaymentButtons();
         console.error("Erro na integração com Mercado Pago: ", error);
-        alert("Desculpe, ocorreu um erro ao gerar o pagamento. Tente novamente.");
-        btnMp.disabled = false;
-        btnMp.innerHTML = '<i class="fas fa-handshake"></i> Pagar via MP';
+        alert("Desculpe, ocorreu um erro ao gerar o pagamento. Tente novamente. " + error.message);
     }
 }
 
