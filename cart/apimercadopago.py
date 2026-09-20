@@ -1,88 +1,121 @@
-from flask import Flask, request, jsonify
+import os
+from flask import Flask, jsonify, request
 from flask_cors import CORS
 import mercadopago
-import os
 
-# Inicializa o aplicativo servidor usando o framework Flask 
 app = Flask(__name__)
 
-# Ativa o CORS: Isso permite que navegadores e sites abertos localmente 
-CORS(app)
+allowed_origins = {
+    "http://127.0.0.1:5500",
+    "http://localhost:5500",
+    "http://127.0.0.1:8000",
+    "http://localhost:8000",
+}
+custom_origins = os.getenv("CORS_ALLOWED_ORIGINS")
+if custom_origins:
+    for origin in custom_origins.split(","):
+        origin = origin.strip()
+        if origin:
+            allowed_origins.add(origin)
 
-# Aqui configuramos a chave secreta que abre as portas do Mercado Pago.
-# Use uma variável de ambiente para segurança
-access_token = os.getenv('MERCADO_PAGO_ACCESS_TOKEN', 'APP_USR-2038131907264049-040917-9954facb093322de58407758c8bc6eb0-3326778292')
+CORS(app, resources={r"/*": {"origins": sorted(allowed_origins)}})
+
+access_token = os.getenv("MERCADO_PAGO_ACCESS_TOKEN")
+if not access_token:
+    raise RuntimeError("MERCADO_PAGO_ACCESS_TOKEN não configurado. Defina a variável de ambiente antes de iniciar o servidor.")
+
 sdk = mercadopago.SDK(access_token)
 
-# Definimos uma "Rota", que é tipo um endereço de atendimento.
-@app.route('/create_preference', methods=['POST'])
+BASE_URL = os.getenv("APP_BASE_URL", "http://127.0.0.1:5500")
+
+
+def parse_int(value):
+    try:
+        if isinstance(value, str):
+            value = value.replace(".", "").replace(",", ".")
+        parsed = int(float(value))
+        return max(1, parsed)
+    except Exception:
+        return 1
+
+
+def parse_float(value):
+    try:
+        if isinstance(value, str):
+            value = value.replace(".", "").replace(",", ".")
+        value = float(value)
+        return max(0.01, value)
+    except Exception:
+        return 0.01
+
+
+def sanitize_item(item):
+    if not isinstance(item, dict):
+        return None
+
+    title = item.get("name") or item.get("nome") or "Produto Thémis"
+    title = str(title).strip()[:120]
+    quantity = parse_int(item.get("quantity", 1))
+    unit_price = parse_float(item.get("price", 0))
+
+    if not title or quantity <= 0 or unit_price <= 0:
+        return None
+
+    return {
+        "title": title,
+        "quantity": quantity,
+        "unit_price": unit_price,
+        "currency_id": "BRL",
+    }
+
+
+@app.route("/create_preference", methods=["POST"])
 def create_preference():
     try:
-        data = request.json
-        itens_cart = data.get('itensCart', [])
-        if not itens_cart:
-            return jsonify({"status": "error", "message": "Carrinho vazio recebido."}), 400
-        def parse_int(value):
-            try:
-                if isinstance(value, str):
-                    value = value.replace(',', '.')
-                return int(float(value))
-            except Exception:
-                return 1
-
-        def parse_float(value):
-            try:
-                if isinstance(value, str):
-                    value = value.replace('.', '').replace(',', '.')
-                return float(value)
-            except Exception:
-                return 0.0
+        data = request.get_json(silent=True) or {}
+        itens_cart = data.get("itensCart", [])
+        if not isinstance(itens_cart, list) or not itens_cart:
+            return jsonify({"status": "error", "message": "Carrinho vazio ou formato inválido."}), 400
 
         items = []
         for item in itens_cart:
-            items.append({
-                "title": item.get('name', item.get('nome', 'Produto Thémis')),
-                "quantity": parse_int(item.get('quantity', 1)),
-                "unit_price": parse_float(item.get('price', 0)),
-                "currency_id": "BRL"
-            })
+            sanitized = sanitize_item(item)
+            if sanitized is None:
+                return jsonify({"status": "error", "message": "Item do carrinho inválido."}), 400
+            items.append(sanitized)
+
         preference_data = {
             "items": items,
             "back_urls": {
-                "success": "http://localhost:5500/cart/cart.html?payment=success",
-                "failure": "http://localhost:5500/cart/cart.html?payment=error",
-                "pending": "http://localhost:5500/cart/cart.html?payment=pending"
-            }
+                "success": f"{BASE_URL}/cart/cart.html?payment=success",
+                "failure": f"{BASE_URL}/cart/cart.html?payment=error",
+                "pending": f"{BASE_URL}/cart/cart.html?payment=pending",
+            },
         }
 
-        # A HORA DA VERDADE: O Python sai pela internet e cria a sessão nos servidores do Mercado Pago!
         result = sdk.preference().create(preference_data)
         preference = result.get("response", {})
 
         if result.get("status") not in [200, 201]:
             error_msg = preference.get("message", "Erro desconhecido retornado pelo MP")
-            print("Mercado Pago Recusou:", error_msg)
-            return jsonify({
-                "status": "error",
-                "message": f"Mercado Pago: {error_msg}"
-            }), 400
+            return jsonify({"status": "error", "message": f"Mercado Pago: {error_msg}"}), 400
+
         return jsonify({
             "status": "success",
             "init_point": preference.get("init_point"),
-            "sandbox_init_point": preference.get("sandbox_init_point")
+            "sandbox_init_point": preference.get("sandbox_init_point"),
+            "preference_id": preference.get("id"),
         }), 200
 
-    # Se a própria Máquina do Python der tela azul/erro grave, avisamos graciosamente:
-    except Exception as e:
-        print("Erro interno geral ao gerar preferencia MP:", str(e))
-        return jsonify({"status": "error", "message": str(e)}), 500
-
-# Esta linha inicializa o Servidor Local quando você dá play nele.
-if __name__ == '__main__':
-    print("Servidor Mercado Pago online na Porta 5000!")
-    print("Mantenha esta janela aberta e faça a compra no site.")
-    # host 0.0.0.0 diz que ele escuta tanto comandos de '127.0.0.1' quanto de 'localhost'.
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    except Exception as exc:
+        app.logger.exception("Erro interno ao gerar preferencia MP")
+        return jsonify({"status": "error", "message": "Erro interno ao gerar pagamento."}), 500
 
 
-# linck çdo video de referencia https://www.youtube.com/watch?v=HNCjXGJxelI
+if __name__ == "__main__":
+    debug_mode = os.getenv("FLASK_DEBUG", "false").lower() == "true"
+    host = os.getenv("FLASK_RUN_HOST", "127.0.0.1")
+    port = int(os.getenv("FLASK_RUN_PORT", "5000"))
+
+    print(f"Servidor Mercado Pago online em http://{host}:{port}")
+    app.run(host=host, port=port, debug=debug_mode)

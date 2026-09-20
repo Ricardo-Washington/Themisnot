@@ -60,7 +60,20 @@ firebase.auth().onAuthStateChanged(async (user) => {
                        greetingHTML += `<a href="/adm/adm.html" style="margin-left: 15px; color: #ff3333; font-size: 0.85em; text-decoration: underline; font-weight: bold;"><i class="fas fa-crown"></i> Painel Master</a>`;
                    }
                    
-                   el.innerHTML = greetingHTML;
+                   const link = document.createElement('a');
+                   link.href = '/meuPerfil/meu_perfil.html';
+                   link.title = 'Ver Meu Perfil';
+                   link.style.color = 'inherit';
+                   link.style.textDecoration = 'none';
+                   link.textContent = `Olá, ${pNome}`;
+
+                   const icon = document.createElement('i');
+                   icon.className = 'fa fa-user-circle';
+                   icon.style.marginLeft = '6px';
+
+                   el.textContent = '';
+                   el.appendChild(link);
+                   el.appendChild(icon);
                });
            }
             // Se já existe cadastro, NÃO abre o modal!

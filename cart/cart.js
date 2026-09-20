@@ -20,7 +20,7 @@ firebase.auth().onAuthStateChanged((user) => {
     if (!user) {
         window.location.href = "/login/login.html";
     } else {
-        handlePaymentStatus();
+        checkPaymentStatus();
         loadCart();
     }
 });
@@ -36,41 +36,64 @@ function getQueryParam(name) {
     return new URLSearchParams(window.location.search).get(name);
 }
 
-async function handlePaymentStatus() {
-    const status = getQueryParam('payment');
+async function checkPaymentStatus() {
+    const preferenceId = localStorage.getItem('mp_preference_id');
     const statusBox = document.getElementById('payment-status');
-    if (!statusBox || !status) return;
 
-    statusBox.style.display = 'block';
-    if (status === 'success') {
-        statusBox.className = 'payment-status success';
-        statusBox.textContent = 'Compra finalizada com sucesso.';
-        localStorage.setItem('payment_status', 'success');
-        // Carrinho será limpo automaticamente após sucesso
-    } else if (status === 'pending') {
-        statusBox.className = 'payment-status pending';
-        statusBox.textContent = 'Pagamento pendente. Verifique seu Mercado Pago; o carrinho permanece salvo para você.';
-        alert('A compra não foi concluída ainda. O pagamento está pendente e o carrinho permanece salvo.');
-    } else {
-        statusBox.className = 'payment-status error';
-        statusBox.textContent = 'Pagamento não concluído. O carrinho permanece salvo e você pode tentar novamente.';
-        alert('A compra não foi efetuada com sucesso. Por favor, tente novamente ou revise os dados do pagamento.');
+    if (!statusBox) {
+        return { status: 'error', message: 'Elemento de status não encontrado.' };
     }
 
-    window.history.replaceState({}, document.title, window.location.pathname);
+    if (!preferenceId || !/^[A-Za-z0-9_-]+$/.test(preferenceId)) {
+        statusBox.style.display = 'block';
+        statusBox.className = 'payment-status error';
+        statusBox.textContent = '❌ Pedido de pagamento inválido.';
+        localStorage.removeItem('mp_preference_id');
+        return { status: 'error', message: 'Nenhum pagamento em andamento.' };
+    }
+
+    try {
+        statusBox.style.display = 'block';
+        statusBox.className = 'payment-status pending';
+        statusBox.textContent = '⏳ Verificando status do pagamento...';
+
+        const response = await fetch(`http://127.0.0.1:5000/check_payment/${preferenceId}`);
+        const result = await response.json();
+
+        if (response.ok) {
+            if (result.status === 'success') {
+                statusBox.className = 'payment-status success';
+                statusBox.textContent = '✅ Pagamento aprovado! Obrigado.';
+                localStorage.removeItem('cart');
+                localStorage.removeItem('mp_preference_id');
+                setTimeout(() => {
+                    window.location.href = '/cart/compracerta.html';
+                }, 1500);
+            } else if (result.status === 'pending') {
+                statusBox.className = 'payment-status pending';
+                statusBox.textContent = '⏳ Pagamento pendente. Aguardando confirmação.';
+            } else {
+                statusBox.className = 'payment-status error';
+                statusBox.textContent = `❌ ${result.message || 'Pagamento não aprovado.'}`;
+                localStorage.removeItem('mp_preference_id');
+            }
+        } else {
+            statusBox.className = 'payment-status error';
+            statusBox.textContent = `❌ Erro ao verificar pagamento: ${result.message || response.statusText}`;
+        }
+
+        return result;
+    } catch (error) {
+        console.error('Erro:', error);
+        statusBox.style.display = 'block';
+        statusBox.className = 'payment-status error';
+        statusBox.textContent = '⚠️ Erro ao verificar pagamento.';
+        return { status: 'error', message: error.message };
+    }
 }
 
-function handlePaymentStatusFromStorage(status) {
-    const statusBox = document.getElementById('payment-status');
-    if (!statusBox) return;
-
-    statusBox.style.display = 'block';
-    if (status === 'success') {
-        statusBox.className = 'payment-status success';
-        statusBox.textContent = 'Compra finalizada com sucesso.';
-    }
-    // Limpar o localStorage após mostrar
-    localStorage.removeItem('payment_status');
+async function handlePaymentStatus() {
+    return await checkPaymentStatus();
 }
 
 // Função para carregar o carrinho
@@ -230,13 +253,6 @@ async function pagarMercadoPago() {
     btnMp.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Gerando Link...';
 
     try {
-        const paymentWindow = window.open('about:blank', '_blank');
-        if (!paymentWindow) {
-            enablePaymentButtons();
-            alert('O navegador bloqueou a abertura da janela de pagamento. Permita pop-ups para continuar.');
-            return;
-        }
-
         const payload = {
             itensCart: cart.map(item => ({
                 name: item.name || item.nome || 'Produto Thémis',
@@ -254,18 +270,37 @@ async function pagarMercadoPago() {
             body: JSON.stringify(payload)
         });
 
-        const resultado = await response.json();
+        let resultado;
+        try {
+            resultado = await response.json();
+        } catch (parseError) {
+            const text = await response.text();
+            throw new Error(`Resposta inválida do servidor: ${parseError.message}. Conteúdo: ${text}`);
+        }
+        console.log("Resposta Mercado Pago:", resultado);
 
         if (!response.ok || resultado.status !== "success") {
             throw new Error(resultado.message || `Erro ao gerar preferência (${response.status})`);
         }
 
-        paymentWindow.location.href = resultado.init_point || resultado.sandbox_init_point;
-        closeModal();
-        enablePaymentButtons();
+        const checkoutUrl = resultado.init_point || resultado.sandbox_init_point;
+        const preferenceId = resultado.preference_id || resultado.id;
+
+        console.log("Redirecionando para:", checkoutUrl);
+        console.log("Preference ID:", preferenceId);
+
+        if (!checkoutUrl || !preferenceId || !/^[A-Za-z0-9_-]+$/.test(String(preferenceId))) {
+            throw new Error("Resposta inválida da API de pagamento.");
+        }
+
+        localStorage.setItem('mp_preference_id', String(preferenceId));
+        localStorage.setItem('mp_payment_started', new Date().toISOString());
+
+        document.getElementById('checkout-modal').style.display = 'none';
+        window.location.href = checkoutUrl;
     } catch (error) {
         enablePaymentButtons();
-        console.error("Erro na integração com Mercado Pago: ", error);
+        console.error("Erro na integração com Mercado Pago:", error);
         alert("Desculpe, ocorreu um erro ao gerar o pagamento. Tente novamente. " + error.message);
     }
 }

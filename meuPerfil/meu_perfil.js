@@ -28,7 +28,11 @@ firebase.auth().onAuthStateChanged(async (user) => {
             const dadosUsuario = userDoc.data();
             const pNome = (dadosUsuario.nome || user.email).split(' ')[0];
             document.querySelectorAll('.user-greeting').forEach(el => {
-                el.innerHTML = `Olá, ${pNome} <i class="fa fa-user-circle"></i>`;
+                el.textContent = `Olá, ${pNome}`;
+                const icon = document.createElement('i');
+                icon.className = 'fa fa-user-circle';
+                icon.style.marginLeft = '6px';
+                el.appendChild(icon);
             });
         }
         
@@ -64,8 +68,15 @@ async function buscarFichaDoAluno(uid) {
     } catch (error) {
         console.error("Erro ao buscar a ficha:", error);
         document.getElementById('loading').style.display = 'none';
-        document.getElementById('error-message').innerHTML = `<h3>Erro ao conectar</h3><p>${error.message}</p>`;
-        document.getElementById('error-message').style.display = 'block';
+        const errorBox = document.getElementById('error-message');
+        errorBox.textContent = '';
+        const title = document.createElement('h3');
+        title.textContent = 'Erro ao conectar';
+        const message = document.createElement('p');
+        message.textContent = error.message;
+        errorBox.appendChild(title);
+        errorBox.appendChild(message);
+        errorBox.style.display = 'block';
     }
 }
 

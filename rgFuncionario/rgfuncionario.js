@@ -37,33 +37,37 @@ function getProdutoImagem(produto) {
 firebase.auth().onAuthStateChanged(async (user) => {
     if (!user) {
         window.location.href = "/login/login.html";
-    } else {
+        return;
+    }
+
+    try {
         const userDoc = await db.collection('usuarios').doc(user.uid).get();
         const dados = userDoc.data();
-           // Injeta a saudacao do usuario na navbar
-           if (dados && (dados.nome || dados.nomeCompleto)) {
-               const nomeExibicao = dados.nome || dados.nomeCompleto;
-               const pNome = nomeExibicao.split(' ')[0];
-               document.querySelectorAll('.user-greeting').forEach(el => el.textContent = 'Olá, ' + pNome);
-           }
+
+        if (dados && (dados.nome || dados.nomeCompleto)) {
+            const nomeExibicao = dados.nome || dados.nomeCompleto;
+            const pNome = String(nomeExibicao).split(' ')[0];
+            document.querySelectorAll('.user-greeting').forEach(el => el.textContent = 'Olá, ' + pNome);
+        }
 
         const atribuicao = dados ? dados.atribuicao : null;
 
         if (!atribuicao) {
-            // Não tem atribuição, volta pra home e abre o modal de cadastro
             localStorage.setItem('abrirModalCadastro', 'true');
             window.location.href = "/home/home.html";
             return;
         }
 
-        // NOVO: Se for ADM navegando no painel de funcionário, dar atalho de volta!
-        if (atribuicao === 'adm') {
+        if (atribuicao === 'adm' || atribuicao === 'admin') {
             const navLinks = document.querySelector('.nav-links');
             if (navLinks && !document.getElementById('link-volta-adm')) {
                 const li = document.createElement('li');
                 li.id = 'link-volta-adm';
-                li.innerHTML = '<a href="/adm/adm.html"><i class="fa-solid fa-crown" style="color:var(--orange);"></i> Painel Master</a>';
-                // Insere depois da saudação do usuário (antes do Sair)
+                const link = document.createElement('a');
+                link.href = '/adm/adm.html';
+                link.innerHTML = '<i class="fa-solid fa-crown" style="color:var(--orange);"></i> Painel Master';
+                li.appendChild(link);
+
                 const userGreeting = navLinks.querySelector('.user-greeting');
                 if (userGreeting && userGreeting.nextSibling) {
                     navLinks.insertBefore(li, userGreeting.nextSibling);
@@ -73,13 +77,16 @@ firebase.auth().onAuthStateChanged(async (user) => {
             }
         }
 
-        if (atribuicao !== "funcionario" && atribuicao !== "admin" && atribuicao !== "adm") {
-            alert("Você não tem permissão para acessar esta página.");
-            window.location.href = "/home/home.html";
-        } else {
-            // Se tiver permissão, aí sim carrega a base de dados
-            carregarAlunos();
+        if (atribuicao !== 'funcionario' && atribuicao !== 'admin' && atribuicao !== 'adm') {
+            alert('Você não tem permissão para acessar esta página.');
+            window.location.href = '/home/home.html';
+            return;
         }
+
+        carregarAlunos();
+    } catch (error) {
+        console.error('Erro ao verificar acesso ao painel de funcionários:', error);
+        window.location.href = '/login/login.html';
     }
 });
 
@@ -141,29 +148,40 @@ document.getElementById("alunoForm").addEventListener("submit", async (event) =>
 // Função para carregar alunos na tabela
 async function carregarAlunos() {
     const alunosTableBody = document.getElementById("alunosTableBody");
-    if(!alunosTableBody) {
+    if (!alunosTableBody) {
         console.error("Tabela de alunos não encontrada na tela!");
         return;
     }
+
     alunosTableBody.innerHTML = "";
 
     try {
         console.log("Buscando lista de alunos no Firestore...");
-        const snapshot = await db.collection("usuarios").where("atribuicao", "==", "Aluno").get();
-        console.log("Total de alunos encontrados:", snapshot.size);
-        
-        if (snapshot.empty) {
+
+        let snapshot;
+        try {
+            snapshot = await db.collection("usuarios").where("atribuicao", "in", ["aluno", "Aluno"]).get();
+        } catch (queryError) {
+            console.warn("Consulta por atribuição falhou; tentando fallback completo.", queryError);
+            snapshot = await db.collection("usuarios").get();
+        }
+
+        const listaAlunos = [];
+        snapshot.forEach((doc) => {
+            const dados = doc.data() || {};
+            const atribuicao = String(dados.atribuicao || "").trim().toLowerCase();
+            if (atribuicao === "aluno") {
+                listaAlunos.push({ id: doc.id, ...dados });
+            }
+        });
+
+        console.log("Total de alunos encontrados:", listaAlunos.length);
+
+        if (listaAlunos.length === 0) {
             alunosTableBody.innerHTML = "<tr><td colspan='5' style='text-align:center;'>Nenhum aluno encontrado.</td></tr>";
             return;
         }
 
-        // Armazena alunos num array para ordenar localmente
-        const listaAlunos = [];
-        snapshot.forEach((doc) => {
-            listaAlunos.push({ id: doc.id, ...doc.data() });
-        });
-
-        // Ordenar alfabeticamente usando o campo "nome"
         listaAlunos.sort((a, b) => {
             const nomeA = a.nome || "";
             const nomeB = b.nome || "";

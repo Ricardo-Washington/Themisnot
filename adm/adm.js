@@ -11,24 +11,30 @@ function logout() {
 firebase.auth().onAuthStateChanged(async (user) => {
     if (!user) {
         window.location.href = "/login/login.html";
-    } else {
+        return;
+    }
+
+    try {
         const userDoc = await db.collection('usuarios').doc(user.uid).get();
         const dados = userDoc.data();
         const atribuicao = dados ? dados.atribuicao : null;
 
-        // Injeta a saldacao do usuario na navbar
         if (dados && (dados.nome || dados.nomeCompleto)) {
             const nomeExibicao = dados.nome || dados.nomeCompleto;
-            const pNome = nomeExibicao.split(' ')[0];
+            const pNome = String(nomeExibicao).split(' ')[0];
             document.querySelectorAll('.user-greeting').forEach(el => el.textContent = 'Olá, ' + pNome);
         }
 
-        if (atribuicao !== "adm") {
-            alert("Você não tem permissão para acessar esta página.");
-            window.location.href = "/home/home.html";
-        } else {
-            findUsers();
+        if (atribuicao !== 'adm' && atribuicao !== 'admin') {
+            alert('Você não tem permissão para acessar esta página.');
+            window.location.href = '/home/home.html';
+            return;
         }
+
+        findUsers();
+    } catch (error) {
+        console.error('Erro ao verificar permissão de administrador:', error);
+        window.location.href = '/login/login.html';
     }
 });
 

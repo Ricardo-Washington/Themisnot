@@ -1,0 +1,8 @@
+{
+    "chat.tools.terminal.autoApprove": {
+        "/^powershell -NoProfile -Command \"Get-Location; Get-ChildItem -Name \\.venv\\\\Scripts \\| Select-Object -First 20\"$/": {
+            "approve": true,
+            "matchCommandLine": true
+        }
+    }
+}
