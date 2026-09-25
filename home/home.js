@@ -44,6 +44,7 @@ firebase.auth().onAuthStateChanged(async (user) => {
         const userDoc = await db.collection('usuarios').doc(user.uid).get();
         if (userDoc.exists) {
             const dados = userDoc.data();
+            preencherPainelAcademico(dados, user);
            // Injeta a saudacao do usuario na navbar
            if (dados && (dados.nome || dados.nomeCompleto)) {
                const nomeExibicao = dados.nome || dados.nomeCompleto;
@@ -87,6 +88,80 @@ firebase.auth().onAuthStateChanged(async (user) => {
 // Função para abrir o modal
 function openModal() {
     document.getElementById('userModal').style.display = 'flex';
+}
+
+const disciplinasPadrao = {
+    vigilante: ['Noções de Segurança Privada', 'Legislação Aplicada e Direitos Humanos', 'Relações Humanas no Trabalho', 'Sistema de Segurança Pública e Crime Organizado', 'Prevenção e Combate a Incêndios', 'Primeiros Socorros', 'Educação Física', 'Defesa Pessoal', 'Armamento e Tiro', 'Vigilância', 'Radiocomunicação e Alarmes', 'Noções de Segurança Eletrônica', 'Uso Progressivo da Força', 'Gerenciamento de Crises'],
+    escoltaArm: ['Legislação Aplicada', 'Escolta Armada', 'Resolução de Situações de Emergência', 'Armamento e Tiro', 'Verificação de Aprendizagem'],
+    grandesEventos: ['Papel do Vigilante na Estrutura de Segurança em Recintos de Grandes Eventos', 'Controle de Acesso', 'Gerenciamento de Público', 'Gestão de Multidões e Manutenção de Ambiente Seguro', 'Resolução de Situações de Emergência', 'Disciplinas Complementares'],
+    Reciclagem: ['Revisão e Atualização das Disciplinas Básicas', 'Armamento e Tiro', 'Relações Humanas no Trabalho', 'Prevenção e Combate a Incêndios', 'Primeiros Socorros', 'Defesa Pessoal'],
+    armasNaoLetais: ['Uso Progressivo da Força', 'Agentes Químicos e Espargidores', 'Armas de Condutividade Elétrica', 'Primeiros Socorros']
+};
+
+async function preencherPainelAcademico(dados, user) {
+    const primeiroNome = (dados.nome || user.email || 'aluno').split(' ')[0];
+    const studentName = document.getElementById('student-name');
+    if (studentName) studentName.textContent = primeiroNome;
+
+    const cursoAluno = dados.cursoSolicitado || dados.curso || '';
+    const courseName = document.getElementById('course-name');
+    const courseStatus = document.getElementById('course-status');
+    if (!cursoAluno) {
+        courseName.textContent = 'Curso ainda não vinculado';
+        courseStatus.textContent = 'A secretaria ainda não vinculou um curso à sua matrícula.';
+        renderizarDisciplinas([]);
+        return;
+    }
+
+    try {
+        const cursosSnapshot = await db.collection('cursos').get();
+        const cursoEncontrado = cursosSnapshot.docs
+            .map(doc => ({ id: doc.id, ...doc.data() }))
+            .find(curso => curso.id === cursoAluno || curso.nome === cursoAluno || curso.nome?.toLowerCase() === cursoAluno.toLowerCase());
+        const nomeCurso = cursoEncontrado?.nome || cursoAluno;
+        courseName.textContent = nomeCurso;
+        courseStatus.textContent = 'Matrícula ativa. Consulte suas disciplinas abaixo.';
+        document.getElementById('course-progress').textContent = `${dados.progressoCurso || 0}%`;
+
+        const disciplinas = cursoEncontrado?.disciplinas || disciplinasPadrao[cursoEncontrado?.id] || [];
+        renderizarDisciplinas(disciplinas);
+    } catch (error) {
+        console.error('Erro ao carregar dados acadêmicos:', error);
+        courseName.textContent = cursoAluno;
+        courseStatus.textContent = 'Não foi possível carregar a grade agora.';
+        renderizarDisciplinas([]);
+    }
+
+    const notas = Array.isArray(dados.notas) ? dados.notas : [];
+    document.getElementById('grade-count').textContent = notas.length;
+    document.getElementById('grade-average').textContent = notas.length ? calcularMedia(notas) : '--';
+    document.getElementById('attendance-value').textContent = dados.frequencia ? `${dados.frequencia}%` : '--';
+}
+
+function calcularMedia(notas) {
+    const valores = notas.map(nota => Number(nota.nota ?? nota)).filter(nota => !Number.isNaN(nota));
+    if (!valores.length) return '--';
+    return (valores.reduce((total, nota) => total + nota, 0) / valores.length).toFixed(1).replace('.', ',');
+}
+
+function renderizarDisciplinas(disciplinas) {
+    const lista = document.getElementById('discipline-list');
+    if (!lista) return;
+    lista.textContent = '';
+    if (!disciplinas.length) {
+        const vazio = document.createElement('p');
+        vazio.className = 'empty-state';
+        vazio.textContent = 'Nenhuma disciplina cadastrada para seu curso ainda.';
+        lista.appendChild(vazio);
+        return;
+    }
+    disciplinas.slice(0, 4).forEach((disciplina, index) => {
+        const nome = typeof disciplina === 'string' ? disciplina : disciplina.nome;
+        const item = document.createElement('div');
+        item.className = 'discipline-item';
+        item.innerHTML = `<span class="discipline-number">${String(index + 1).padStart(2, '0')}</span><span>${nome || 'Disciplina'}</span><span class="discipline-state">${disciplina.status || 'Em andamento'}</span>`;
+        lista.appendChild(item);
+    });
 }
 
 // Função para fechar o modal
@@ -189,6 +264,11 @@ function validarCamposObrigatorios() {
 
 // Adicione o listener de evento para a função cadastrarDados() no formulário
 document.addEventListener('DOMContentLoaded', () => {
+    const disciplineButton = document.getElementById('discipline-button');
+    if (disciplineButton) disciplineButton.addEventListener('click', () => {
+        window.location.href = '/disciplinas/disciplinas.html';
+    });
+
     const userForm = document.getElementById('userRegisterForm');
     if (userForm) {
         userForm.addEventListener('submit', cadastrarDados);

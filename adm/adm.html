@@ -74,6 +74,7 @@
         <!-- Botões de Ação Global -->
         <div class="buttons-container admin-actions">
             <button class="action-btn" onclick="openModal('funcionario')"><i class="fas fa-pen"></i>Editar Funcionário</button>
+            <button class="action-btn" onclick="openModal('professor')"><i class="fas fa-chalkboard-user"></i>Editar Professor</button>
             <button class="action-btn" onclick="openModal('aluno')"><i class="fas fa-pen"></i>Editar Aluno</button>
             <button class="action-btn" onclick="openModal('curso')"><i class="fas fa-pen"></i>Editar Curso</button>
             <button class="action-btn primary-btn" onclick="openModal('curso_novo')"><i class="fas fa-plus"></i> Novo Curso</button>
@@ -134,9 +135,28 @@
                 <label class="requiredq">Atribuição </label>
                 <select id="editAtribuicao">
                     <option value="funcionario">Funcionário</option>
+                    <option value="professor">Professor</option>
                     <option value="aluno">Aluno</option>
                     <option value="adm">Administrador</option>
                 </select>
+                <div id="camposProfessorDisciplinas" class="professor-discipline-fields" style="display:none;">
+                    <label class="requiredq">Disciplinas que leciona</label>
+                    <p class="discipline-help">Selecione pelo menos uma disciplina para este professor.</p>
+                    <div id="editProfessorDisciplinas" class="professor-discipline-options">
+                        <span>Carregando disciplinas...</span>
+                    </div>
+                    <span id="professorDisciplinasError" class="discipline-error"></span>
+                </div>
+                <div id="camposMatriculaAluno" class="student-enrollment-fields" style="display:none;">
+                    <label class="requiredq">Curso</label>
+                    <input type="text" id="editCursoAluno" placeholder="Curso do aluno">
+                    <label class="requiredq">ID da Turma</label>
+                    <input type="text" id="editTurmaAluno" placeholder="Ex: VIG-2026-01">
+                    <label class="requiredq">Data de Início</label>
+                    <input type="date" id="editInicioAluno">
+                    <label class="requiredq">Data de Término</label>
+                    <input type="date" id="editTerminoAluno">
+                </div>
             </div>
 
             <div id="camposCurso" style="display:none;">
@@ -148,6 +168,18 @@
                 <input type="text" id="editCargaHr" placeholder="Ex: 40 horas">
                 <label class="requiredq">Próxima Turma (Data)</label>
                 <input type="text" id="editDataTurma" placeholder="Ex: 20/05/2026">
+                <label class="requiredq">ID da Turma</label>
+                <input type="text" id="editTurmaId" placeholder="Ex: VIG-2026-01">
+                <label class="requiredq">Data de Início</label>
+                <input type="date" id="editDataInicio">
+                <label class="requiredq">Data de Término</label>
+                <input type="date" id="editDataTermino">
+                <label class="requiredq">Turno</label>
+                <select id="editTurno">
+                    <option value="">Selecione</option>
+                    <option value="Diurno">Diurno</option>
+                    <option value="Noturno">Noturno</option>
+                </select>
             </div>
 
             <button type="submit" class="details-button">Salvar</button>

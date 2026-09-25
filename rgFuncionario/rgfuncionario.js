@@ -14,6 +14,7 @@ if (!firebase.apps.length) {
 const db = firebase.firestore();
 
 const defaultProductImage = '/img/logo.png';
+let disciplinasDisponiveis = [];
 
 function getProdutoImagem(produto) {
     if (produto.imagem && produto.imagem.trim()) return produto.imagem;
@@ -95,7 +96,10 @@ document.getElementById("alunoForm").addEventListener("submit", async (event) =>
     event.preventDefault();
     const alunoId = document.getElementById("alunoId").value;
     const nome = document.getElementById("nome").value;
-    const email = document.getElementById("email").value;
+    const email = document.getElementById("email").value.trim().toLowerCase();
+    const confirmEmail = document.getElementById("confirmEmail").value.trim().toLowerCase();
+    const password = document.getElementById("password").value;
+    const confirmPassword = document.getElementById("confirmPassword").value;
     const cpf = document.getElementById("cpf").value;
     const rg = document.getElementById("rg").value;
     const orgaoRg = document.getElementById("orgaoRg").value;
@@ -104,12 +108,20 @@ document.getElementById("alunoForm").addEventListener("submit", async (event) =>
     const telefoneAlt = document.getElementById("telefoneAlt").value;
     const formaPagamento = document.getElementById("formaPagamento").value;
     const cursoSolicitado = document.getElementById("cursoSolicitado").value;
+    const turmaId = document.getElementById("turmaId").value.trim();
     const dataInicio = document.getElementById("dataInicio").value;
+    const dataTermino = document.getElementById("dataTermino").value;
     const turno = document.getElementById("turno").value;
     const idade = document.getElementById("idade").value;
 
+    const vinculoAcademico = await montarVinculoAcademico(cursoSolicitado, turmaId, dataInicio, dataTermino, turno);
+    if (!vinculoAcademico) {
+        alert('Curso não encontrado. Selecione um curso cadastrado antes de salvar o aluno.');
+        return;
+    }
+
     const alunoData = { 
-        nome, 
+        nome: nome.trim(), 
         email, 
         cpf, 
         rg, 
@@ -119,9 +131,12 @@ document.getElementById("alunoForm").addEventListener("submit", async (event) =>
         telefoneAlt,
         formaPagamento,
         cursoSolicitado,
+        turmaId,
         dataInicio,
+        dataTermino,
         turno,
-        idade
+        idade,
+        ...vinculoAcademico
     };
 
     try {
@@ -131,8 +146,17 @@ document.getElementById("alunoForm").addEventListener("submit", async (event) =>
             if (window.registrarLogAudit) registrarLogAudit(`Atualizou Aluno: ${alunoData.nome}`, 'gestão', {alunoId});
             alert("Aluno atualizado com sucesso!");
         } else {
-            // Cadastra novo aluno
-            await db.collection("usuarios").add({ ...alunoData, atribuicao: "aluno" });
+            if (email !== confirmEmail) {
+                alert("Os e-mails não coincidem.");
+                return;
+            }
+            if (password.length < 6 || password !== confirmPassword) {
+                alert("As senhas devem coincidir e ter pelo menos 6 caracteres.");
+                return;
+            }
+
+            // Usa uma instância secundária para não substituir a sessão do funcionário.
+            await criarContaDoAluno(alunoData, password);
             if (window.registrarLogAudit) registrarLogAudit(`Cadastrou Aluno: ${alunoData.nome}`, 'gestão', {cpf: alunoData.cpf});
             alert("Aluno cadastrado com sucesso!");
         }
@@ -144,6 +168,77 @@ document.getElementById("alunoForm").addEventListener("submit", async (event) =>
         alert("Erro ao salvar aluno. Tente novamente.");
     }
 });
+
+async function montarVinculoAcademico(cursoInformado, turmaId, dataInicio, dataTermino, turno) {
+    const cursosSnapshot = await db.collection('cursos').get();
+    const valorCurso = String(cursoInformado || '').trim().toLowerCase();
+    const cursoDoc = cursosSnapshot.docs
+        .map(doc => ({ id: doc.id, ...doc.data() }))
+        .find(curso => curso.id.toLowerCase() === valorCurso || String(curso.nome || '').toLowerCase() === valorCurso);
+    if (!cursoDoc) return null;
+
+    const turma = (cursoDoc.turmas || []).find(item => (item.id || item.turmaId) === turmaId);
+    const cursoNome = cursoDoc.nome || cursoDoc.id;
+    const disciplinas = (Array.isArray(cursoDoc.disciplinas) ? cursoDoc.disciplinas : []).map(item => {
+        const nome = typeof item === 'string' ? item : item.nome;
+        return { nome, cursoId: cursoDoc.id, cursoNome, turmaId, dataInicio, dataTermino, turno };
+    }).filter(item => item.nome);
+
+    return {
+        cursoId: cursoDoc.id,
+        cursoSolicitado: cursoNome,
+        turmaId: turmaId || turma?.id || turma?.turmaId || '',
+        dataInicio: dataInicio || turma?.dataInicio || '',
+        dataTermino: dataTermino || turma?.dataTermino || turma?.dataFim || '',
+        turno: turno || turma?.turno || '',
+        disciplinas,
+        disciplinasKeys: disciplinas.map(item => `${item.cursoId}::${item.turmaId || 'sem-turma'}::${item.nome}`)
+    };
+}
+
+async function criarContaDoAluno(alunoData, password) {
+    const appName = "studentRegistration";
+    let studentApp;
+    let createdUser = null;
+
+    try {
+        studentApp = firebase.app(appName);
+    } catch (error) {
+        studentApp = firebase.initializeApp(firebaseConfig, appName);
+    }
+
+    try {
+        createdUser = await studentApp.auth().createUserWithEmailAndPassword(alunoData.email, password);
+        await studentApp.firestore().collection("usuarios").doc(createdUser.user.uid).set({
+            ...alunoData,
+            atribuicao: "aluno",
+            createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+            dataCadastro: new Date().toISOString().slice(0, 10)
+        });
+    } catch (error) {
+        if (createdUser?.user) {
+            await createdUser.user.delete().catch(() => {});
+        }
+        throw error;
+    } finally {
+        await studentApp.delete().catch(() => {});
+    }
+}
+
+function configurarCamposDeConta(isNewStudent) {
+    ["confirmEmailGroup", "passwordGroup", "confirmPasswordGroup"].forEach((groupId) => {
+        const group = document.getElementById(groupId);
+        if (group) group.style.display = isNewStudent ? "" : "none";
+    });
+
+    ["confirmEmail", "password", "confirmPassword"].forEach((fieldId) => {
+        const field = document.getElementById(fieldId);
+        if (!field) return;
+        field.required = isNewStudent;
+        field.disabled = !isNewStudent;
+        if (!isNewStudent) field.value = "";
+    });
+}
 
 // Função para carregar alunos na tabela
 async function carregarAlunos() {
@@ -196,7 +291,7 @@ async function carregarAlunos() {
                     <td>${aluno.rg || ''}</td>
                     <td>${aluno.idade || ''}</td>
                     <td>
-                        <button class="action-btn edit-btn" onclick="editarAluno('${aluno.id}', '${aluno.nome}', '${aluno.email}', '${aluno.cpf}', '${aluno.rg}', '${aluno.orgaoRg}', '${aluno.endereco}', '${aluno.telefone}', '${aluno.telefoneAlt}', '${aluno.cursoSolicitado}', '${aluno.idade}', '${aluno.dataInicio}', '${aluno.formaPagamento}', '${aluno.turno || ''}')" title="Editar Aluno"><i class="fa-solid fa-pen"></i></button>
+                        <button class="action-btn edit-btn" onclick="editarAluno('${aluno.id}', '${aluno.nome}', '${aluno.email}', '${aluno.cpf}', '${aluno.rg}', '${aluno.orgaoRg}', '${aluno.endereco}', '${aluno.telefone}', '${aluno.telefoneAlt}', '${aluno.cursoSolicitado}', '${aluno.turmaId || ''}', '${aluno.idade}', '${aluno.dataInicio}', '${aluno.dataTermino || ''}', '${aluno.formaPagamento}', '${aluno.turno || ''}')" title="Editar Aluno"><i class="fa-solid fa-pen"></i></button>
                         <button class="action-btn doc-btn" onclick="criarContrato('${aluno.nome}', '${aluno.idade}', '${aluno.cpf}', '${aluno.rg}', '${aluno.orgaoRg}', '${aluno.endereco}', '${aluno.telefone}', '${aluno.telefoneAlt}', '${aluno.formaPagamento}', '${aluno.cursoSolicitado}', '${aluno.dataInicio}', '${aluno.turno || ''}')" title="Gerar Contrato PDF"><i class="fa-solid fa-file-signature"></i></button>
                         <button class="action-btn delete-btn" onclick="excluirAluno('${aluno.id}')" title="Excluir Aluno"><i class="fa-solid fa-trash"></i></button>
                     </td>
@@ -211,7 +306,9 @@ async function carregarAlunos() {
 }
 
 // Função para preencher o formulário com os dados do aluno para edição
-function editarAluno(id, nome, email, cpf, rg, orgaoRg, endereco, telefone, telefoneAlt, cursoSolicitado, idade, dataInicio, formaPagamento, turnoParam) {
+async function editarAluno(id, nome, email, cpf, rg, orgaoRg, endereco, telefone, telefoneAlt, cursoSolicitado, turmaId, idade, dataInicio, dataTermino, formaPagamento, turnoParam) {
+    configurarCamposDeConta(false);
+    await carregarOpcoesCursosAluno(cursoSolicitado);
     document.getElementById("alunoId").value = id;
     document.getElementById("nome").value = nome;
     document.getElementById("email").value = email;
@@ -223,7 +320,9 @@ function editarAluno(id, nome, email, cpf, rg, orgaoRg, endereco, telefone, tele
     document.getElementById("telefoneAlt").value = telefoneAlt || '';
     document.getElementById("formaPagamento").value = formaPagamento || '';
     document.getElementById("cursoSolicitado").value = cursoSolicitado || '';
+    document.getElementById("turmaId").value = turmaId || '';
     document.getElementById("dataInicio").value = dataInicio || '';
+    document.getElementById("dataTermino").value = dataTermino || '';
     document.getElementById("turno").value = turnoParam || '';
     document.getElementById("idade").value = idade || '';
 
@@ -401,11 +500,39 @@ function fecharModalAluno() {
 }
 
 // Abrir modal aluno limpo
-function abrirModalAluno() {
+async function abrirModalAluno() {
     document.getElementById("alunoForm").reset();
+    configurarCamposDeConta(true);
+    await carregarOpcoesCursosAluno();
     document.getElementById("alunoId").value = "";
     document.getElementById('modalAlunoTitle').innerHTML = '<i class="fa-solid fa-user-plus"></i> Adicionar Aluno';
     document.getElementById('modalAluno').classList.add('active');
+}
+
+async function carregarOpcoesCursosAluno(cursoSelecionado = '') {
+    const select = document.getElementById('cursoSolicitado');
+    if (!select) return;
+    select.innerHTML = '<option value="">Carregando cursos disponíveis...</option>';
+    try {
+        const snapshot = await db.collection('cursos').get();
+        const cursos = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })).filter(curso => {
+            const turmas = Array.isArray(curso.turmas) ? curso.turmas : [];
+            return !turmas.length || turmas.some(turma => turma.status !== 'finalizada');
+        }).sort((a, b) => String(a.nome || '').localeCompare(String(b.nome || '')));
+        select.innerHTML = '<option value="">Selecione um curso</option>';
+        cursos.forEach(curso => {
+            const option = document.createElement('option');
+            option.value = curso.id;
+            option.textContent = curso.nome || curso.id;
+            select.appendChild(option);
+        });
+        const cursoNormalizado = String(cursoSelecionado || '').trim().toLowerCase();
+        const opcaoEncontrada = Array.from(select.options).find(option => option.value.toLowerCase() === cursoNormalizado || option.textContent.toLowerCase() === cursoNormalizado);
+        select.value = opcaoEncontrada ? opcaoEncontrada.value : '';
+    } catch (error) {
+        console.error('Erro ao carregar cursos disponíveis:', error);
+        select.innerHTML = '<option value="">Não foi possível carregar os cursos</option>';
+    }
 }
 
 // Logout
@@ -429,10 +556,222 @@ function openTab(tabName) {
     } else if (tabName === 'tabCursos') {
         document.querySelector('.tab-btn[onclick="openTab(\'tabCursos\')"]').classList.add('active');
         carregarCursos();
+    } else if (tabName === 'tabProfessores') {
+        document.querySelector('.tab-btn[onclick="openTab(\'tabProfessores\')"]').classList.add('active');
+        carregarProfessores();
     } else if (tabName === 'tabProdutos') {
         document.querySelector('.tab-btn[onclick="openTab(\'tabProdutos\')"]').classList.add('active');
         carregarProdutos();
     }
+}
+
+// --- LÓGICA DE GERENCIAMENTO DE PROFESSORES ---
+async function carregarProfessores() {
+    const tabela = document.getElementById('professoresTableBody');
+    if (!tabela) return;
+    tabela.innerHTML = '<tr><td colspan="4" style="text-align:center;">Carregando professores...</td></tr>';
+
+    try {
+        const snapshot = await db.collection('usuarios').get();
+        const professores = snapshot.docs
+            .map(doc => ({ id: doc.id, ...doc.data() }))
+            .filter(professor => String(professor.atribuicao || '').toLowerCase() === 'professor')
+            .sort((a, b) => String(a.nome || '').localeCompare(String(b.nome || '')));
+
+        tabela.innerHTML = '';
+        if (!professores.length) {
+            tabela.innerHTML = '<tr><td colspan="4" style="text-align:center;">Nenhum professor cadastrado.</td></tr>';
+            return;
+        }
+
+        professores.forEach(professor => {
+            const disciplinas = Array.isArray(professor.disciplinas) ? professor.disciplinas : [];
+            const chips = disciplinas.map(item => {
+                const nome = typeof item === 'string' ? item : item.nome;
+                return `<span class="discipline-chip">${escapeHtml(nome || 'Disciplina')}</span>`;
+            }).join('');
+            tabela.innerHTML += `
+                <tr>
+                    <td><strong>${escapeHtml(professor.nome || '--')}</strong></td>
+                    <td>${escapeHtml(professor.email || '--')}</td>
+                    <td><div class="discipline-chips">${chips || '<span class="no-disciplines">Nenhuma disciplina vinculada</span>'}</div></td>
+                    <td>
+                        <button class="action-btn edit-btn" onclick="editarProfessor('${professor.id}')" title="Editar Professor"><i class="fa-solid fa-pen"></i></button>
+                        <button class="action-btn delete-btn" onclick="excluirProfessor('${professor.id}')" title="Excluir Professor"><i class="fa-solid fa-trash"></i></button>
+                    </td>
+                </tr>`;
+        });
+    } catch (error) {
+        console.error('Erro ao carregar professores:', error);
+        tabela.innerHTML = '<tr><td colspan="4" style="text-align:center; color:#ff6b1a;">Não foi possível carregar os professores.</td></tr>';
+    }
+}
+
+async function carregarOpcoesDisciplinas() {
+    const container = document.getElementById('professorDisciplinas');
+    if (!container) return;
+    container.innerHTML = '<span class="loading-option">Carregando disciplinas dos cursos...</span>';
+
+    const snapshot = await db.collection('cursos').get();
+    const opcoes = [];
+    const chaves = new Set();
+    snapshot.docs.forEach(doc => {
+        const curso = doc.data() || {};
+        const disciplinas = Array.isArray(curso.disciplinas) ? curso.disciplinas : [];
+        disciplinas.forEach(disciplina => {
+            const nome = typeof disciplina === 'string' ? disciplina : disciplina.nome;
+            if (!nome) return;
+            const chave = `${doc.id}::${nome}`;
+            if (chaves.has(chave)) return;
+            chaves.add(chave);
+            opcoes.push({ chave, cursoId: doc.id, cursoNome: curso.nome || doc.id, nome });
+        });
+    });
+    disciplinasDisponiveis = opcoes;
+    renderizarOpcoesDisciplinas();
+}
+
+function renderizarOpcoesDisciplinas(selecionadas = []) {
+    const container = document.getElementById('professorDisciplinas');
+    if (!container) return;
+    const chavesSelecionadas = new Set(selecionadas.map(item => `${item.cursoId}::${item.nome}`));
+    container.innerHTML = '';
+    if (!disciplinasDisponiveis.length) {
+        container.innerHTML = '<span class="loading-option">Nenhuma disciplina foi cadastrada nos cursos ainda.</span>';
+        atualizarContagemDisciplinas();
+        return;
+    }
+    disciplinasDisponiveis.forEach(disciplina => {
+        const label = document.createElement('label');
+        label.className = 'discipline-option';
+        label.innerHTML = `<input type="checkbox" value="${escapeHtml(disciplina.chave)}" ${chavesSelecionadas.has(disciplina.chave) ? 'checked' : ''}><span><strong>${escapeHtml(disciplina.nome)}</strong><small>${escapeHtml(disciplina.cursoNome)}</small></span>`;
+        container.appendChild(label);
+    });
+    container.querySelectorAll('input').forEach(input => input.addEventListener('change', atualizarContagemDisciplinas));
+    atualizarContagemDisciplinas();
+}
+
+function atualizarContagemDisciplinas() {
+    const selecionadas = document.querySelectorAll('#professorDisciplinas input:checked').length;
+    const contador = document.getElementById('discipline-selection-count');
+    if (contador) contador.textContent = `${selecionadas} selecionada${selecionadas === 1 ? '' : 's'}`;
+}
+
+function obterDisciplinasSelecionadas() {
+    return Array.from(document.querySelectorAll('#professorDisciplinas input:checked'))
+        .map(input => disciplinasDisponiveis.find(disciplina => disciplina.chave === input.value))
+        .filter(Boolean)
+        .map(({ chave, ...disciplina }) => disciplina);
+}
+
+async function abrirModalProfessor(professorId = '') {
+    document.getElementById('professorForm').reset();
+    document.getElementById('professorId').value = professorId;
+    document.getElementById('professorEmail').disabled = Boolean(professorId);
+    document.getElementById('professorPassword').required = !professorId;
+    document.getElementById('professorConfirmPassword').required = !professorId;
+    document.getElementById('professorPasswordGroup').style.display = professorId ? 'none' : '';
+    document.getElementById('professorConfirmPasswordGroup').style.display = professorId ? 'none' : '';
+    document.getElementById('modalProfessorTitle').innerHTML = professorId
+        ? '<i class="fa-solid fa-user-pen"></i> Editar Professor'
+        : '<i class="fa-solid fa-chalkboard-user"></i> Adicionar Professor';
+    await carregarOpcoesDisciplinas();
+
+    if (professorId) {
+        const professorDoc = await db.collection('usuarios').doc(professorId).get();
+        const professor = professorDoc.data() || {};
+        document.getElementById('professorNome').value = professor.nome || '';
+        document.getElementById('professorEmail').value = professor.email || '';
+        renderizarOpcoesDisciplinas(Array.isArray(professor.disciplinas) ? professor.disciplinas : []);
+    }
+    document.getElementById('modalProfessor').classList.add('active');
+}
+
+function fecharModalProfessor() {
+    document.getElementById('modalProfessor').classList.remove('active');
+}
+
+async function editarProfessor(id) {
+    await abrirModalProfessor(id);
+}
+
+async function excluirProfessor(id) {
+    if (!confirm('Tem certeza que deseja excluir este professor?')) return;
+    try {
+        await db.collection('usuarios').doc(id).delete();
+        alert('Professor excluído com sucesso!');
+        carregarProfessores();
+    } catch (error) {
+        console.error('Erro ao excluir professor:', error);
+        alert('Erro ao excluir professor. Tente novamente.');
+    }
+}
+
+const professorForm = document.getElementById('professorForm');
+if (professorForm) {
+    professorForm.addEventListener('submit', async event => {
+        event.preventDefault();
+        const professorId = document.getElementById('professorId').value;
+        const nome = document.getElementById('professorNome').value.trim();
+        const email = document.getElementById('professorEmail').value.trim().toLowerCase();
+        const disciplinas = obterDisciplinasSelecionadas();
+        if (!disciplinas.length) {
+            alert('Selecione pelo menos uma disciplina.');
+            return;
+        }
+
+        try {
+            const disciplinasKeys = disciplinas.map(disciplina => `${disciplina.cursoId}::${disciplina.nome}`);
+            if (professorId) {
+                await db.collection('usuarios').doc(professorId).update({ nome, disciplinas, disciplinasKeys });
+                alert('Professor atualizado com sucesso!');
+            } else {
+                const senha = document.getElementById('professorPassword').value;
+                const confirmarSenha = document.getElementById('professorConfirmPassword').value;
+                if (senha.length < 6 || senha !== confirmarSenha) {
+                    alert('As senhas devem coincidir e ter pelo menos 6 caracteres.');
+                    return;
+                }
+                await criarContaDeProfessor({ nome, email, disciplinas, disciplinasKeys }, senha);
+                alert('Professor cadastrado com sucesso!');
+            }
+            fecharModalProfessor();
+            carregarProfessores();
+        } catch (error) {
+            console.error('Erro ao salvar professor:', error);
+            alert('Erro ao salvar professor. Verifique os dados e tente novamente.');
+        }
+    });
+}
+
+async function criarContaDeProfessor(professorData, password) {
+    const appName = 'teacherRegistration';
+    let teacherApp;
+    try {
+        teacherApp = firebase.app(appName);
+    } catch (error) {
+        teacherApp = firebase.initializeApp(firebaseConfig, appName);
+    }
+    let createdUser = null;
+    try {
+        createdUser = await teacherApp.auth().createUserWithEmailAndPassword(professorData.email, password);
+        await teacherApp.firestore().collection('usuarios').doc(createdUser.user.uid).set({
+            ...professorData,
+            atribuicao: 'professor',
+            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+    } catch (error) {
+        if (createdUser?.user) await createdUser.user.delete().catch(() => {});
+        throw error;
+    } finally {
+        await teacherApp.delete().catch(() => {});
+    }
+}
+
+function escapeHtml(value) {
+    return String(value).replace(/[&<>'"]/g, character => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'
+    }[character]));
 }
 
 // --- LÓGICA DE GERENCIAMENTO DE CURSOS ---
@@ -473,11 +812,14 @@ async function carregarCursos() {
 // Preenche dados padrão se a coleção de cursos estiver vazia
 async function initCursos() {
     const cursosPadrao = [
-        { nome: 'Formação Básica de Vigilante', preco: '1.200,00', cargaHr: '200 Horas', dataTurma: 'Em Breve' },
-        { nome: 'Extensão em Escolta Armada', preco: '550,00', cargaHr: '50 Horas', dataTurma: 'A Definir' },
-        { nome: 'Extensão em Transporte de Valores', preco: '550,00', cargaHr: '50 Horas', dataTurma: 'A Definir' },
-        { nome: 'Segurança Pessoal Privada (VSPP)', preco: '650,00', cargaHr: '50 Horas', dataTurma: 'A Definir' },
-        { nome: 'Supervisor de Segurança', preco: '800,00', cargaHr: '40 Horas', dataTurma: 'A Definir' }
+        { nome: 'Formação Básica de Vigilante', preco: '1.200,00', cargaHr: '200 Horas', dataTurma: 'Em Breve', disciplinas: ['Noções de Segurança Privada', 'Legislação Aplicada e Direitos Humanos', 'Relações Humanas no Trabalho', 'Sistema de Segurança Pública e Crime Organizado', 'Prevenção e Combate a Incêndios', 'Primeiros Socorros', 'Educação Física', 'Defesa Pessoal', 'Armamento e Tiro', 'Vigilância', 'Radiocomunicação e Alarmes', 'Noções de Segurança Eletrônica', 'Uso Progressivo da Força', 'Gerenciamento de Crises'] },
+        { nome: 'Reciclagem de Vigilantes', preco: '300,00', cargaHr: '40 Horas', dataTurma: 'A Definir', disciplinas: ['Revisão e Atualização das Disciplinas Básicas', 'Armamento e Tiro', 'Relações Humanas no Trabalho', 'Prevenção e Combate a Incêndios', 'Primeiros Socorros', 'Defesa Pessoal'] },
+        { nome: 'Extensão em Escolta Armada', preco: '550,00', cargaHr: '50 Horas', dataTurma: 'A Definir', disciplinas: ['Legislação Aplicada', 'Escolta Armada', 'Resolução de Situações de Emergência', 'Armamento e Tiro', 'Verificação de Aprendizagem'] },
+        { nome: 'Curso de Extensão em Segurança para Grandes Eventos', preco: '450,00', cargaHr: '60 Horas', dataTurma: 'A Definir', disciplinas: ['Papel do Vigilante na Estrutura de Segurança em Recintos de Grandes Eventos', 'Controle de Acesso', 'Gerenciamento de Público', 'Gestão de Multidões e Manutenção de Ambiente Seguro', 'Resolução de Situações de Emergência', 'Disciplinas Complementares'] },
+        { nome: 'Extensão ou Aperfeiçoamento em Armas Não Letais', preco: '500,00', cargaHr: '80 Horas', dataTurma: 'A Definir', disciplinas: ['Uso Progressivo da Força', 'Agentes Químicos e Espargidores', 'Armas de Condutividade Elétrica', 'Primeiros Socorros'] },
+        { nome: 'Extensão em Transporte de Valores', preco: '550,00', cargaHr: '50 Horas', dataTurma: 'A Definir', disciplinas: ['Transporte de Valores', 'Direção Defensiva', 'Gerenciamento de Risco', 'Prevenção de Perdas'] },
+        { nome: 'Segurança Pessoal Privada (VSPP)', preco: '650,00', cargaHr: '50 Horas', dataTurma: 'A Definir', disciplinas: ['Proteção de Pessoas', 'Análise de Risco', 'Direção Defensiva', 'Primeiros Socorros'] },
+        { nome: 'Supervisor de Segurança', preco: '800,00', cargaHr: '40 Horas', dataTurma: 'A Definir', disciplinas: ['Gestão de Equipes', 'Legislação de Segurança', 'Elaboração de Relatórios', 'Gerenciamento de Crises'] }
     ];
     for (const curso of cursosPadrao) {
         await db.collection("cursos").add(curso);

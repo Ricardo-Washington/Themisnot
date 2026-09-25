@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Thémis | Meu boletim</title>
+    <link rel="stylesheet" href="boletim.css">
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&family=Anton&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://www.gstatic.com/firebasejs/12.1.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/12.1.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore-compat.js"></script>
+    <script src="/js/auth-guard.js"></script>
+    <script src="boletim.js" defer></script>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-content">
+            <a class="logo" href="/home/home.html"><img src="/img/logo.png" alt="Thémis"></a>
+            <div class="nav-actions"><a href="/home/home.html"><i class="fa-solid fa-arrow-left"></i> Voltar ao início</a><button type="button" onclick="logout()"><i class="fa-solid fa-arrow-right-from-bracket"></i> Sair</button></div>
+        </div>
+    </nav>
+    <main class="page-shell">
+        <header class="page-header"><span class="eyebrow"><i class="fa-solid fa-chart-line"></i> Área do aluno</span><h1>Meu boletim</h1><p id="student-course">Carregando curso e disciplinas...</p></header>
+        <section class="summary-strip">
+            <div><i class="fa-solid fa-book-open"></i><span><strong id="discipline-count">0</strong> disciplinas</span></div>
+            <div><i class="fa-solid fa-star"></i><span><strong id="average-grade">--</strong> média geral</span></div>
+            <div><i class="fa-solid fa-person-circle-exclamation"></i><span><strong id="absence-total">0</strong> faltas</span></div>
+        </section>
+        <section class="report-section">
+            <div class="section-heading"><div><span class="card-kicker">Desempenho acadêmico</span><h2>Notas e faltas por disciplina</h2></div><i class="fa-solid fa-clipboard-check heading-icon"></i></div>
+            <div class="table-scroll"><table class="report-table"><thead><tr><th>Disciplina</th><th>Nota da prova</th><th>Faltas</th><th>Situação</th></tr></thead><tbody id="report-body"><tr><td colspan="4" class="loading">Carregando seu boletim...</td></tr></tbody></table></div>
+        </section>
+    </main>
+</body>
+</html>

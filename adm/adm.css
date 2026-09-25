@@ -284,6 +284,80 @@
     box-shadow: 0 4px 15px rgba(255, 94, 0, 0.3);
 }
 
+.professor-discipline-fields {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 14px;
+    border: 1px solid rgba(255, 94, 0, 0.35);
+    background: rgba(255, 94, 0, 0.08);
+}
+
+.discipline-help {
+    margin: -2px 0 4px;
+    color: #aaa;
+    font-size: 0.78rem;
+}
+
+.professor-discipline-options {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    max-height: 220px;
+    overflow-y: auto;
+}
+
+.professor-discipline-option {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 9px;
+    border: 1px solid rgba(255,255,255,0.1);
+    background: rgba(0,0,0,0.2);
+    cursor: pointer;
+}
+
+.professor-discipline-option:has(input:checked),
+.professor-discipline-option:hover {
+    border-color: var(--orange);
+}
+
+.professor-discipline-option input {
+    accent-color: var(--orange);
+    margin-top: 3px;
+}
+
+.professor-discipline-option strong,
+.professor-discipline-option small {
+    display: block;
+}
+
+.professor-discipline-option strong {
+    color: #eee;
+    font-size: 0.75rem;
+}
+
+.professor-discipline-option small {
+    margin-top: 3px;
+    color: #999;
+    font-size: 0.65rem;
+}
+
+.discipline-error {
+    min-height: 16px;
+    color: #ff6b1a;
+    font-size: 0.75rem;
+}
+
+.student-enrollment-fields {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 14px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(255, 255, 255, 0.04);
+}
+
 #deleteButton {
     background: #c00 !important;
     color: #fff;

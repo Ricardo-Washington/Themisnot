@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Thémis | Área do professor</title>
+    <link rel="stylesheet" href="professor.css">
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&family=Anton&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://www.gstatic.com/firebasejs/12.1.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/12.1.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore-compat.js"></script>
+    <script src="/js/auth-guard.js"></script>
+    <script src="professor.js" defer></script>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-content">
+            <a class="logo" href="/professor/professor.html"><img src="/img/logo.png" alt="Thémis"></a>
+            <button class="mobile-menu-button" id="mobile-menu-button" aria-label="Abrir menu"><i class="fa-solid fa-bars"></i></button>
+            <ul class="nav-links" id="nav-links">
+                <li class="teacher-greeting" id="teacher-greeting">Área do professor</li>
+                <li><a class="active" href="#inicio"><i class="fa-solid fa-house"></i> Início</a></li>
+                <li><a href="#disciplinas"><i class="fa-solid fa-book-open"></i> Disciplinas</a></li>
+                <li><a href="#boletim"><i class="fa-solid fa-clipboard-list"></i> Boletim</a></li>
+                <li><a href="/home/home.html"><i class="fa-solid fa-arrow-left"></i> Área do aluno</a></li>
+                <li><button type="button" onclick="logout()"><i class="fa-solid fa-arrow-right-from-bracket"></i> Sair</button></li>
+            </ul>
+        </div>
+    </nav>
+
+    <main id="inicio">
+        <section class="welcome-section">
+            <div class="page-width welcome-content">
+                <div>
+                    <span class="eyebrow"><i class="fa-solid fa-chalkboard-user"></i> Área do professor</span>
+                    <h1>Olá, <span id="teacher-name">professor</span>.</h1>
+                    <p>Organize suas aulas e lance notas e faltas dos alunos das disciplinas que você leciona.</p>
+                </div>
+                <div class="welcome-mark" aria-hidden="true"><i class="fa-solid fa-graduation-cap"></i></div>
+            </div>
+        </section>
+
+        <section class="page-width dashboard-content">
+            <div class="summary-strip">
+                <div class="summary-item"><i class="fa-solid fa-book-open"></i><div><strong id="discipline-total">0</strong><span>disciplinas</span></div></div>
+                <div class="summary-item"><i class="fa-solid fa-users"></i><div><strong id="student-total">0</strong><span>alunos vinculados</span></div></div>
+                <div class="summary-item"><i class="fa-solid fa-calendar-days"></i><div><strong id="next-class">--</strong><span>próxima aula</span></div></div>
+            </div>
+
+            <section class="section-block" id="disciplinas">
+                <div class="section-heading"><div><span class="card-kicker">Sua agenda acadêmica</span><h2>Disciplinas que leciono</h2></div><i class="fa-solid fa-book-open heading-icon"></i></div>
+                <div id="discipline-grid" class="discipline-grid"><div class="loading-state">Carregando suas disciplinas...</div></div>
+            </section>
+
+            <section class="section-block grade-section" id="boletim">
+                <div class="section-heading"><div><span class="card-kicker">Acompanhamento da turma</span><h2>Notas e faltas</h2></div><i class="fa-solid fa-clipboard-list heading-icon"></i></div>
+                <p class="section-description">Selecione uma disciplina para lançar ou atualizar o boletim dos alunos vinculados ao curso.</p>
+                <div id="grade-empty" class="empty-state">Selecione uma disciplina acima para visualizar os alunos.</div>
+                <div id="grade-panel" class="grade-panel" hidden>
+                    <div class="grade-panel-header"><div><span class="card-kicker" id="selected-course">Curso</span><h3 id="selected-discipline">Disciplina</h3><p id="selected-schedule">Dia e horário ainda não definidos.</p></div><button type="button" class="outline-button" id="save-all-button"><i class="fa-solid fa-floppy-disk"></i> Salvar lançamentos</button></div>
+                    <div class="table-scroll"><table class="grade-table"><thead><tr><th>Aluno</th><th>Nota</th><th>Faltas</th><th>Situação</th></tr></thead><tbody id="grade-table-body"></tbody></table></div>
+                </div>
+            </section>
+        </section>
+    </main>
+</body>
+</html>

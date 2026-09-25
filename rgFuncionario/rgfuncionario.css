@@ -173,6 +173,131 @@ li button{
     gap: 12px;
 }
 
+.tab-kicker {
+    display: block;
+    color: #ff6b1a;
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-bottom: 5px;
+}
+
+.tab-description {
+    color: #999;
+    font-size: 0.82rem;
+    margin: -5px 0 18px;
+}
+
+.professor-modal {
+    max-width: 900px;
+}
+
+.discipline-picker {
+    margin-top: 25px;
+    padding: 20px;
+    border: 1px solid rgba(255, 107, 26, 0.3);
+    background: rgba(255, 107, 26, 0.07);
+}
+
+.picker-heading {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 15px;
+}
+
+.picker-heading h3 {
+    color: #fff;
+    font-size: 1.15rem;
+    font-weight: 600;
+}
+
+.picker-heading > span {
+    color: #ff6b1a;
+    font-size: 0.75rem;
+    white-space: nowrap;
+}
+
+.discipline-picker > p {
+    color: #aaa;
+    font-size: 0.78rem;
+    margin: 8px 0 16px;
+}
+
+.discipline-options {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    max-height: 260px;
+    overflow-y: auto;
+    padding-right: 5px;
+}
+
+.discipline-option {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    min-height: 64px;
+    padding: 12px;
+    border: 1px solid rgba(255,255,255,0.1);
+    background: rgba(0,0,0,0.2);
+    cursor: pointer;
+    transition: border-color 0.2s ease, background 0.2s ease;
+}
+
+.discipline-option:hover,
+.discipline-option:has(input:checked) {
+    border-color: #ff6b1a;
+    background: rgba(255, 107, 26, 0.13);
+}
+
+.discipline-option input {
+    accent-color: #ff6b1a;
+    margin-top: 3px;
+}
+
+.discipline-option strong {
+    display: block;
+    color: #eee;
+    font-size: 0.78rem;
+    line-height: 1.35;
+}
+
+.discipline-option small {
+    display: block;
+    color: #999;
+    font-size: 0.66rem;
+    margin-top: 4px;
+}
+
+.loading-option {
+    grid-column: 1 / -1;
+    color: #999;
+    font-size: 0.78rem;
+    padding: 15px 0;
+}
+
+.discipline-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+}
+
+.discipline-chip {
+    display: inline-block;
+    padding: 4px 7px;
+    border: 1px solid rgba(255, 107, 26, 0.4);
+    color: #ffb07e;
+    background: rgba(255, 107, 26, 0.1);
+    font-size: 0.68rem;
+}
+
+.no-disciplines {
+    color: #888;
+    font-size: 0.75rem;
+}
+
 
 /* =========================================
    ESTILOS DE BOTÕES MODERNOS E ICONES
@@ -548,4 +673,6 @@ table td:last-child {
     table th, table td { font-size: 0.85rem; padding: 10px 8px; }
     .action-btn { padding: 6px 12px; font-size: 0.85rem; }
     table td:last-child { flex-wrap: wrap; }
+    .discipline-options { grid-template-columns: 1fr; }
+    .picker-heading { flex-direction: column; }
 }

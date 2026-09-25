@@ -39,10 +39,12 @@ firebase.auth().onAuthStateChanged(async (user) => {
 });
 
 let usuariosFuncionarios = [];
+let usuariosProfessores = [];
 let usuariosAlunos = [];
 let cursosList = [];
 let usuarioAtual = null;
 let tipoAtual = null; 
+let disciplinasProfessorDisponiveis = [];
 
 // A função principal para buscar e separar os dados
 function findUsers() {
@@ -53,7 +55,8 @@ function findUsers() {
     .then(snapshot => {
       const todosUsuarios = snapshot.docs.map(doc => ({...doc.data(), id: doc.id}));
 
-      usuariosFuncionarios = todosUsuarios.filter(user => user.atribuicao === 'funcionario');// faz a verificação do campo atribuicao do usuario
+      usuariosFuncionarios = todosUsuarios.filter(user => user.atribuicao === 'funcionario');
+      usuariosProfessores = todosUsuarios.filter(user => user.atribuicao === 'professor');
       usuariosAlunos = todosUsuarios.filter(user => user.atribuicao === 'aluno' || user.atribuicao === 'Aluno');
       renderizarLista('dadosfuincionario', usuariosFuncionarios);
       renderizarLista('dadosaluno', usuariosAlunos);
@@ -92,12 +95,74 @@ function fetchCursos() {//busca os cursos no fire base
       if (cursosList.length === 0) {
         initCursos();
       } else {
+        sincronizarDisciplinasPadrao(cursosList);
         renderizarCursos('dadoscursos', cursosList);//renderiza os cursos
       }
     })
     .catch(error => {
       console.error("Erro ao buscar cursos: ", error);//tratamento de erro 
     });
+}
+
+const disciplinasPorCursoPadrao = {
+  vigilante: [
+    'Noções de Segurança Privada', 'Legislação Aplicada e Direitos Humanos',
+    'Relações Humanas no Trabalho', 'Sistema de Segurança Pública e Crime Organizado',
+    'Prevenção e Combate a Incêndios', 'Primeiros Socorros', 'Educação Física',
+    'Defesa Pessoal', 'Armamento e Tiro', 'Vigilância', 'Radiocomunicação e Alarmes',
+    'Noções de Segurança Eletrônica', 'Uso Progressivo da Força', 'Gerenciamento de Crises'
+  ],
+  escoltaArmada: [
+    'Legislação Aplicada', 'Escolta Armada', 'Resolução de Situações de Emergência',
+    'Armamento e Tiro', 'Verificação de Aprendizagem'
+  ],
+  armasNaoLetais: [
+    'Uso Progressivo da Força', 'Agentes Químicos e Espargidores',
+    'Armas de Condutividade Elétrica', 'Primeiros Socorros'
+  ],
+  reciclagem: [
+    'Revisão e Atualização das Disciplinas Básicas', 'Armamento e Tiro',
+    'Relações Humanas no Trabalho', 'Prevenção e Combate a Incêndios',
+    'Primeiros Socorros', 'Defesa Pessoal'
+  ],
+  grandesEventos: [
+    'Papel do Vigilante na Estrutura de Segurança em Recintos de Grandes Eventos',
+    'Controle de Acesso', 'Gerenciamento de Público',
+    'Gestão de Multidões e Manutenção de Ambiente Seguro',
+    'Resolução de Situações de Emergência', 'Disciplinas Complementares'
+  ]
+};
+
+function disciplinasDoCursoPadrao(curso) {
+  const identificador = `${curso.id || ''} ${curso.nome || ''}`.toLowerCase();
+  if (curso.id === 'vigilante' || identificador.includes('formação básica de vigilante') || identificador.includes('curso de vigilante')) {
+    return disciplinasPorCursoPadrao.vigilante;
+  }
+  if (curso.id === 'escoltaArm' || identificador.includes('escolta armada')) {
+    return disciplinasPorCursoPadrao.escoltaArmada;
+  }
+  if (curso.id === 'armasNaoLetais' || identificador.includes('armas não letais') || identificador.includes('armamento não letal')) {
+    return disciplinasPorCursoPadrao.armasNaoLetais;
+  }
+  if (curso.id === 'Reciclagem' || identificador.includes('reciclagem')) {
+    return disciplinasPorCursoPadrao.reciclagem;
+  }
+  if (curso.id === 'grandesEventos' || identificador.includes('grandes eventos')) {
+    return disciplinasPorCursoPadrao.grandesEventos;
+  }
+  return null;
+}
+
+async function sincronizarDisciplinasPadrao(cursos) {
+  const batch = firebase.firestore().batch();
+  let alteracoes = 0;
+  cursos.forEach(curso => {
+    const disciplinas = disciplinasDoCursoPadrao(curso);
+    if (!disciplinas || JSON.stringify(curso.disciplinas || []) === JSON.stringify(disciplinas)) return;
+    batch.update(firebase.firestore().collection('cursos').doc(curso.id), { disciplinas });
+    alteracoes += 1;
+  });
+  if (alteracoes) await batch.commit();
 }
 
 // Variável global para manter o gráfico vivo entre atualizações.
@@ -205,11 +270,11 @@ function renderarGraficoInscricoes(alunos) {
 //função para iniciar os cursos caso não exista
 function initCursos() {
     const cursosPadrao = [
-        { id: "armasNaoLetais", nome: "Armamento Não Letal", preco: "500,00", cargaHoraria: "80 horas", proximaTurma: "A definir" },
-        { id: "Reciclagem", nome: "Reciclagem de Vigilante", preco: "300,00", cargaHoraria: "40 horas", proximaTurma: "A definir" },
-        { id: "escoltaArm", nome: "Escolta Armada", preco: "600,00", cargaHoraria: "50 horas", proximaTurma: "A definir" },
-        { id: "grandesEventos", nome: "Grandes Eventos", preco: "450,00", cargaHoraria: "60 horas", proximaTurma: "A definir" },
-        { id: "vigilante", nome: "Vigilante", preco: "800,00", cargaHoraria: "200 horas", proximaTurma: "A definir" }
+    { id: "armasNaoLetais", nome: "Extensão ou Aperfeiçoamento em Armas Não Letais", preco: "500,00", cargaHoraria: "80 horas", proximaTurma: "A definir", disciplinas: disciplinasPorCursoPadrao.armasNaoLetais },
+        { id: "Reciclagem", nome: "Reciclagem de Vigilantes", preco: "300,00", cargaHoraria: "40 horas", proximaTurma: "A definir", disciplinas: disciplinasPorCursoPadrao.reciclagem },
+    { id: "escoltaArm", nome: "Escolta Armada", preco: "600,00", cargaHoraria: "50 horas", proximaTurma: "A definir", disciplinas: disciplinasPorCursoPadrao.escoltaArmada },
+        { id: "grandesEventos", nome: "Curso de Extensão em Segurança para Grandes Eventos", preco: "450,00", cargaHoraria: "60 horas", proximaTurma: "A definir", disciplinas: disciplinasPorCursoPadrao.grandesEventos },
+    { id: "vigilante", nome: "Vigilante", preco: "800,00", cargaHoraria: "200 horas", proximaTurma: "A definir", disciplinas: disciplinasPorCursoPadrao.vigilante }
     ];
 
     const batch = firebase.firestore().batch();
@@ -335,6 +400,10 @@ function openModal(tipo) {
   const precoInput = document.getElementById('editPreco');
   const cargaHrInput = document.getElementById('editCargaHr');
   const dataTurmaInput = document.getElementById('editDataTurma');
+  const turmaIdInput = document.getElementById('editTurmaId');
+  const dataInicioInput = document.getElementById('editDataInicio');
+  const dataTerminoInput = document.getElementById('editDataTermino');
+  const turnoInput = document.getElementById('editTurno');
   
   const deleteBtn = document.getElementById('deleteButton');
   const modalTitle = document.getElementById('modalTitle');
@@ -362,6 +431,10 @@ function openModal(tipo) {
         precoInput.value = '';
         cargaHrInput.value = '';
         dataTurmaInput.value = '';
+        turmaIdInput.value = '';
+        dataInicioInput.value = '';
+        dataTerminoInput.value = '';
+        turnoInput.value = '';
         deleteBtn.style.display = 'none';
     } else {
         modalTitle.textContent = 'Editar Curso';
@@ -386,6 +459,11 @@ function openModal(tipo) {
       precoInput.value = usuarioAtual.preco || '';
       cargaHrInput.value = usuarioAtual.cargaHoraria || '';
       dataTurmaInput.value = usuarioAtual.proximaTurma || '';
+      const turmaAtual = Array.isArray(usuarioAtual.turmas) ? usuarioAtual.turmas[usuarioAtual.turmas.length - 1] : null;
+      turmaIdInput.value = turmaAtual?.id || turmaAtual?.turmaId || '';
+      dataInicioInput.value = turmaAtual?.dataInicio || usuarioAtual.dataInicio || '';
+      dataTerminoInput.value = turmaAtual?.dataTermino || turmaAtual?.dataFim || usuarioAtual.dataTermino || '';
+      turnoInput.value = turmaAtual?.turno || usuarioAtual.turno || '';
       deleteBtn.style.display = 'none';
     }
   } // fim do bloco de edicao de curso
@@ -398,8 +476,8 @@ function openModal(tipo) {
     camposUsuario.style.gap = '18px';
     camposCurso.style.display = 'none';
     
-    let lista = tipo === 'funcionario' ? usuariosFuncionarios : usuariosAlunos;
-    modalTitle.textContent = tipo === 'funcionario' ? 'Editar Funcionário' : 'Editar Aluno';
+    let lista = tipo === 'funcionario' ? usuariosFuncionarios : (tipo === 'professor' ? usuariosProfessores : usuariosAlunos);
+    modalTitle.textContent = tipo === 'funcionario' ? 'Editar Funcionário' : (tipo === 'professor' ? 'Editar Professor' : 'Editar Aluno');
 
     lista.forEach(user => {
       const option = document.createElement('option');
@@ -417,6 +495,8 @@ function openModal(tipo) {
       rgInput.value = usuarioAtual.rg || '';
       nascimentoInput.value = usuarioAtual.nascimento || '';
       atribuicaoSelect.value = usuarioAtual.atribuicao || '';
+      atualizarCampoDisciplinasProfessor(usuarioAtual.atribuicao, usuarioAtual.disciplinas || []);
+      atualizarCamposMatriculaAluno(usuarioAtual.atribuicao, usuarioAtual);
       deleteBtn.style.display = 'inline-block';
     } else {
       usuarioAtual = null;
@@ -427,6 +507,8 @@ function openModal(tipo) {
       rgInput.value = '';
       nascimentoInput.value = '';
       atribuicaoSelect.value = '';
+      atualizarCampoDisciplinasProfessor('');
+      atualizarCamposMatriculaAluno('');
       deleteBtn.style.display = 'none';
     }
   }
@@ -446,8 +528,13 @@ document.getElementById('selectUsuario').addEventListener('change', function() {
     document.getElementById('editPreco').value = usuarioAtual?.preco || '';
     document.getElementById('editCargaHr').value = usuarioAtual?.cargaHoraria || '';
     document.getElementById('editDataTurma').value = usuarioAtual?.proximaTurma || '';
+    const turmaAtual = Array.isArray(usuarioAtual?.turmas) ? usuarioAtual.turmas[usuarioAtual.turmas.length - 1] : null;
+    document.getElementById('editTurmaId').value = turmaAtual?.id || turmaAtual?.turmaId || '';
+    document.getElementById('editDataInicio').value = turmaAtual?.dataInicio || usuarioAtual?.dataInicio || '';
+    document.getElementById('editDataTermino').value = turmaAtual?.dataTermino || turmaAtual?.dataFim || usuarioAtual?.dataTermino || '';
+    document.getElementById('editTurno').value = turmaAtual?.turno || usuarioAtual?.turno || '';
   } else {
-    let lista = tipoAtual === 'funcionario' ? usuariosFuncionarios : usuariosAlunos;
+    let lista = tipoAtual === 'funcionario' ? usuariosFuncionarios : (tipoAtual === 'professor' ? usuariosProfessores : usuariosAlunos);
     usuarioAtual = lista.find(u => u.id === this.value);
     document.getElementById('editNome').value = usuarioAtual?.nome || '';
     document.getElementById('editCpf').value = usuarioAtual?.cpf || '';
@@ -456,11 +543,97 @@ document.getElementById('selectUsuario').addEventListener('change', function() {
     document.getElementById('editRg').value = usuarioAtual?.rg || '';
     document.getElementById('editNascimento').value = usuarioAtual?.nascimento || '';
     document.getElementById('editAtribuicao').value = usuarioAtual?.atribuicao || '';
+    atualizarCampoDisciplinasProfessor(usuarioAtual?.atribuicao, usuarioAtual?.disciplinas || []);
+    atualizarCamposMatriculaAluno(usuarioAtual?.atribuicao, usuarioAtual);
   }
 });
 
+document.getElementById('editAtribuicao').addEventListener('change', function() {
+  atualizarCampoDisciplinasProfessor(this.value, this.value === 'professor' ? (usuarioAtual?.disciplinas || []) : []);
+  atualizarCamposMatriculaAluno(this.value, usuarioAtual);
+});
+
+function atualizarCamposMatriculaAluno(atribuicao, aluno = {}) {
+  const campos = document.getElementById('camposMatriculaAluno');
+  if (!campos) return;
+  campos.style.display = atribuicao === 'aluno' ? 'flex' : 'none';
+  if (atribuicao !== 'aluno') return;
+  document.getElementById('editCursoAluno').value = aluno.cursoSolicitado || aluno.curso || '';
+  document.getElementById('editTurmaAluno').value = aluno.turmaId || '';
+  document.getElementById('editInicioAluno').value = aluno.dataInicio || '';
+  document.getElementById('editTerminoAluno').value = aluno.dataTermino || '';
+}
+
+async function atualizarCampoDisciplinasProfessor(atribuicao, selecionadas = []) {
+  const campos = document.getElementById('camposProfessorDisciplinas');
+  if (!campos) return;
+  campos.style.display = atribuicao === 'professor' ? 'flex' : 'none';
+  if (atribuicao !== 'professor') return;
+
+  const container = document.getElementById('editProfessorDisciplinas');
+  container.innerHTML = '<span>Carregando disciplinas...</span>';
+  try {
+    const snapshot = await db.collection('cursos').get();
+    const opcoes = [];
+    const chaves = new Set();
+    snapshot.forEach(doc => {
+      const curso = doc.data() || {};
+      const turmas = Array.isArray(curso.turmas) && curso.turmas.length ? curso.turmas : [{ id: '', dataInicio: curso.dataInicio || '', dataTermino: curso.dataTermino || '', turno: curso.turno || '' }];
+      turmas.forEach(turma => (Array.isArray(curso.disciplinas) ? curso.disciplinas : []).forEach(item => {
+        const nome = typeof item === 'string' ? item : item.nome;
+        if (!nome) return;
+        const turmaId = turma.id || turma.turmaId || '';
+        const chave = `${doc.id}::${turmaId || 'sem-turma'}::${nome}`;
+        if (chaves.has(chave)) return;
+        chaves.add(chave);
+        opcoes.push({ chave, cursoId: doc.id, cursoNome: curso.nome || doc.id, nome, turmaId, dataInicio: turma.dataInicio || '', dataTermino: turma.dataTermino || '', turno: turma.turno || '' });
+      }));
+    });
+    disciplinasProfessorDisponiveis = opcoes;
+    const selecionadasChaves = new Set(selecionadas.map(item => `${item.cursoId}::${item.turmaId || 'sem-turma'}::${item.nome}`));
+    container.innerHTML = opcoes.length ? opcoes.map(item => `<label class="professor-discipline-option"><input type="checkbox" value="${escapeHtml(item.chave)}" ${selecionadasChaves.has(item.chave) ? 'checked' : ''}><span><strong>${escapeHtml(item.nome)}</strong><small>${escapeHtml(item.cursoNome)}${item.turmaId ? ` • Turma ${escapeHtml(item.turmaId)}` : ''}</small></span></label>`).join('') : '<span>Nenhuma disciplina cadastrada nos cursos.</span>';
+  } catch (error) {
+    console.error('Erro ao carregar disciplinas do professor:', error);
+    container.innerHTML = '<span>Não foi possível carregar as disciplinas.</span>';
+  }
+}
+
+function obterDisciplinasProfessorSelecionadas() {
+  return Array.from(document.querySelectorAll('#editProfessorDisciplinas input:checked'))
+    .map(input => disciplinasProfessorDisponiveis.find(item => item.chave === input.value))
+    .filter(Boolean)
+    .map(({ chave, ...disciplina }) => disciplina);
+}
+
+function escapeHtml(value) {
+  return String(value).replace(/[&<>'"]/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[character]));
+}
+
+async function montarVinculoAcademico(cursoInformado, turmaId, dataInicio, dataTermino) {
+  const snapshot = await db.collection('cursos').get();
+  const valorCurso = String(cursoInformado || '').trim().toLowerCase();
+  const curso = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
+    .find(item => item.id.toLowerCase() === valorCurso || String(item.nome || '').toLowerCase() === valorCurso);
+  if (!curso) return null;
+  const turma = (curso.turmas || []).find(item => (item.id || item.turmaId) === turmaId);
+  const cursoNome = curso.nome || curso.id;
+  const disciplinas = (Array.isArray(curso.disciplinas) ? curso.disciplinas : []).map(item => {
+    const nome = typeof item === 'string' ? item : item.nome;
+    return { nome, cursoId: curso.id, cursoNome, turmaId, dataInicio, dataTermino };
+  }).filter(item => item.nome);
+  return {
+    cursoId: curso.id,
+    cursoSolicitado: cursoNome,
+    turmaId: turmaId || turma?.id || turma?.turmaId || '',
+    dataInicio: dataInicio || turma?.dataInicio || '',
+    dataTermino: dataTermino || turma?.dataTermino || turma?.dataFim || '',
+    disciplinas,
+    disciplinasKeys: disciplinas.map(item => `${item.cursoId}::${item.turmaId || 'sem-turma'}::${item.nome}`)
+  };
+}
+
 // Editar usuário ou curso
-document.getElementById('editForm').addEventListener('submit', function(e) {
+document.getElementById('editForm').addEventListener('submit', async function(e) {
   e.preventDefault();
 
   if (tipoAtual === 'curso_novo') {
@@ -468,6 +641,10 @@ document.getElementById('editForm').addEventListener('submit', function(e) {
       const preco = document.getElementById('editPreco').value;
       const cargaHr = document.getElementById('editCargaHr').value;
       const dataTurma = document.getElementById('editDataTurma').value;
+      const turmaId = document.getElementById('editTurmaId').value.trim();
+      const dataInicio = document.getElementById('editDataInicio').value;
+      const dataTermino = document.getElementById('editDataTermino').value;
+      const turno = document.getElementById('editTurno').value;
       
       if (!nomeCurso) {
           alert('Por favor, digite o nome do curso.');
@@ -480,7 +657,8 @@ document.getElementById('editForm').addEventListener('submit', function(e) {
           nome: nomeCurso,
           preco: preco || '',
           cargaHoraria: cargaHr || '',
-          proximaTurma: dataTurma || ''
+          proximaTurma: dataTurma || '',
+          turmas: turmaId ? [{ id: turmaId, dataInicio, dataTermino, turno, status: 'planejada' }] : []
         })
         .then(() => {
           if (window.registrarLogAudit) registrarLogAudit(`Criou Curso: ${nomeCurso}`, 'adm', {preco, cargaHr});
@@ -502,6 +680,14 @@ document.getElementById('editForm').addEventListener('submit', function(e) {
       const preco = document.getElementById('editPreco').value;
       const cargaHr = document.getElementById('editCargaHr').value;
       const dataTurma = document.getElementById('editDataTurma').value;
+      const turmaId = document.getElementById('editTurmaId').value.trim();
+      const dataInicio = document.getElementById('editDataInicio').value;
+      const dataTermino = document.getElementById('editDataTermino').value;
+      const turno = document.getElementById('editTurno').value;
+      const turmasAtuais = Array.isArray(usuarioAtual.turmas) ? usuarioAtual.turmas : [];
+      const turmas = turmaId
+        ? [...turmasAtuais.filter(turma => (turma.id || turma.turmaId) !== turmaId), { id: turmaId, dataInicio, dataTermino, turno, status: dataTermino && new Date(dataTermino) < new Date() ? 'finalizada' : 'planejada' }]
+        : turmasAtuais;
       
       firebase.firestore()
         .collection('cursos')
@@ -509,7 +695,8 @@ document.getElementById('editForm').addEventListener('submit', function(e) {
         .update({
           preco: preco,
           cargaHoraria: cargaHr,
-          proximaTurma: dataTurma
+          proximaTurma: dataTurma,
+          turmas
         })
         .then(() => {
           if (window.registrarLogAudit) registrarLogAudit(`Atualizou Curso: ${usuarioAtual.nome}`, 'adm', {preco, cargaHr});
@@ -529,6 +716,26 @@ document.getElementById('editForm').addEventListener('submit', function(e) {
       const novoRg = document.getElementById('editRg').value;
       const novoNascimento = document.getElementById('editNascimento').value;
       const novaAtribuicao = document.getElementById('editAtribuicao').value;
+      const cursoAluno = document.getElementById('editCursoAluno').value.trim();
+      const turmaAluno = document.getElementById('editTurmaAluno').value.trim();
+      const inicioAluno = document.getElementById('editInicioAluno').value;
+      const terminoAluno = document.getElementById('editTerminoAluno').value;
+      let vinculoAcademico = {};
+      if (novaAtribuicao === 'aluno') {
+        vinculoAcademico = await montarVinculoAcademico(cursoAluno, turmaAluno, inicioAluno, terminoAluno);
+        if (!vinculoAcademico) {
+          alert('Curso não encontrado. Informe um curso cadastrado.');
+          return;
+        }
+      }
+        const disciplinas = novaAtribuicao === 'professor' ? obterDisciplinasProfessorSelecionadas() : [];
+
+        if (novaAtribuicao === 'professor' && disciplinas.length === 0) {
+          document.getElementById('professorDisciplinasError').textContent = 'Selecione pelo menos uma disciplina.';
+          return;
+        }
+
+            const disciplinasKeys = disciplinas.map(disciplina => `${disciplina.cursoId}::${disciplina.turmaId || 'sem-turma'}::${disciplina.nome}`);
 
       firebase.firestore()
         .collection('usuarios')
@@ -540,7 +747,17 @@ document.getElementById('editForm').addEventListener('submit', function(e) {
           telefone: novoTelefone,
           rg: novoRg,
           nascimento: novoNascimento,
-          atribuicao: novaAtribuicao
+          atribuicao: novaAtribuicao,
+          cursoSolicitado: novaAtribuicao === 'aluno' ? cursoAluno : firebase.firestore.FieldValue.delete(),
+          turmaId: novaAtribuicao === 'aluno' ? turmaAluno : firebase.firestore.FieldValue.delete(),
+          dataInicio: novaAtribuicao === 'aluno' ? inicioAluno : firebase.firestore.FieldValue.delete(),
+          dataTermino: novaAtribuicao === 'aluno' ? terminoAluno : firebase.firestore.FieldValue.delete(),
+          ...(novaAtribuicao === 'aluno' ? vinculoAcademico : {
+            disciplinas: firebase.firestore.FieldValue.delete(),
+            disciplinasKeys: firebase.firestore.FieldValue.delete()
+          }),
+          disciplinas: novaAtribuicao === 'professor' ? disciplinas : firebase.firestore.FieldValue.delete(),
+          disciplinasKeys: novaAtribuicao === 'professor' ? disciplinasKeys : firebase.firestore.FieldValue.delete()
         })
         .then(() => {
           if (window.registrarLogAudit) registrarLogAudit(`Editou o Usuário: ${novoNome} | ${novoCpf}`, 'adm', {novaAtribuicao});

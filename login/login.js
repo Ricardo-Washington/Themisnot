@@ -36,7 +36,9 @@ firebase.auth().onAuthStateChanged(async (user) => {
            }
 
             
-            if (dados && (dados.atribuicao === "funcionario" || dados.atribuicao === "admin")) {
+            if (dados && dados.atribuicao === "professor") {
+                window.location.href = "/professor/professor.html";
+            } else if (dados && (dados.atribuicao === "funcionario" || dados.atribuicao === "admin")) {
                 window.location.href = "/rgFuncionario/rgrgfuncionario.html";
             } else if (dados && dados.atribuicao === "adm") {
                 window.location.href = "/adm/adm.html";

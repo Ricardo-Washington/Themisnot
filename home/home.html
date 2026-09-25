@@ -7,6 +7,7 @@
     <title>Thémis | Home</title>
     <link rel="stylesheet" href="home.css">
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;700&family=Anton&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://www.gstatic.com/firebasejs/12.1.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/12.1.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore-compat.js"></script>
@@ -17,113 +18,72 @@
 
 <body>
     <nav class="navbar">
-        <div class="container nav-content">
-            <a href="#" class="logo"><img src="/img/logo.png" alt="logo"></a>
-            <button class="mobile-menu-btn" aria-label="Abrir menu" id="mobile-menu-btn">&#9776;</button>
-                <ul class="nav-links" id="nav-links">
-                <li class="user-greeting" style="color: var(--orange); font-family: 'Anton', sans-serif; font-size: 1.2rem; display: flex; align-items: center;"></li>
-                <li><a href="/products/products.html">Produtos</a></li>
-                <li><a href="#cursos">Cursos</a></li>
-                <li><a href="#contato">Contato</a></li>
-                <li><a href="/cart/cart.html">Carrinho</a></li>
-                <li><button class="logout-button" type="button" onclick="logout()">Sair</button></li>
-            </ul>
-        </div>
+      <div class="container nav-content">
+        <a href="/home/home.html" class="logo"><img src="/img/logo.png" alt="Thémis"></a>
+        <button class="mobile-menu-btn" aria-label="Abrir menu" id="mobile-menu-btn"><i class="fa-solid fa-bars"></i></button>
+        <ul class="nav-links" id="nav-links">
+          <li class="user-greeting"></li>
+          <li><a class="active" href="/home/home.html"><i class="fa-solid fa-house"></i> Início</a></li>
+          <li><a href="#disciplinas"><i class="fa-solid fa-book-open"></i> Disciplinas</a></li>
+          <li><a href="/boletim/boletim.html"><i class="fa-solid fa-chart-line"></i> Boletim</a></li>
+          <li><a href="/meuPerfil/meu_perfil.html"><i class="fa-solid fa-user"></i> Meu perfil</a></li>
+          <li><button class="logout-button" type="button" onclick="logout()"><i class="fa-solid fa-arrow-right-from-bracket"></i> Sair</button></li>
+        </ul>
+      </div>
     </nav>
 
-    <header class="hero-section">
-        <div class="container hero-content">
-            <h1>Bem-vindo à Thémis</h1>
-            <p>Explore nossos produtos e cursos para aprimorar sua segurança e habilidades.</p>
+    <main class="dashboard-shell">
+      <section class="welcome-section">
+        <div class="container welcome-content">
+          <div>
+            <span class="eyebrow"><i class="fa-solid fa-shield-halved"></i> Área do aluno</span>
+            <h1>Olá, <span id="student-name">aluno</span>.</h1>
+            <p>Acompanhe sua formação, suas disciplinas e seu desempenho em um só lugar.</p>
+          </div>
+          <div class="welcome-mark" aria-hidden="true"><i class="fa-solid fa-graduation-cap"></i></div>
         </div>
-    </header>
+      </section>
 
-    <section id="produtos" class="produtos-section">
-        <div class="container"> 
-            <h2 class="section-title"><a class="Produtos" href="/products/products.html">Produtos</a></h2>
-            <div class="produtos-grid">
-                <div class="produto-item" onclick="window.location.href='/products/products.html'" style="cursor: pointer;">
-                    <img src="/img/uniaula.png" alt="Uniforme">
-                    <h3>Uniformes</h3>
-                    <p>Uniformes profissionais para vigilantes e equipes de segurança.</p>
-                    <p>Preço: R$ 150,00</p>
-                    <button onclick="event.stopPropagation(); addToCart('Uniformes', 150)">Adicionar ao Carrinho</button>
-                </div>
-                <div class="produto-item" onclick="window.location.href='/products/products.html'" style="cursor: pointer;">
-                    <img src="/img/kit1.png" alt="Kit de Autodefesa">
-                    <h3>Kit de Autodefesa</h3>
-                    <p>Equipamentos essenciais para sua proteção pessoal.</p>
-                    <p>Preço: R$ 200,00</p>
-                    <button onclick="event.stopPropagation(); addToCart('Kit de Autodefesa', 200)">Adicionar ao Carrinho</button>
-                </div>
-            </div>
+      <section class="container dashboard-content" aria-label="Resumo acadêmico">
+        <div class="course-banner">
+          <div class="course-icon"><i class="fa-solid fa-id-card-clip"></i></div>
+          <div class="course-copy">
+            <span>Curso em andamento</span>
+            <h2 id="course-name">Carregando seu curso...</h2>
+            <p id="course-status">Sua matrícula está sendo consultada.</p>
+          </div>
+          <div class="course-progress"><strong id="course-progress">0%</strong><span>progresso</span></div>
         </div>
-    </section>
 
-    <section id="cursos" class="cursos-section">
-        <div class="container">
-            <h2 class="section-title">Cursos</h2>
-            <div class="cursos-grid">
-                <div class="curso-item">
-                    <img src="/img/vigilant.png" alt="Curso de Vigilante">
-                    <a href="/cursos/escoltaArm/escolta.html">
-                        <h3>Curso de Vigilante</h3>
-                        <p>Curso básico para formação de vigilantes profissionais.</p>
-                    </a>
-                </div>
-                <div class="curso-item">
-                    <img src="/img/major-eventes.PNG" alt="Segurança em Grandes Eventos">
-                    <a href="/cursos/grandes eventos/grandesEventos.html">
-                        <h3>Segurança em Grandes Eventos</h3>
-                        <p>Especialização para atuar em eventos de grande porte.</p>
-                    </a>
-                </div>
-                <div class="curso-item">
-                    <img src="/img/recycling.png" alt="Reciclagem de Vigilante">
-                    <a href="/cursos/Reciclagem/reciclagem.html">
-                        <h3>Reciclagem de Vigilante</h3>
-                        <p>Atualize suas habilidades e conhecimentos.</p>
-                    </a>
-                </div>
-                <div class="curso-item">
-                    <img src="/img/guns-notkill.png" alt="Equipamento Não Letal">
-                    <a href="/cursos/armasNaoLetais/armasNaoLetais.html">
-                        <h3>Equipamento Não Letal</h3>
-                        <p>Aprenda a usar equipamentos de segurança não letais.</p>
-                    </a>
-                </div>
-                <div class="curso-item">
-                    <img src="/img/escolta-Armada.png" alt="Escolta Armada">
-                    <a href="/cursos/escoltaArm/escolta.html">
-                        <h3>Escolta Armada</h3>
-                        <p>Capacitação para atuar em escoltas armadas.</p>
-                    </a>
-                </div>
+        <div class="dashboard-grid">
+          <article class="dashboard-card disciplines-card" id="disciplinas">
+            <div class="card-heading">
+              <div><span class="card-kicker">Sua jornada</span><h2>Minhas disciplinas</h2></div>
+              <i class="fa-solid fa-book-open card-heading-icon"></i>
             </div>
-            <div>
-                <a href="#" class="details-button" >Saiba Mais</a>
-            </div>
-        </div>
-    </section>
+            <p class="card-description">Conteúdos vinculados ao seu curso atual.</p>
+            <div id="discipline-list" class="discipline-list"><div class="loading-line">Carregando disciplinas...</div></div>
+            <button class="text-button" type="button" id="discipline-button"><span>Ver todas as disciplinas</span><i class="fa-solid fa-arrow-right"></i></button>
+          </article>
 
-    <footer id="contato" class="footer-section">
-        <div class="container footer-content">
-            <div class="footer-info">
-                <h4>Thémis</h4>
-                <p>Rua da Segurança, 123 - Cidade Protetora</p>
-                <p>contato@themis.com</p>
-                <p>(11) 98765-4321</p>
+          <article class="dashboard-card grade-card" id="boletim">
+            <div class="card-heading">
+              <div><span class="card-kicker">Acompanhamento</span><h2>Meu boletim</h2></div>
+              <i class="fa-solid fa-chart-line card-heading-icon"></i>
             </div>
-            <div class="social-links">
-                <a href="#"><i class="fab fa-facebook-f"></i></a>
-                <a href="#"><i class="fab fa-instagram"></i></a>
-                <a href="#"><i class="fab fa-linkedin-in"></i></a>
-            </div>
+            <div class="grade-summary"><strong id="grade-average">--</strong><span>média geral</span></div>
+            <div class="grade-row"><span>Notas lançadas</span><strong id="grade-count">0</strong></div>
+            <div class="grade-row"><span>Frequência</span><strong id="attendance-value">--</strong></div>
+            <a class="outline-button" href="/boletim/boletim.html" id="grade-button"><i class="fa-solid fa-file-lines"></i> Consultar boletim</a>
+          </article>
         </div>
-        <div class="footer-copyright">
-            <p>&copy; 2025 Thémis. Todos os direitos reservados.</p>
-        </div>
-    </footer>
+
+        <section class="next-step-section">
+          <div><span class="card-kicker">Próximo passo</span><h2>Continue sua formação</h2><p>Seu desempenho e sua presença ficam disponíveis conforme a secretaria lança os dados.</p></div>
+          <a class="primary-button" href="/meuPerfil/meu_perfil.html"><i class="fa-solid fa-user-pen"></i> Atualizar meu perfil</a>
+        </section>
+      </section>
+    </main>
 
     <!--Modal de cadastrar dados do usuario-->
 
@@ -169,7 +129,7 @@
           <div class="form-group">
             <label>Atribuição</label>
                 <select id="atribuicao">
-                <option value="Aluno">Aluno</option>
+                <option value="aluno">Aluno</option>
                 </select>
           </div>
           <div class="form-group">

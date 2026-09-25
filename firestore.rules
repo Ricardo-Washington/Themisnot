@@ -21,10 +21,41 @@ service cloud.firestore {
         get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.atribuicao in ['adm', 'admin'];
     }
 
+    function isProfessor() {
+      return isSignedIn() &&
+        exists(/databases/$(database)/documents/usuarios/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.atribuicao == 'professor';
+    }
+
+    function lecionaDisciplina(dados) {
+      return isProfessor()
+        && dados.professorId == request.auth.uid
+        && dados.disciplinaKey in get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.disciplinasKeys
+        && dados.alunoId != null
+        && get(/databases/$(database)/documents/usuarios/$(dados.alunoId)).data.atribuicao in ['aluno', 'Aluno']
+        && (get(/databases/$(database)/documents/usuarios/$(dados.alunoId)).data.cursoSolicitado == dados.cursoNome
+          || get(/databases/$(database)/documents/usuarios/$(dados.alunoId)).data.cursoSolicitado == dados.cursoId)
+        && get(/databases/$(database)/documents/usuarios/$(dados.alunoId)).data.turmaId == dados.turmaId;
+    }
+
     match /usuarios/{userId} {
-      allow read: if isSignedIn() && (isOwner(userId) || isFuncionario() || isAdmin());
-      allow create: if isOwner(userId);
-      allow update, delete: if isOwner(userId) || isAdmin();
+      allow read: if isSignedIn() && (isOwner(userId) || isFuncionario() || isAdmin()
+        || (isProfessor() && resource.data.atribuicao in ['aluno', 'Aluno']));
+      allow create: if isOwner(userId)
+        && request.resource.data.atribuicao == 'aluno';
+      allow update: if isAdmin()
+        || (isFuncionario()
+          && resource.data.atribuicao == 'professor'
+          && request.resource.data.atribuicao == 'professor'
+          && request.resource.data.disciplinas == resource.data.disciplinas
+          && request.resource.data.disciplinasKeys == resource.data.disciplinasKeys)
+        || (isFuncionario()
+          && resource.data.atribuicao in ['aluno', 'Aluno']
+          && request.resource.data.atribuicao == resource.data.atribuicao)
+        || (isOwner(userId)
+          && request.resource.data.atribuicao == resource.data.atribuicao);
+      allow delete: if isOwner(userId) || isAdmin()
+        || (isFuncionario() && resource.data.atribuicao == 'professor');
     }
 
     match /cursos/{cursoId} {
@@ -41,6 +72,16 @@ service cloud.firestore {
       allow read: if isFuncionario();
       allow create: if isSignedIn();
       allow update, delete: if isAdmin();
+    }
+
+    match /boletins/{boletimId} {
+      allow read: if isFuncionario() || isAdmin()
+        || (isSignedIn() && resource.data.alunoId == request.auth.uid)
+        || (isProfessor() && resource.data.professorId == request.auth.uid);
+      allow create: if lecionaDisciplina(request.resource.data);
+      allow update: if lecionaDisciplina(request.resource.data)
+        && resource.data.professorId == request.auth.uid;
+      allow delete: if lecionaDisciplina(resource.data);
     }
 
     match /{document=**} {
