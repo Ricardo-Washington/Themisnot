@@ -52,6 +52,7 @@ async function buscarFichaDoAluno(uid) {
 
             // Preenche os campos na tela
             document.getElementById('nome-aluno').textContent = alunoDataGlobals.nome || '-';
+            document.getElementById('profile-name-summary').textContent = alunoDataGlobals.nome || 'Aluno Thémis';
             document.getElementById('email-aluno').textContent = alunoDataGlobals.email || '-';
             document.getElementById('cpf-aluno').textContent = alunoDataGlobals.cpf || '-';
             document.getElementById('rg-aluno').textContent = alunoDataGlobals.rg || '-';
@@ -81,7 +82,7 @@ async function buscarFichaDoAluno(uid) {
 }
 
 // Lógica de Geração de Contrato Pela Biblioteca jsPDF
-document.getElementById('btn-gerar-contrato').addEventListener('click', () => {
+document.getElementById('btn-gerar-contrato')?.addEventListener('click', () => {
     if (!alunoDataGlobals) return;
 
     try {

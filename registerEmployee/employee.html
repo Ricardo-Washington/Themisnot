@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="pt-br">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -22,7 +22,22 @@
             </ul>
         </div>
     </nav>
-    
+    <section class="register-section">
+        <div class="register-container">
+            <h1>Solicitação de cadastro de funcionário</h1>
+            <p>Crie sua conta para que a secretaria possa validar seu acesso.</p>
+            <form id="employeeRegisterForm" class="register-form">
+                <div class="form-group"><label for="email">E-mail</label><input id="email" type="email" required></div>
+                <div class="form-group"><label for="confirmEmail">Confirme o e-mail</label><input id="confirmEmail" type="email" required></div>
+                <div class="form-group"><label for="password">Senha</label><input id="password" type="password" minlength="6" required></div>
+                <div class="form-group"><label for="confirmPassword">Confirme a senha</label><input id="confirmPassword" type="password" minlength="6" required></div>
+                <div class="form-group"><label for="nome">Nome completo</label><input id="nome" type="text" required></div>
+                <button type="submit" class="cta-button">Enviar solicitação</button>
+                <p id="employeeMessage" class="register-message" role="status"></p>
+            </form>
+        </div>
+    </section>
+
     
     <footer id="contato" class="footer-section">
         <div class="container footer-content">
@@ -42,5 +57,9 @@
             <p>&copy; 2025 Thémis. Todos os direitos reservados.</p>
         </div>
     </footer>
+    <script src="https://www.gstatic.com/firebasejs/12.1.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/12.1.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore-compat.js"></script>
+    <script src="employee.js"></script>
 </body>
 </html>

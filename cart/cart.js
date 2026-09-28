@@ -162,19 +162,36 @@ function loadCart() {
     cart.forEach((item, index) => {
         const itemDiv = document.createElement('div');
         itemDiv.className = 'cart-item';
-        itemDiv.innerHTML = `
-            <div>
-                <h4>${item.name}</h4>
-                <p>Preço unitário: R$ ${item.price.toFixed(2).replace('.', ',')}</p>
-                <div class="quantity-controls">
-                    <button class="qty-btn" onclick="updateQuantity(${index}, -1)">-</button>
-                    <span class="qty-value">${item.quantity}</span>
-                    <button class="qty-btn" onclick="updateQuantity(${index}, 1)">+</button>
-                </div>
-                <p>Subtotal: R$ ${(item.price * item.quantity).toFixed(2).replace('.', ',')}</p>
-            </div>
-            <button class="remove-button" onclick="removeFromCart(${index})">Remover</button>
-        `;
+        const details = document.createElement('div');
+        const name = document.createElement('h4');
+        name.textContent = String(item.name || 'Produto');
+        const unitPrice = document.createElement('p');
+        unitPrice.textContent = `Preço unitário: R$ ${Number(item.price).toFixed(2).replace('.', ',')}`;
+        const controls = document.createElement('div');
+        controls.className = 'quantity-controls';
+        const decrease = document.createElement('button');
+        decrease.type = 'button';
+        decrease.className = 'qty-btn';
+        decrease.textContent = '-';
+        decrease.addEventListener('click', () => updateQuantity(index, -1));
+        const quantity = document.createElement('span');
+        quantity.className = 'qty-value';
+        quantity.textContent = String(item.quantity);
+        const increase = document.createElement('button');
+        increase.type = 'button';
+        increase.className = 'qty-btn';
+        increase.textContent = '+';
+        increase.addEventListener('click', () => updateQuantity(index, 1));
+        controls.append(decrease, quantity, increase);
+        const subtotal = document.createElement('p');
+        subtotal.textContent = `Subtotal: R$ ${(Number(item.price) * item.quantity).toFixed(2).replace('.', ',')}`;
+        details.append(name, unitPrice, controls, subtotal);
+        const removeButton = document.createElement('button');
+        removeButton.type = 'button';
+        removeButton.className = 'remove-button';
+        removeButton.textContent = 'Remover';
+        removeButton.addEventListener('click', () => removeFromCart(index));
+        itemDiv.append(details, removeButton);
         cartItems.appendChild(itemDiv);
         total += item.price * item.quantity;
     });

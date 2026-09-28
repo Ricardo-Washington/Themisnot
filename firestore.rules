@@ -59,7 +59,7 @@ service cloud.firestore {
     }
 
     match /cursos/{cursoId} {
-      allow read: if isSignedIn();
+      allow read: if true;
       allow create, update, delete: if isFuncionario();
     }
 

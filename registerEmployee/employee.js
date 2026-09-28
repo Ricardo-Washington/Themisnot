@@ -9,8 +9,7 @@ const firebaseConfig = {
     measurementId: "G-3G0VW26WD9"
   };
 
-  firebase.initializeApp(firebaseConfig);
-  // Inicialize o Firebase
+  // Inicialize o Firebase apenas uma vez
   if (!firebase.apps.length) {
     firebase.initializeApp(firebaseConfig);
   } else {
@@ -20,10 +19,9 @@ const firebaseConfig = {
   // Inicialize o Firestore
   const db = firebase.firestore();
 
-  // Adiciona o listener para o formulário
-  document.getElementById('registerForm').addEventListener('submit', function(event) {
-  event.preventDefault(); // Impede o envio padrão do formulário
-  // Chama a função de registro
+  document.getElementById('employeeRegisterForm').addEventListener('submit', function(event) {
+  event.preventDefault();
+  registerUser();
   });
 
   firebase.auth().onAuthStateChanged((user) => {
@@ -56,14 +54,18 @@ const firebaseConfig = {
     firebase.auth().createUserWithEmailAndPassword(email, password)
       .then((userCredential) => {
         const user = userCredential.user;
-        // Salva os dados do usuário no Firestore
-        const logado =  db.collection('users').doc(user.uid).set({
+        // A conta começa como aluno até a secretaria aprovar o acesso de funcionário.
+        return db.collection('usuarios').doc(user.uid).set({
           email: user.email,
-          createdAt: new Date()
+          nome: document.getElementById('nome').value.trim(),
+          atribuicao: 'aluno',
+          funcaoSolicitada: 'funcionario',
+          statusAcesso: 'pendente',
+          createdAt: firebase.firestore.FieldValue.serverTimestamp()
         });
       })
       .then(() => {
-        alert('Registro realizado com sucesso!');
+        alert('Solicitação enviada com sucesso. Aguarde a validação da secretaria.');
         window.location.href = '/home/home.html'; // Redireciona para a página de login
       })
       .catch(error => {

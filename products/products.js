@@ -18,7 +18,14 @@ const db = firebase.firestore();
 const defaultProductImage = '/img/logo.png';
 
 function getProdutoImagem(produto) {
-    if (produto.imagem && produto.imagem.trim()) return produto.imagem;
+    if (produto.imagem && produto.imagem.trim()) {
+        try {
+            const imageUrl = new URL(produto.imagem, window.location.origin);
+            if (imageUrl.protocol === 'http:' || imageUrl.protocol === 'https:') return imageUrl.href;
+        } catch (error) {
+            console.warn('Imagem de produto inválida:', error);
+        }
+    }
     const nome = (produto.nome || '').toLowerCase();
     const desc = (produto.descricao || '').toLowerCase();
 
@@ -98,16 +105,32 @@ async function carregarLojaProdutos() {
             const disabledAttr = (produto.estoque && parseInt(produto.estoque) === 0) ? 'disabled style="background-color: #555; cursor: not-allowed;"' : '';
             const txtBotao = (produto.estoque && parseInt(produto.estoque) === 0) ? 'Esgotado' : 'Adicionar ao Carrinho';
 
-            const item = `
-                <div class="produto-item">
-                    <img src="${getProdutoImagem(produto)}" alt="${produto.nome}">
-                    <h3>${produto.nome}</h3>
-                    <p style="font-size: 0.9em; opacity: 0.8; margin-bottom: 10px;">${produto.descricao || ''}</p>
-                    <p>Preço: R$ ${produto.preco || '0,00'}</p>
-                    <button onclick="addToCart('${produto.nome}', ${precoNumerico})" ${disabledAttr}>${txtBotao}</button>
-                </div>
-            `;
-            produtosContainer.innerHTML += item;
+            const card = document.createElement('div');
+            card.className = 'produto-item';
+
+            const image = document.createElement('img');
+            image.src = getProdutoImagem(produto);
+            image.alt = String(produto.nome || 'Produto');
+
+            const name = document.createElement('h3');
+            name.textContent = String(produto.nome || 'Produto');
+
+            const description = document.createElement('p');
+            description.style.cssText = 'font-size: 0.9em; opacity: 0.8; margin-bottom: 10px;';
+            description.textContent = String(produto.descricao || '');
+
+            const price = document.createElement('p');
+            price.textContent = `Preço: R$ ${produto.preco || '0,00'}`;
+
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.textContent = txtBotao;
+            button.disabled = Boolean(produto.estoque && parseInt(produto.estoque, 10) === 0);
+            if (button.disabled) button.style.cssText = 'background-color: #555; cursor: not-allowed;';
+            button.addEventListener('click', () => addToCart(String(produto.nome || 'Produto'), precoNumerico));
+
+            card.append(image, name, description, price, button);
+            produtosContainer.appendChild(card);
         });
     } catch (error) {
         console.error("Erro ao carregar vitrine de produtos:", error);

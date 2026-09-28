@@ -103,16 +103,22 @@ document.getElementById("alunoForm").addEventListener("submit", async (event) =>
     const cpf = document.getElementById("cpf").value;
     const rg = document.getElementById("rg").value;
     const orgaoRg = document.getElementById("orgaoRg").value;
-    const endereco = document.getElementById("endereco").value;
     const telefone = document.getElementById("telefone").value;
     const telefoneAlt = document.getElementById("telefoneAlt").value;
+    const nascimento = document.getElementById("nascimento").value;
+    const cep = document.getElementById("cep").value.trim();
+    const logradouro = document.getElementById("logradouro").value.trim();
+    const numero = document.getElementById("numero").value.trim();
+    const bairro = document.getElementById("bairro").value.trim();
+    const cidade = document.getElementById("cidade").value.trim();
+    const uf = document.getElementById("uf").value.trim().toUpperCase();
     const formaPagamento = document.getElementById("formaPagamento").value;
     const cursoSolicitado = document.getElementById("cursoSolicitado").value;
     const turmaId = document.getElementById("turmaId").value.trim();
     const dataInicio = document.getElementById("dataInicio").value;
     const dataTermino = document.getElementById("dataTermino").value;
     const turno = document.getElementById("turno").value;
-    const idade = document.getElementById("idade").value;
+    const endereco = montarEnderecoCompleto({ logradouro, numero, bairro, cidade, uf });
 
     const vinculoAcademico = await montarVinculoAcademico(cursoSolicitado, turmaId, dataInicio, dataTermino, turno);
     if (!vinculoAcademico) {
@@ -126,7 +132,13 @@ document.getElementById("alunoForm").addEventListener("submit", async (event) =>
         cpf, 
         rg, 
         orgaoRg, 
-        endereco, 
+        endereco,
+        cep,
+        logradouro,
+        numero,
+        bairro,
+        cidade,
+        uf,
         telefone, 
         telefoneAlt,
         formaPagamento,
@@ -135,7 +147,7 @@ document.getElementById("alunoForm").addEventListener("submit", async (event) =>
         dataInicio,
         dataTermino,
         turno,
-        idade,
+        nascimento,
         ...vinculoAcademico
     };
 
@@ -168,6 +180,51 @@ document.getElementById("alunoForm").addEventListener("submit", async (event) =>
         alert("Erro ao salvar aluno. Tente novamente.");
     }
 });
+
+document.getElementById('cep').addEventListener('blur', buscarEnderecoPorCep);
+
+async function buscarEnderecoPorCep() {
+    const cepInput = document.getElementById('cep');
+    const cep = cepInput.value.replace(/\D/g, '');
+    if (cep.length !== 8) return;
+
+    cepInput.value = `${cep.slice(0, 5)}-${cep.slice(5)}`;
+    try {
+        const response = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
+        if (!response.ok) throw new Error('Não foi possível consultar o CEP.');
+        const endereco = await response.json();
+        if (endereco.erro) throw new Error('CEP não encontrado.');
+
+        document.getElementById('logradouro').value = endereco.logradouro || '';
+        document.getElementById('bairro').value = endereco.bairro || '';
+        document.getElementById('cidade').value = endereco.localidade || '';
+        document.getElementById('uf').value = endereco.uf || '';
+        atualizarEnderecoCompleto();
+    } catch (error) {
+        document.getElementById('logradouro').value = '';
+        document.getElementById('bairro').value = '';
+        document.getElementById('cidade').value = '';
+        document.getElementById('uf').value = '';
+        alert(error.message);
+    }
+}
+
+document.getElementById('numero').addEventListener('input', atualizarEnderecoCompleto);
+
+function atualizarEnderecoCompleto() {
+    const endereco = montarEnderecoCompleto({
+        logradouro: document.getElementById('logradouro').value,
+        numero: document.getElementById('numero').value,
+        bairro: document.getElementById('bairro').value,
+        cidade: document.getElementById('cidade').value,
+        uf: document.getElementById('uf').value
+    });
+    document.getElementById('endereco').value = endereco;
+}
+
+function montarEnderecoCompleto({ logradouro, numero, bairro, cidade, uf }) {
+    return `${logradouro}, ${numero} - ${bairro}, ${cidade}/${uf}`.replace(/^,\s*|\s*[-,/]\s*$/g, '').trim();
+}
 
 async function montarVinculoAcademico(cursoInformado, turmaId, dataInicio, dataTermino, turno) {
     const cursosSnapshot = await db.collection('cursos').get();
@@ -284,20 +341,55 @@ async function carregarAlunos() {
         });
 
         listaAlunos.forEach((aluno) => {
-            const row = `
-                <tr>
-                    <td><strong>${aluno.nome}</strong></td>
-                    <td>${aluno.cpf || ''}</td>
-                    <td>${aluno.rg || ''}</td>
-                    <td>${aluno.idade || ''}</td>
-                    <td>
-                        <button class="action-btn edit-btn" onclick="editarAluno('${aluno.id}', '${aluno.nome}', '${aluno.email}', '${aluno.cpf}', '${aluno.rg}', '${aluno.orgaoRg}', '${aluno.endereco}', '${aluno.telefone}', '${aluno.telefoneAlt}', '${aluno.cursoSolicitado}', '${aluno.turmaId || ''}', '${aluno.idade}', '${aluno.dataInicio}', '${aluno.dataTermino || ''}', '${aluno.formaPagamento}', '${aluno.turno || ''}')" title="Editar Aluno"><i class="fa-solid fa-pen"></i></button>
-                        <button class="action-btn doc-btn" onclick="criarContrato('${aluno.nome}', '${aluno.idade}', '${aluno.cpf}', '${aluno.rg}', '${aluno.orgaoRg}', '${aluno.endereco}', '${aluno.telefone}', '${aluno.telefoneAlt}', '${aluno.formaPagamento}', '${aluno.cursoSolicitado}', '${aluno.dataInicio}', '${aluno.turno || ''}')" title="Gerar Contrato PDF"><i class="fa-solid fa-file-signature"></i></button>
-                        <button class="action-btn delete-btn" onclick="excluirAluno('${aluno.id}')" title="Excluir Aluno"><i class="fa-solid fa-trash"></i></button>
-                    </td>
-                </tr>
-            `;
-            alunosTableBody.innerHTML += row;
+            const row = document.createElement('tr');
+            const values = [aluno.nome, aluno.cpf, aluno.rg, aluno.nascimento || '--'];
+            values.forEach((value, index) => {
+                const cell = document.createElement('td');
+                if (index === 0) {
+                    const strong = document.createElement('strong');
+                    strong.textContent = String(value || '');
+                    cell.appendChild(strong);
+                } else {
+                    cell.textContent = String(value || '');
+                }
+                row.appendChild(cell);
+            });
+
+            const actions = document.createElement('td');
+            const editButton = document.createElement('button');
+            editButton.type = 'button';
+            editButton.className = 'action-btn edit-btn';
+            editButton.title = 'Editar Aluno';
+            editButton.innerHTML = '<i class="fa-solid fa-pen" aria-hidden="true"></i>';
+            editButton.addEventListener('click', () => editarAluno(
+                aluno.id, aluno.nome, aluno.email, aluno.cpf, aluno.rg, aluno.orgaoRg,
+                aluno.endereco, aluno.cep, aluno.logradouro, aluno.numero, aluno.bairro,
+                aluno.cidade, aluno.uf, aluno.telefone, aluno.telefoneAlt, aluno.cursoSolicitado,
+                aluno.turmaId || '', aluno.nascimento || '', aluno.dataInicio, aluno.dataTermino || '',
+                aluno.formaPagamento, aluno.turno || ''
+            ));
+
+            const contractButton = document.createElement('button');
+            contractButton.type = 'button';
+            contractButton.className = 'action-btn doc-btn';
+            contractButton.title = 'Gerar Contrato PDF';
+            contractButton.innerHTML = '<i class="fa-solid fa-file-signature" aria-hidden="true"></i>';
+            contractButton.addEventListener('click', () => criarContrato(
+                aluno.nome, aluno.nascimento || aluno.idade || '', aluno.cpf, aluno.rg, aluno.orgaoRg, aluno.endereco,
+                aluno.telefone, aluno.telefoneAlt, aluno.formaPagamento, aluno.cursoSolicitado,
+                aluno.dataInicio, aluno.turno || ''
+            ));
+
+            const deleteButton = document.createElement('button');
+            deleteButton.type = 'button';
+            deleteButton.className = 'action-btn delete-btn';
+            deleteButton.title = 'Excluir Aluno';
+            deleteButton.innerHTML = '<i class="fa-solid fa-trash" aria-hidden="true"></i>';
+            deleteButton.addEventListener('click', () => excluirAluno(aluno.id));
+
+            actions.append(editButton, contractButton, deleteButton);
+            row.appendChild(actions);
+            alunosTableBody.appendChild(row);
         });
     } catch (error) {
         console.error("Erro ao carregar alunos:", error);
@@ -306,7 +398,7 @@ async function carregarAlunos() {
 }
 
 // Função para preencher o formulário com os dados do aluno para edição
-async function editarAluno(id, nome, email, cpf, rg, orgaoRg, endereco, telefone, telefoneAlt, cursoSolicitado, turmaId, idade, dataInicio, dataTermino, formaPagamento, turnoParam) {
+async function editarAluno(id, nome, email, cpf, rg, orgaoRg, endereco, cep, logradouro, numero, bairro, cidade, uf, telefone, telefoneAlt, cursoSolicitado, turmaId, nascimento, dataInicio, dataTermino, formaPagamento, turnoParam) {
     configurarCamposDeConta(false);
     await carregarOpcoesCursosAluno(cursoSolicitado);
     document.getElementById("alunoId").value = id;
@@ -315,7 +407,13 @@ async function editarAluno(id, nome, email, cpf, rg, orgaoRg, endereco, telefone
     document.getElementById("cpf").value = cpf;
     document.getElementById("rg").value = rg;
     document.getElementById("orgaoRg").value = orgaoRg;
-    document.getElementById("endereco").value = endereco;
+    document.getElementById("endereco").value = endereco || '';
+    document.getElementById("cep").value = cep || '';
+    document.getElementById("logradouro").value = logradouro || '';
+    document.getElementById("numero").value = numero || '';
+    document.getElementById("bairro").value = bairro || '';
+    document.getElementById("cidade").value = cidade || '';
+    document.getElementById("uf").value = uf || '';
     document.getElementById("telefone").value = telefone;
     document.getElementById("telefoneAlt").value = telefoneAlt || '';
     document.getElementById("formaPagamento").value = formaPagamento || '';
@@ -324,7 +422,7 @@ async function editarAluno(id, nome, email, cpf, rg, orgaoRg, endereco, telefone
     document.getElementById("dataInicio").value = dataInicio || '';
     document.getElementById("dataTermino").value = dataTermino || '';
     document.getElementById("turno").value = turnoParam || '';
-    document.getElementById("idade").value = idade || '';
+    document.getElementById("nascimento").value = nascimento || '';
 
     // Modifica titulo e abre modal
     const mt = document.getElementById('modalAlunoTitle');
@@ -353,8 +451,9 @@ async function excluirAluno(id) {
 // Carregamento agora ocorre após autenticação (onAuthStateChanged)
 
 // Função para criar contrato em PDF
-function criarContrato(nome, idade, cpf, rg, orgaoRg, endereco, telefone, telefoneAlt, formaPagamento, cursoSolicitado, dataInicio, turno) {
+function criarContrato(nome, nascimento, cpf, rg, orgaoRg, endereco, telefone, telefoneAlt, formaPagamento, cursoSolicitado, dataInicio, turno) {
     if (window.registrarLogAudit) registrarLogAudit(`Gerou Contrato: ${nome}`, 'gestão', {cursoSolicitado});
+    const idade = calcularIdade(nascimento);
     
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF({
@@ -493,6 +592,19 @@ Assim, por estarem justas e contratadas, as partes assinam o presente contrato e
     };
 }
 
+function calcularIdade(nascimento) {
+    if (!nascimento) return '';
+    const dataNascimento = new Date(`${nascimento}T00:00:00`);
+    if (Number.isNaN(dataNascimento.getTime())) return String(nascimento);
+
+    const hoje = new Date();
+    let idade = hoje.getFullYear() - dataNascimento.getFullYear();
+    const aniversarioAindaNaoChegou = hoje.getMonth() < dataNascimento.getMonth()
+        || (hoje.getMonth() === dataNascimento.getMonth() && hoje.getDate() < dataNascimento.getDate());
+    if (aniversarioAindaNaoChegou) idade -= 1;
+    return idade >= 0 ? String(idade) : '';
+}
+
 // Funcionalidade do modal
 function fecharModalAluno() {
     const modalAluno = document.getElementById('modalAluno');
@@ -585,21 +697,37 @@ async function carregarProfessores() {
         }
 
         professores.forEach(professor => {
-            const disciplinas = Array.isArray(professor.disciplinas) ? professor.disciplinas : [];
-            const chips = disciplinas.map(item => {
-                const nome = typeof item === 'string' ? item : item.nome;
-                return `<span class="discipline-chip">${escapeHtml(nome || 'Disciplina')}</span>`;
-            }).join('');
-            tabela.innerHTML += `
-                <tr>
-                    <td><strong>${escapeHtml(professor.nome || '--')}</strong></td>
-                    <td>${escapeHtml(professor.email || '--')}</td>
-                    <td><div class="discipline-chips">${chips || '<span class="no-disciplines">Nenhuma disciplina vinculada</span>'}</div></td>
-                    <td>
-                        <button class="action-btn edit-btn" onclick="editarProfessor('${professor.id}')" title="Editar Professor"><i class="fa-solid fa-pen"></i></button>
-                        <button class="action-btn delete-btn" onclick="excluirProfessor('${professor.id}')" title="Excluir Professor"><i class="fa-solid fa-trash"></i></button>
-                    </td>
-                </tr>`;
+            const row = document.createElement('tr');
+            const nameCell = document.createElement('td');
+            const name = document.createElement('strong');
+            name.textContent = String(professor.nome || '--');
+            nameCell.appendChild(name);
+            const emailCell = document.createElement('td');
+            emailCell.textContent = String(professor.email || '--');
+            const disciplinesCell = document.createElement('td');
+            const disciplines = document.createElement('div');
+            disciplines.className = 'discipline-chips';
+            const items = Array.isArray(professor.disciplinas) ? professor.disciplinas : [];
+            items.forEach(item => {
+                const chip = document.createElement('span');
+                chip.className = 'discipline-chip';
+                chip.textContent = String(typeof item === 'string' ? item : item.nome || 'Disciplina');
+                disciplines.appendChild(chip);
+            });
+            if (!items.length) {
+                const empty = document.createElement('span');
+                empty.className = 'no-disciplines';
+                empty.textContent = 'Nenhuma disciplina vinculada';
+                disciplines.appendChild(empty);
+            }
+            disciplinesCell.appendChild(disciplines);
+            const actions = document.createElement('td');
+            actions.append(
+                criarBotaoAcao('edit-btn', 'Editar Professor', 'fa-solid fa-pen', () => editarProfessor(professor.id)),
+                criarBotaoAcao('delete-btn', 'Excluir Professor', 'fa-solid fa-trash', () => excluirProfessor(professor.id))
+            );
+            row.append(nameCell, emailCell, disciplinesCell, actions);
+            tabela.appendChild(row);
         });
     } catch (error) {
         console.error('Erro ao carregar professores:', error);
@@ -774,6 +902,16 @@ function escapeHtml(value) {
     }[character]));
 }
 
+function criarBotaoAcao(classe, titulo, icone, handler) {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = `action-btn ${classe}`;
+    button.title = titulo;
+    button.innerHTML = `<i class="${icone}" aria-hidden="true"></i>`;
+    button.addEventListener('click', handler);
+    return button;
+}
+
 // --- LÓGICA DE GERENCIAMENTO DE CURSOS ---
 async function carregarCursos() {
     const cursosTableBody = document.getElementById("cursosTableBody");
@@ -789,20 +927,25 @@ async function carregarCursos() {
 
         snapshot.forEach((doc) => {
             const curso = doc.data();
-            const row = `
-                <tr>
-                    <td><strong>${curso.nome}</strong></td>
-                    <td>R$ ${curso.preco || '0,00'}</td>
-                    <td>${curso.cargaHr || '--'}</td>
-                    <td>${curso.dataTurma || '--'}</td>
-                    <td style="text-align: center;">
-                        <button class="action-btn edit-btn" onclick="editarCurso('${doc.id}', '${curso.nome}', '${curso.preco}', '${curso.cargaHr}', '${curso.dataTurma}')" title="Editar Curso">
-                            <i class="fa-solid fa-pen"></i>
-                        </button>
-                    </td>
-                </tr>
-            `;
-            cursosTableBody.innerHTML += row;
+            const row = document.createElement('tr');
+            [curso.nome, `R$ ${curso.preco || '0,00'}`, curso.cargaHr || '--', curso.dataTurma || '--'].forEach((value, index) => {
+                const cell = document.createElement('td');
+                if (index === 0) {
+                    const name = document.createElement('strong');
+                    name.textContent = String(value || '');
+                    cell.appendChild(name);
+                } else {
+                    cell.textContent = String(value);
+                }
+                row.appendChild(cell);
+            });
+            const actions = document.createElement('td');
+            actions.style.textAlign = 'center';
+            actions.appendChild(criarBotaoAcao('edit-btn', 'Editar Curso', 'fa-solid fa-pen', () => editarCurso(
+                doc.id, curso.nome, curso.preco, curso.cargaHr, curso.dataTurma
+            )));
+            row.appendChild(actions);
+            cursosTableBody.appendChild(row);
         });
     } catch (error) {
         console.error("Erro ao carregar cursos:", error);
@@ -884,24 +1027,35 @@ async function carregarProdutos() {
 
         snapshot.forEach((doc) => {
             const produto = doc.data();
-            const row = `
-                <tr>
-                    <td style="width: 60px;"><img src="${getProdutoImagem(produto)}" alt="Produto" style="width: 40px; height: 40px; object-fit: cover; border-radius: 4px;"></td>
-                    <td>${produto.idExt || '--'}</td>
-                    <td><strong>${produto.nome}</strong></td>
-                    <td>R$ ${produto.valorCusto || '0,00'} / R$ ${produto.preco || '0,00'}</td>
-                    <td>${produto.estoque || '0'} un.</td>
-                    <td style="text-align: center;">
-                        <button class="action-btn edit-btn" onclick="editarProduto('${doc.id}', '${produto.idExt || ''}', '${produto.nome}', '${produto.preco}', '${produto.valorCusto || ''}', '${produto.estoque || ''}', '${produto.imagem || ''}', '${produto.descricao || ''}')" title="Editar Produto">
-                            <i class="fa-solid fa-pen"></i>
-                        </button>
-                        <button class="action-btn delete-btn" onclick="excluirProduto('${doc.id}')" title="Excluir Produto">
-                            <i class="fa-solid fa-trash"></i>
-                        </button>
-                    </td>
-                </tr>
-            `;
-            produtosTableBody.innerHTML += row;
+            const row = document.createElement('tr');
+            const imageCell = document.createElement('td');
+            imageCell.style.width = '60px';
+            const image = document.createElement('img');
+            image.src = getProdutoImagem(produto);
+            image.alt = 'Produto';
+            image.style.cssText = 'width: 40px; height: 40px; object-fit: cover; border-radius: 4px;';
+            imageCell.appendChild(image);
+            const values = [produto.idExt || '--', produto.nome || '--', `R$ ${produto.valorCusto || '0,00'} / R$ ${produto.preco || '0,00'}`, `${produto.estoque || '0'} un.`];
+            const cells = values.map(value => {
+                const cell = document.createElement('td');
+                cell.textContent = String(value);
+                return cell;
+            });
+            const name = document.createElement('strong');
+            name.textContent = String(produto.nome || '--');
+            cells[1].textContent = '';
+            cells[1].appendChild(name);
+            const actions = document.createElement('td');
+            actions.style.textAlign = 'center';
+            actions.append(
+                criarBotaoAcao('edit-btn', 'Editar Produto', 'fa-solid fa-pen', () => editarProduto(
+                    doc.id, produto.idExt || '', produto.nome, produto.preco, produto.valorCusto || '',
+                    produto.estoque || '', produto.imagem || '', produto.descricao || ''
+                )),
+                criarBotaoAcao('delete-btn', 'Excluir Produto', 'fa-solid fa-trash', () => excluirProduto(doc.id))
+            );
+            row.append(imageCell, ...cells, actions);
+            produtosTableBody.appendChild(row);
         });
     } catch (error) {
         console.error("Erro ao carregar produtos:", error);

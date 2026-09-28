@@ -9,8 +9,7 @@ const firebaseConfig = {
     measurementId: "G-3G0VW26WD9"
   };
 
-  firebase.initializeApp(firebaseConfig);
-  // Inicialize o Firebase
+  // Inicialize o Firebase apenas uma vez
   if (!firebase.apps.length) {
     firebase.initializeApp(firebaseConfig);
   } else {
@@ -23,7 +22,7 @@ const firebaseConfig = {
   // Adiciona o listener para o formulário
   document.getElementById('registerForm').addEventListener('submit', function(event) {
   event.preventDefault(); // Impede o envio padrão do formulário
-  // Chama a função de registro
+  registerUser();
   });
 
   firebase.auth().onAuthStateChanged((user) => {
@@ -69,7 +68,7 @@ const firebaseConfig = {
       })
       .catch(error => {
         console.error('Erro ao registrar:', error);
-        alert(getErrorMessage(error));31
+        alert(getErrorMessage(error));
       });
   }
   // Função para mapear códigos de erro para mensagens amigáveis

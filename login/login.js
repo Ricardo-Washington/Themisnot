@@ -22,6 +22,11 @@ document.getElementById('registerForm').addEventListener('submit', function(even
     login(); // Chama a função de login
 });
 
+document.getElementById('recoverPasswordLink')?.addEventListener('click', (event) => {
+    event.preventDefault();
+    recoverPassword();
+});
+
 firebase.auth().onAuthStateChanged(async (user) => {
     if (user) {
         // Verifica a atribuição do usuário no Firestore para redirecionar corretamente
@@ -98,13 +103,24 @@ function login() {
 }
 
 function recoverPassword() {
-    showLoading();
-    firebase.auth().sendPasswordResetEmail(form.email().value).then(() => {
-        hideLoading();
-        alert('Email enviado com sucesso');
+    const emailInput = document.getElementById('email');
+    const email = emailInput?.value.trim() || '';
+    const messageDiv = document.getElementById('registerMessage');
+
+    if (!email) {
+        messageDiv.textContent = 'Informe seu e-mail para recuperar a senha.';
+        messageDiv.style.color = 'red';
+        emailInput?.focus();
+        return;
+    }
+
+    firebase.auth().sendPasswordResetEmail(email).then(() => {
+        messageDiv.textContent = 'E-mail de recuperação enviado com sucesso.';
+        messageDiv.style.color = 'green';
     }).catch(error => {
-        hideLoading();
-        alert(getErrorMessage(error));
+        messageDiv.textContent = 'Não foi possível enviar o e-mail de recuperação.';
+        messageDiv.style.color = 'red';
+        console.error('Erro ao recuperar senha:', error);
     });
 }
 

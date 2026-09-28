@@ -11,7 +11,6 @@
     <script src="https://www.gstatic.com/firebasejs/12.1.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/12.1.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore-compat.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="meu_perfil.js" defer></script>
 </head>
 
@@ -27,22 +26,37 @@
         </div>
     </nav>
 
-    <header class="hero-section">
-        <div class="container hero-content">
-            <h1>Painel do Aluno</h1>
-            <p>Seja bem-vindo(a) à sua área exclusiva Thémis.</p>
+    <main class="profile-page">
+      <header class="profile-hero">
+        <div class="container profile-hero-content">
+            <div>
+                <span class="eyebrow"><i class="fa-solid fa-user-shield"></i> Área do aluno</span>
+                <h1>Meu perfil</h1>
+                <p>Confira seus dados cadastrais e mantenha suas informações atualizadas.</p>
+            </div>
+            <div class="profile-avatar" aria-hidden="true"><i class="fa-solid fa-user"></i></div>
         </div>
-    </header>
+      </header>
 
-    <main class="container profile-container">
+      <div class="container profile-container">
         <div id="loading" class="loading-spinner" style="display: block; text-align: center; padding: 50px;">
             <i class="fa fa-spinner fa-spin fa-3x" style="color: var(--orange);"></i>
             <p>Carregando sua ficha...</p>
         </div>
 
         <div id="profile-content" style="display: none;">
-            <div class="profile-card">
-                <h2>Seus Dados Cadastrais</h2>
+                        <div class="profile-layout">
+                            <aside class="profile-summary">
+                                <div class="summary-avatar"><i class="fa-solid fa-user"></i></div>
+                                <span class="card-kicker">Perfil cadastrado</span>
+                                <h2 id="profile-name-summary">Aluno Thémis</h2>
+                                <p>Suas informações ficam vinculadas à sua matrícula.</p>
+                                <div class="summary-status"><span></span> Cadastro ativo</div>
+                            </aside>
+
+                            <section class="profile-card">
+                                        <span class="card-kicker">Informações pessoais</span>
+                                        <h2>Seus dados cadastrais</h2>
                 <div class="info-grid">
                     <div class="info-item">
                         <strong>Nome Completo:</strong>
@@ -70,13 +84,14 @@
                     </div>
                 </div>
 
-                <div class="action-area">
-                    <h3>Documentos</h3>
-                    <p>Você pode gerar e imprimir seu contrato a qualquer momento clicando no botão abaixo.</p>
-                    <button id="btn-gerar-contrato" class="btn-orange">
-                        <i class="fa fa-file-pdf"></i> Imprimir Meu Contrato
-                    </button>
+                <div class="profile-note">
+                    <i class="fa-solid fa-shield-halved" aria-hidden="true"></i>
+                    <div>
+                        <strong>Dados protegidos</strong>
+                        <p>Suas informações são exibidas somente para você e para a equipe autorizada da Thémis.</p>
+                    </div>
                 </div>
+              </section>
             </div>
         </div>
 
@@ -84,7 +99,8 @@
             <h3>Ficha não encontrada.</h3>
             <p>Sua matrícula ainda não foi processada pela secretaria. Volte mais tarde!</p>
         </div>
-    </main>
+            </div>
+        </main>
 
 </body>
 </html>

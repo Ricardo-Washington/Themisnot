@@ -120,8 +120,12 @@ async function preencherPainelAcademico(dados, user) {
             .find(curso => curso.id === cursoAluno || curso.nome === cursoAluno || curso.nome?.toLowerCase() === cursoAluno.toLowerCase());
         const nomeCurso = cursoEncontrado?.nome || cursoAluno;
         courseName.textContent = nomeCurso;
-        courseStatus.textContent = 'Matrícula ativa. Consulte suas disciplinas abaixo.';
-        document.getElementById('course-progress').textContent = `${dados.progressoCurso || 0}%`;
+        const turma = cursoEncontrado?.turmas?.find(item => (item.id || item.turmaId) === dados.turmaId);
+        const dataInicio = dados.dataInicio || turma?.dataInicio || cursoEncontrado?.dataInicio;
+        const dataTermino = dados.dataTermino || turma?.dataTermino || turma?.dataFim || cursoEncontrado?.dataTermino || cursoEncontrado?.dataFim;
+        const progresso = calcularProgressoCurso(dataInicio, dataTermino);
+        document.getElementById('course-progress').textContent = `${progresso.percentual}%`;
+        courseStatus.textContent = progresso.mensagem;
 
         const disciplinas = cursoEncontrado?.disciplinas || disciplinasPadrao[cursoEncontrado?.id] || [];
         renderizarDisciplinas(disciplinas);
@@ -136,6 +140,54 @@ async function preencherPainelAcademico(dados, user) {
     document.getElementById('grade-count').textContent = notas.length;
     document.getElementById('grade-average').textContent = notas.length ? calcularMedia(notas) : '--';
     document.getElementById('attendance-value').textContent = dados.frequencia ? `${dados.frequencia}%` : '--';
+}
+
+function calcularProgressoCurso(dataInicio, dataTermino, hoje = new Date()) {
+    const inicio = converterDataSomente(dataInicio);
+    const termino = converterDataSomente(dataTermino);
+
+    if (!inicio || !termino || termino < inicio) {
+        return { percentual: 0, mensagem: 'As datas do curso ainda não foram definidas pela secretaria.' };
+    }
+
+    const inicioTimestamp = inicio.getTime();
+    const terminoTimestamp = termino.getTime();
+    const hojeData = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate());
+    const hojeTimestamp = hojeData.getTime();
+    const duracao = terminoTimestamp - inicioTimestamp;
+
+    if (hojeTimestamp <= inicioTimestamp) {
+        return { percentual: 0, mensagem: `Curso inicia em ${formatarDataCurso(inicio)}.` };
+    }
+
+    if (hojeTimestamp >= terminoTimestamp) {
+        return { percentual: 100, mensagem: `Curso encerrado em ${formatarDataCurso(termino)}.` };
+    }
+
+    const percentual = Math.round(((hojeTimestamp - inicioTimestamp) / duracao) * 100);
+    return {
+        percentual: Math.max(0, Math.min(100, percentual)),
+        mensagem: `Curso em andamento. Término previsto para ${formatarDataCurso(termino)}.`
+    };
+}
+
+function converterDataSomente(value) {
+    if (!value) return null;
+    if (value instanceof Date && !Number.isNaN(value.getTime())) {
+        return new Date(value.getFullYear(), value.getMonth(), value.getDate());
+    }
+
+    const texto = String(value).slice(0, 10);
+    const partes = texto.split('-').map(Number);
+    if (partes.length !== 3 || partes.some(Number.isNaN)) return null;
+
+    const [ano, mes, dia] = partes;
+    const data = new Date(ano, mes - 1, dia);
+    return data.getFullYear() === ano && data.getMonth() === mes - 1 && data.getDate() === dia ? data : null;
+}
+
+function formatarDataCurso(data) {
+    return data.toLocaleDateString('pt-BR');
 }
 
 function calcularMedia(notas) {
@@ -159,7 +211,15 @@ function renderizarDisciplinas(disciplinas) {
         const nome = typeof disciplina === 'string' ? disciplina : disciplina.nome;
         const item = document.createElement('div');
         item.className = 'discipline-item';
-        item.innerHTML = `<span class="discipline-number">${String(index + 1).padStart(2, '0')}</span><span>${nome || 'Disciplina'}</span><span class="discipline-state">${disciplina.status || 'Em andamento'}</span>`;
+        const number = document.createElement('span');
+        number.className = 'discipline-number';
+        number.textContent = String(index + 1).padStart(2, '0');
+        const title = document.createElement('span');
+        title.textContent = String(nome || 'Disciplina');
+        const status = document.createElement('span');
+        status.className = 'discipline-state';
+        status.textContent = String((typeof disciplina === 'object' && disciplina.status) || 'Em andamento');
+        item.append(number, title, status);
         lista.appendChild(item);
     });
 }

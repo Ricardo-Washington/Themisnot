@@ -389,9 +389,18 @@ function openModal(tipo) {
   const camposCurso = document.getElementById('camposCurso');
   
   const nomeInput = document.getElementById('editNome');
+  const emailInput = document.getElementById('editEmail');
   const cpfInput = document.getElementById('editCpf');
+  const orgaoRgInput = document.getElementById('editOrgaoRg');
   const enderecoInput = document.getElementById('editEndereco');
+  const cepInput = document.getElementById('editCep');
+  const logradouroInput = document.getElementById('editLogradouro');
+  const numeroInput = document.getElementById('editNumero');
+  const bairroInput = document.getElementById('editBairro');
+  const cidadeInput = document.getElementById('editCidade');
+  const ufInput = document.getElementById('editUf');
   const telefoneInput = document.getElementById('editTelefone');
+  const telefoneAltInput = document.getElementById('editTelefoneAlt');
   const rgInput = document.getElementById('editRg');
   const nascimentoInput = document.getElementById('editNascimento');
   const atribuicaoSelect = document.getElementById('editAtribuicao');
@@ -489,9 +498,18 @@ function openModal(tipo) {
     if (lista.length > 0) {
       usuarioAtual = lista[0];
       nomeInput.value = usuarioAtual.nome || '';
+      emailInput.value = usuarioAtual.email || '';
       cpfInput.value = usuarioAtual.cpf || '';
+      orgaoRgInput.value = usuarioAtual.orgaoRg || '';
       enderecoInput.value = usuarioAtual.endereco || '';
+      cepInput.value = usuarioAtual.cep || '';
+      logradouroInput.value = usuarioAtual.logradouro || '';
+      numeroInput.value = usuarioAtual.numero || '';
+      bairroInput.value = usuarioAtual.bairro || '';
+      cidadeInput.value = usuarioAtual.cidade || '';
+      ufInput.value = usuarioAtual.uf || '';
       telefoneInput.value = usuarioAtual.telefone || '';
+      telefoneAltInput.value = usuarioAtual.telefoneAlt || '';
       rgInput.value = usuarioAtual.rg || '';
       nascimentoInput.value = usuarioAtual.nascimento || '';
       atribuicaoSelect.value = usuarioAtual.atribuicao || '';
@@ -501,9 +519,18 @@ function openModal(tipo) {
     } else {
       usuarioAtual = null;
       nomeInput.value = '';
+      emailInput.value = '';
       cpfInput.value = '';
+      orgaoRgInput.value = '';
       enderecoInput.value = '';
+      cepInput.value = '';
+      logradouroInput.value = '';
+      numeroInput.value = '';
+      bairroInput.value = '';
+      cidadeInput.value = '';
+      ufInput.value = '';
       telefoneInput.value = '';
+      telefoneAltInput.value = '';
       rgInput.value = '';
       nascimentoInput.value = '';
       atribuicaoSelect.value = '';
@@ -537,9 +564,18 @@ document.getElementById('selectUsuario').addEventListener('change', function() {
     let lista = tipoAtual === 'funcionario' ? usuariosFuncionarios : (tipoAtual === 'professor' ? usuariosProfessores : usuariosAlunos);
     usuarioAtual = lista.find(u => u.id === this.value);
     document.getElementById('editNome').value = usuarioAtual?.nome || '';
+    document.getElementById('editEmail').value = usuarioAtual?.email || '';
     document.getElementById('editCpf').value = usuarioAtual?.cpf || '';
+    document.getElementById('editOrgaoRg').value = usuarioAtual?.orgaoRg || '';
     document.getElementById('editEndereco').value = usuarioAtual?.endereco || '';
+    document.getElementById('editCep').value = usuarioAtual?.cep || '';
+    document.getElementById('editLogradouro').value = usuarioAtual?.logradouro || '';
+    document.getElementById('editNumero').value = usuarioAtual?.numero || '';
+    document.getElementById('editBairro').value = usuarioAtual?.bairro || '';
+    document.getElementById('editCidade').value = usuarioAtual?.cidade || '';
+    document.getElementById('editUf').value = usuarioAtual?.uf || '';
     document.getElementById('editTelefone').value = usuarioAtual?.telefone || '';
+    document.getElementById('editTelefoneAlt').value = usuarioAtual?.telefoneAlt || '';
     document.getElementById('editRg').value = usuarioAtual?.rg || '';
     document.getElementById('editNascimento').value = usuarioAtual?.nascimento || '';
     document.getElementById('editAtribuicao').value = usuarioAtual?.atribuicao || '';
@@ -710,9 +746,18 @@ document.getElementById('editForm').addEventListener('submit', async function(e)
         });
   } else {
       const novoNome = document.getElementById('editNome').value;
+      const novoEmail = document.getElementById('editEmail').value.trim().toLowerCase();
       const novoCpf = document.getElementById('editCpf').value;
+      const novoOrgaoRg = document.getElementById('editOrgaoRg').value;
       const novoEndereco = document.getElementById('editEndereco').value;
+      const novoCep = document.getElementById('editCep').value;
+      const novoLogradouro = document.getElementById('editLogradouro').value;
+      const novoNumero = document.getElementById('editNumero').value;
+      const novoBairro = document.getElementById('editBairro').value;
+      const novaCidade = document.getElementById('editCidade').value;
+      const novaUf = document.getElementById('editUf').value.toUpperCase();
       const novoTelefone = document.getElementById('editTelefone').value;
+      const novoTelefoneAlt = document.getElementById('editTelefoneAlt').value;
       const novoRg = document.getElementById('editRg').value;
       const novoNascimento = document.getElementById('editNascimento').value;
       const novaAtribuicao = document.getElementById('editAtribuicao').value;
@@ -742,9 +787,18 @@ document.getElementById('editForm').addEventListener('submit', async function(e)
         .doc(usuarioAtual.id)
         .update({
           nome: novoNome,
+          email: novoEmail,
           cpf: novoCpf,
+          orgaoRg: novoOrgaoRg,
           endereco: novoEndereco,
+          cep: novoCep,
+          logradouro: novoLogradouro,
+          numero: novoNumero,
+          bairro: novoBairro,
+          cidade: novaCidade,
+          uf: novaUf,
           telefone: novoTelefone,
+          telefoneAlt: novoTelefoneAlt,
           rg: novoRg,
           nascimento: novoNascimento,
           atribuicao: novaAtribuicao,

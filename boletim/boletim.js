@@ -42,10 +42,7 @@ function renderizarBoletim(student, course, grades) {
     const courseName = course?.nome || student.cursoSolicitado || student.curso || 'Curso não vinculado';
     document.getElementById('student-course').textContent = `Aluno: ${student.nome || 'Estudante'} • Curso: ${courseName}`;
 
-    const disciplines = (course?.disciplinas || []).map(item => {
-        if (typeof item === 'string') return { nome: item };
-        return { nome: item.nome || 'Disciplina' };
-    });
+    const disciplines = listarDisciplinasDoAluno(student, course);
     const report = disciplines.map(discipline => ({
         ...discipline,
         record: obterRegistroMaisRecente(grades, discipline.nome, course, student.turmaId)
@@ -67,9 +64,40 @@ function renderizarBoletim(student, course, grades) {
         const record = item.record || {};
         const status = definirSituacao(record);
         const row = document.createElement('tr');
-        row.innerHTML = `<td><strong>${escapeHtml(item.nome)}</strong></td><td>${record.nota === undefined || record.nota === null ? '--' : formatarNota(record.nota)}</td><td>${record.faltas ?? 0}</td><td><span class="status ${status.classe}">${status.texto}</span></td>`;
+        const nameCell = document.createElement('td');
+        const name = document.createElement('strong');
+        name.textContent = item.nome;
+        nameCell.appendChild(name);
+        const gradeCell = document.createElement('td');
+        gradeCell.textContent = record.nota === undefined || record.nota === null ? '--' : formatarNota(record.nota);
+        const absenceCell = document.createElement('td');
+        absenceCell.textContent = String(record.faltas ?? 0);
+        const statusCell = document.createElement('td');
+        const statusBadge = document.createElement('span');
+        statusBadge.className = `status ${status.classe}`;
+        statusBadge.textContent = status.texto;
+        statusCell.appendChild(statusBadge);
+        row.append(nameCell, gradeCell, absenceCell, statusCell);
         body.appendChild(row);
     });
+}
+
+function listarDisciplinasDoAluno(student, course) {
+    const disciplinasDoAluno = Array.isArray(student.disciplinas) && student.disciplinas.length
+        ? student.disciplinas
+        : course?.disciplinas || [];
+    const nomesUsados = new Set();
+
+    return disciplinasDoAluno
+        .map(item => typeof item === 'string' ? { nome: item } : { ...item, nome: item.nome })
+        .filter(item => {
+            const nome = String(item.nome || '').trim();
+            const chave = nome.toLocaleLowerCase();
+            if (!nome || nomesUsados.has(chave)) return false;
+            nomesUsados.add(chave);
+            item.nome = nome;
+            return true;
+        });
 }
 
 function obterRegistroMaisRecente(grades, disciplineName, course, turmaId) {
@@ -88,7 +116,9 @@ function formatarNota(value) {
 }
 
 function definirSituacao(record) {
-    if (record.nota === undefined || record.nota === null || record.nota === '') return { texto: 'Pendente', classe: '' };
+    if (record.nota === undefined || record.nota === null || record.nota === '') {
+        return { texto: 'Aguardando nota do professor', classe: 'pending' };
+    }
     if (Number(record.nota) >= 6 && Number(record.faltas || 0) <= 25) return { texto: 'Em acompanhamento', classe: 'approved' };
     return { texto: 'Atenção', classe: 'warning' };
 }

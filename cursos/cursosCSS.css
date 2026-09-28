@@ -129,8 +129,8 @@ a {
     animation: fadeIn 1.5s ease-in-out;
 }
 .hero-section{
-    /*background-image: url('/img/1.png');*/
-    height: 800px;
+    /*background-image: url('/img/20.png');*/
+    height: clamp(460px, 38vw, 760px);
     background-size: cover;
     background-position: center;
     background-repeat: no-repeat;
@@ -399,8 +399,9 @@ section {
 
 
 .whatsapp-button:hover {
-    background-color: #128C7E;
+    background-color: #020202b0;
     transform: translateY(-5px);
+    border-radius: 80px;
 }
 
 /* Responsividade */
