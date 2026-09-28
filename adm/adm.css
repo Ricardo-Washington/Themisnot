@@ -144,6 +144,22 @@
     color: var(--orange, #ff5e00);
 }
 
+.item-edit-button {
+    margin-top: 10px;
+    padding: 7px 11px;
+    color: var(--orange, #ff5e00);
+    background: transparent;
+    border: 1px solid var(--orange, #ff5e00);
+    border-radius: 4px;
+    font: inherit;
+    cursor: pointer;
+}
+
+.item-edit-button:hover {
+    color: var(--white, #fff);
+    background: var(--orange, #ff5e00);
+}
+
 /* Action Buttons */
 .admin-actions {
     display: flex;

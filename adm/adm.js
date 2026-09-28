@@ -59,6 +59,7 @@ function findUsers() {
       usuariosProfessores = todosUsuarios.filter(user => user.atribuicao === 'professor');
       usuariosAlunos = todosUsuarios.filter(user => user.atribuicao === 'aluno' || user.atribuicao === 'Aluno');
       renderizarLista('dadosfuincionario', usuariosFuncionarios);
+      renderizarLista('dadosprofessor', usuariosProfessores, 'professor');
       renderizarLista('dadosaluno', usuariosAlunos);
       // Atualiza o gráfico de inscrições mensais usando apenas os alunos
       renderarGraficoInscricoes(usuariosAlunos);
@@ -289,9 +290,17 @@ function initCursos() {
 }
 
 // A função reutilizável para renderizar a lista (Com proteção XSS)
-function renderizarLista(idDaLista, dados) {
+function renderizarLista(idDaLista, dados, tipo = '') {
   const lista = document.getElementById(idDaLista);
   lista.innerHTML = '';
+
+  if (dados.length === 0) {
+    const vazio = document.createElement('li');
+    vazio.classList.add('item');
+    vazio.textContent = tipo === 'professor' ? 'Nenhum professor cadastrado.' : 'Nenhum cadastro encontrado.';
+    lista.appendChild(vazio);
+    return;
+  }
 
   dados.forEach(usuario => {
     const li = document.createElement('li');
@@ -317,6 +326,15 @@ function renderizarLista(idDaLista, dados) {
     atribuicao.appendChild(atribStrong);
     atribuicao.appendChild(document.createTextNode(usuario.atribuicao));
     li.appendChild(atribuicao);
+
+    if (tipo === 'professor') {
+      const editar = document.createElement('button');
+      editar.type = 'button';
+      editar.classList.add('item-edit-button');
+      editar.textContent = 'Editar professor';
+      editar.addEventListener('click', () => openModal('professor', usuario.id));
+      li.appendChild(editar);
+    }
 
     lista.appendChild(li);
   });
@@ -379,7 +397,7 @@ function renderizarLogs(idDaLista, dados) {
 }
 
 // Modal
-function openModal(tipo) {
+function openModal(tipo, usuarioId = '') {
   tipoAtual = tipo;
   const modal = document.getElementById('editModal');
   const select = document.getElementById('selectUsuario');
@@ -496,7 +514,8 @@ function openModal(tipo) {
     });
 
     if (lista.length > 0) {
-      usuarioAtual = lista[0];
+      usuarioAtual = lista.find(user => user.id === usuarioId) || lista[0];
+      select.value = usuarioAtual.id;
       nomeInput.value = usuarioAtual.nome || '';
       emailInput.value = usuarioAtual.email || '';
       cpfInput.value = usuarioAtual.cpf || '';
