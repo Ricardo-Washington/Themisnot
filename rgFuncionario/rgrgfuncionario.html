@@ -1,10 +1,11 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="pt-br">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="/global.css">
     <link rel="stylesheet" href="rgfuncionario.css">
-    <!-- FontAwesome para ícones modernos -->
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;700&family=Anton&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
     <script src="https://www.gstatic.com/firebasejs/12.1.0/firebase-app-compat.js"></script>
@@ -14,147 +15,117 @@
     <script src="/js/logger.js" defer></script>
     <script src="rgfuncionario.js?v=3" defer></script>
 
-    <title>Gerenciar Funcionarios</title>
+    <title>Thémis | Painel de Funcionários</title>
 </head>
 <body>
     <nav class="navbar">
         <div class="container nav-content">
-            <a href="/home/home.html" class="logo"><img src="/img/logo.png" alt="logo"></a>
-                <ul class="nav-links">
-                <li class="user-greeting" style="color: var(--orange); font-family: 'Anton', sans-serif; font-size: 1.2rem; display: flex; align-items: center;"></li>
-                <li><button class="nav-button" type="button" onclick="logout()">Sair</button></li>
+            <a href="/home/home.html" class="logo"><img src="/img/logo.png" alt="Thémis"></a>
+            <button class="mobile-menu-btn" aria-label="Abrir menu" aria-expanded="false" type="button" id="mobile-menu-btn"><i class="fa-solid fa-bars"></i></button>
+            <ul class="nav-links" id="nav-links">
+                <li class="user-greeting"></li>
+                <li><button class="nav-button" type="button" onclick="logout()"><i class="fa-solid fa-arrow-right-from-bracket"></i> Sair</button></li>
             </ul>
         </div>
     </nav>
-    <main>
-        <header class="hero-section" style="padding: 40px 0 20px 0;">
-            <div class="container hero-content">
-                <h1 id="titulo1">Visão Geral</h1>
-                <p>Gerencie informações dos Alunos e atualize detalhes dos Cursos oferecidos.</p>
-            </div>
-        </header>
-
-        <section class="external-links-section container">
-            <div class="links-header">
-                <h2><i class="fa-solid fa-shield-halved"></i> Consultas Oficiais</h2>
-                <p>Acesse rapidamente as certidões e serviços oficiais necessários para a validação cadastral do candidato.</p>
-            </div>
-            <div class="link-grid">
-                <a class="link-card" href="https://servicos.receita.fazenda.gov.br/Servicos/CPF/ConsultaSituacao/ConsultaPublica.asp" target="_blank" rel="noopener">
-                    <span class="link-icon"><i class="fa-solid fa-id-card"></i></span>
-                    <strong>Situação Cadastral do CPF</strong>
-                    <small>Receita Federal</small>
-                </a>
-                <a class="link-card" href="http://www.tse.jus.br/eleitor/certidoes/certidao-de-quitacao-eleitoral" target="_blank" rel="noopener">
-                    <span class="link-icon"><i class="fa-solid fa-check-circle"></i></span>
-                    <strong>Quitação Eleitoral</strong>
-                    <small>TSE - Nada Consta</small>
-                </a>
-                <a class="link-card" href="https://projudi.tjgo.jus.br/CertidaoNegativaPositivaPublica?PaginaAtual=1&TipoArea=2&InteressePessoal=S" target="_blank" rel="noopener">
-                    <span class="link-icon"><i class="fa-solid fa-gavel"></i></span>
-                    <strong>Criminal Estadual (TJGO)</strong>
-                    <small>Nada Consta Estadual</small>
-                </a>
-                <a class="link-card" href="https://sistemas.trf1.jus.br/certidao/#/solicitacao" target="_blank" rel="noopener">
-                    <span class="link-icon"><i class="fa-solid fa-balance-scale"></i></span>
-                    <strong>Criminal Federal (TRF1)</strong>
-                    <small>Selecione Seção Judiciária do DF e GO</small>
-                </a>
-                <a class="link-card" href="http://www.tse.jus.br/eleitor/certidoes/certidao-de-crimes-eleitorais" target="_blank" rel="noopener">
-                    <span class="link-icon"><i class="fa-solid fa-vote-yea"></i></span>
-                    <strong>Criminal Eleitoral</strong>
-                    <small>TSE - Certidão de Crimes Eleitorais</small>
-                </a>
-                <a class="link-card" href="https://www.stm.jus.br/servicos-stm/certidao-negativa/emitir-certidao-negativa" target="_blank" rel="noopener">
-                    <span class="link-icon"><i class="fa-solid fa-shield"></i></span>
-                    <strong>Criminal Militar</strong>
-                    <small>STM - Certidão Negativa</small>
-                </a>
-                <a class="link-card" href="https://cnc.tjdft.jus.br/solicitacao-externa" target="_blank" rel="noopener">
-                    <span class="link-icon"><i class="fa-solid fa-landmark"></i></span>
-                    <strong>Criminal Estadual (TJDFT)</strong>
-                    <small>Nada Consta Estadual DF</small>
-                </a>
+    <main class="dashboard-shell">
+        <section class="welcome-section">
+            <div class="container welcome-content">
+                <div>
+                    <span class="eyebrow"><i class="fa-solid fa-building-user"></i> Gestão Thémis</span>
+                    <h1 id="titulo1">Painel <span>operacional</span></h1>
+                    <p>Gerencie matrículas, cursos e produtos em um só espaço de trabalho.</p>
+                </div>
+                <div class="welcome-mark" aria-hidden="true"><i class="fa-solid fa-users-gear"></i></div>
             </div>
         </section>
 
-        <section class="tabs-section container">
-            <div class="tabs-header">
-                <button class="tab-btn active" onclick="openTab('tabAlunos')"><i class="fa-solid fa-users"></i> Alunos</button>
-                <button class="tab-btn" onclick="openTab('tabCursos')"><i class="fa-solid fa-book-open"></i> Cursos</button>
-                <button class="tab-btn" onclick="openTab('tabProdutos')"><i class="fa-solid fa-box"></i> Produtos</button>
-            </div>
+        <section class="container employee-workspace">
+            <aside class="admin-sidebar">
+                <div class="sidebar-heading"><span>Área de trabalho</span><strong>Operações</strong></div>
+                <div class="tabs-header" role="tablist" aria-label="Módulos operacionais">
+                    <button class="tab-btn active" type="button" role="tab" aria-selected="true" aria-controls="tabAlunos" onclick="openTab('tabAlunos')"><i class="fa-solid fa-users"></i><span>Alunos</span></button>
+                    <button class="tab-btn" type="button" role="tab" aria-selected="false" aria-controls="tabCursos" onclick="openTab('tabCursos')"><i class="fa-solid fa-book-open"></i><span>Cursos</span></button>
+                    <button class="tab-btn" type="button" role="tab" aria-selected="false" aria-controls="tabProdutos" onclick="openTab('tabProdutos')"><i class="fa-solid fa-box"></i><span>Produtos</span></button>
+                </div>
+                <a class="consultations-link" href="#consultas"><i class="fa-solid fa-shield-halved"></i><span>Consultas oficiais</span></a>
+            </aside>
 
-            <!-- CONTEÚDO DA ABA: ALUNOS -->
-            <div id="tabAlunos" class="tab-content active">
-                <div class="tab-top-actions">
-                    <h2><i class="fa-solid fa-users-viewfinder"></i> Lista de Alunos</h2>
-                    <button class="action-btn new-btn" onclick="abrirModalAluno()"><i class="fa-solid fa-user-plus"></i> Novo Aluno</button>
+            <div class="employee-main">
+                <div class="workspace-toolbar">
+                    <div><span class="card-kicker">Gestão operacional</span><h2>Cadastros e estoque</h2></div>
+                    <span class="workspace-note"><i class="fa-solid fa-lock"></i> Acesso interno</span>
                 </div>
-                <div class="tabela-scroll">
-                    <table class="tabela-alunos">
-                        <thead>
-                            <tr>
-                                <th>Nome</th>
-                                <th>CPF</th>
-                                <th>RG</th>
-                                <th>Nascimento</th>
-                                <th style="text-align: center;">Ações</th>
-                            </tr>
-                        </thead>
-                        <tbody id="alunosTableBody">
-                            <!-- Inserido via JS -->
-                        </tbody>
-                    </table>
-                </div>
-            </div>
+                <section class="tabs-section" aria-label="Gerenciamento">
+                    <div id="tabAlunos" class="tab-content active" role="tabpanel">
+                        <div class="tab-top-actions">
+                            <div><span class="tab-kicker">Matrículas</span><h2><i class="fa-solid fa-users-viewfinder"></i> Lista de alunos</h2></div>
+                            <button class="action-btn new-btn" type="button" onclick="abrirModalAluno()"><i class="fa-solid fa-user-plus"></i> Novo aluno</button>
+                        </div>
+                        <div class="tabela-scroll">
+                            <table class="tabela-alunos">
+                                <thead><tr><th>Nome</th><th>CPF</th><th>RG</th><th>Nascimento</th><th>Ações</th></tr></thead>
+                                <tbody id="alunosTableBody"></tbody>
+                            </table>
+                        </div>
+                    </div>
 
-            <!-- CONTEÚDO DA ABA: CURSOS -->
-            <div id="tabCursos" class="tab-content">
-                <div class="tab-top-actions">
-                    <h2><i class="fa-solid fa-book-open"></i> Lista de Cursos</h2>
-                </div>
-                <div class="tabela-scroll">
-                    <table class="tabela-alunos">
-                        <thead>
-                            <tr>
-                                <th>Curso</th>
-                                <th>Preço (R$)</th>
-                                <th>C. Horária</th>
-                                <th>Próxima Turma</th>
-                                <th style="text-align: center;">Ações</th>
-                            </tr>
-                        </thead>
-                        <tbody id="cursosTableBody">
-                            <!-- Inserido via JS -->
-                        </tbody>
-                    </table>
-                </div>
-            </div>
+                    <div id="tabCursos" class="tab-content" role="tabpanel" hidden>
+                        <div class="tab-top-actions">
+                            <div><span class="tab-kicker">Formação</span><h2><i class="fa-solid fa-book-open"></i> Lista de cursos</h2></div>
+                        </div>
+                        <div class="tabela-scroll">
+                            <table class="tabela-alunos">
+                                <thead><tr><th>Curso</th><th>Preço (R$)</th><th>C. Horária</th><th>Próxima turma</th><th>Ações</th></tr></thead>
+                                <tbody id="cursosTableBody"></tbody>
+                            </table>
+                        </div>
+                    </div>
 
-            <!-- CONTEÚDO DA ABA: PRODUTOS -->
-            <div id="tabProdutos" class="tab-content">
-                <div class="tab-top-actions">
-                    <h2><i class="fa-solid fa-box-open"></i> Estoque e Produtos</h2>
-                    <button class="action-btn new-btn" onclick="abrirModalProduto()"><i class="fa-solid fa-plus"></i> Novo Produto</button>
-                </div>
-                <div class="tabela-scroll">
-                    <table class="tabela-alunos">
-                        <thead>
-                            <tr>
-                                <th>Foto</th>
-                                <th>Código</th>
-                                <th>Produto</th>
-                                <th>Custo / Venda</th>
-                                <th>Estoque</th>
-                                <th style="text-align: center;">Ações</th>
-                            </tr>
-                        </thead>
-                        <tbody id="produtosTableBody">
-                            <!-- Inserido via JS -->
-                        </tbody>
-                    </table>
-                </div>
+                    <div id="tabProdutos" class="tab-content" role="tabpanel" hidden>
+                        <div class="tab-top-actions">
+                            <div><span class="tab-kicker">Inventário</span><h2><i class="fa-solid fa-box-open"></i> Estoque e produtos</h2></div>
+                            <button class="action-btn new-btn" type="button" onclick="abrirModalProduto()"><i class="fa-solid fa-plus"></i> Novo produto</button>
+                        </div>
+                        <div class="tabela-scroll">
+                            <table class="tabela-alunos">
+                                <thead><tr><th>Foto</th><th>Código</th><th>Produto</th><th>Custo / Venda</th><th>Estoque</th><th>Ações</th></tr></thead>
+                                <tbody id="produtosTableBody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </section>
+
+        <section id="consultas" class="external-links-section container">
+            <div class="links-header">
+                <span class="tab-kicker">Validação cadastral</span>
+                <h2><i class="fa-solid fa-shield-halved"></i> Consultas oficiais</h2>
+                <p>Acesse certidões e serviços oficiais necessários para a validação cadastral do candidato.</p>
+            </div>
+            <div class="link-grid">
+                <a class="link-card" href="https://servicos.receita.fazenda.gov.br/Servicos/CPF/ConsultaSituacao/ConsultaPublica.asp" target="_blank" rel="noopener">
+                    <span class="link-icon"><i class="fa-solid fa-id-card"></i></span><strong>Situação cadastral do CPF</strong><small>Receita Federal</small>
+                </a>
+                <a class="link-card" href="http://www.tse.jus.br/eleitor/certidoes/certidao-de-quitacao-eleitoral" target="_blank" rel="noopener">
+                    <span class="link-icon"><i class="fa-solid fa-check-circle"></i></span><strong>Quitação eleitoral</strong><small>TSE - Nada Consta</small>
+                </a>
+                <a class="link-card" href="https://projudi.tjgo.jus.br/CertidaoNegativaPositivaPublica?PaginaAtual=1&TipoArea=2&InteressePessoal=S" target="_blank" rel="noopener">
+                    <span class="link-icon"><i class="fa-solid fa-gavel"></i></span><strong>Criminal estadual (TJGO)</strong><small>Nada Consta Estadual</small>
+                </a>
+                <a class="link-card" href="https://sistemas.trf1.jus.br/certidao/#/solicitacao" target="_blank" rel="noopener">
+                    <span class="link-icon"><i class="fa-solid fa-balance-scale"></i></span><strong>Criminal federal (TRF1)</strong><small>Selecione a Seção Judiciária do DF e GO</small>
+                </a>
+                <a class="link-card" href="http://www.tse.jus.br/eleitor/certidoes/certidao-de-crimes-eleitorais" target="_blank" rel="noopener">
+                    <span class="link-icon"><i class="fa-solid fa-vote-yea"></i></span><strong>Criminal eleitoral</strong><small>TSE - Certidão de Crimes Eleitorais</small>
+                </a>
+                <a class="link-card" href="https://www.stm.jus.br/servicos-stm/certidao-negativa/emitir-certidao-negativa" target="_blank" rel="noopener">
+                    <span class="link-icon"><i class="fa-solid fa-shield"></i></span><strong>Criminal militar</strong><small>STM - Certidão Negativa</small>
+                </a>
+                <a class="link-card" href="https://cnc.tjdft.jus.br/solicitacao-externa" target="_blank" rel="noopener">
+                    <span class="link-icon"><i class="fa-solid fa-landmark"></i></span><strong>Criminal estadual (TJDFT)</strong><small>Nada Consta Estadual DF</small>
+                </a>
             </div>
         </section>
 

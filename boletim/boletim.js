@@ -17,12 +17,18 @@ firebase.auth().onAuthStateChanged(async user => {
     }
 
     try {
-        const [studentSnapshot, coursesSnapshot, gradesSnapshot] = await Promise.all([
-            db.collection('usuarios').doc(user.uid).get(),
+        const studentSnapshot = await db.collection('usuarios').doc(user.uid).get();
+        const student = studentSnapshot.data() || {};
+        if (!studentSnapshot.exists || String(student.atribuicao || '').toLowerCase() !== 'aluno') {
+            redirecionarPorAtribuicao(student.atribuicao);
+            return;
+        }
+
+        document.getElementById('studentReport').hidden = false;
+        const [coursesSnapshot, gradesSnapshot] = await Promise.all([
             db.collection('cursos').get(),
             db.collection('boletins').where('alunoId', '==', user.uid).get()
         ]);
-        const student = studentSnapshot.data() || {};
         const courses = coursesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         const course = localizarCurso(student, courses);
         const grades = gradesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));

@@ -1,11 +1,12 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="pt-br">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="adm.css">
     <link rel="stylesheet" href="/global.css">
+    <link rel="stylesheet" href="adm.css">
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;700&family=Anton&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://www.gstatic.com/firebasejs/12.1.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/12.1.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore-compat.js"></script>
@@ -14,83 +15,111 @@
     <script src="/js/logger.js" defer></script>
     <script src="adm.js" defer></script>
     <script src="/js/auth-guard.js" defer></script>
-    <title>ADM</title>
+    <title>Thémis | Administração</title>
 </head>
 <body>
     <nav class="navbar">
         <div class="container nav-content">
-            <a href="/index/index.html" class="logo"><img src="/img/logo.png" alt="logo"></a>
-            
-                <ul class="nav-links">
-                <li class="user-greeting" style="color: var(--orange); font-family: 'Anton', sans-serif; font-size: 1.2rem; display: flex; align-items: center;"></li>
+            <a href="/index/index.html" class="logo"><img src="/img/logo.png" alt="Thémis"></a>
+            <button class="mobile-menu-btn" aria-label="Abrir menu" aria-expanded="false" type="button" id="mobile-menu-btn"><i class="fa-solid fa-bars"></i></button>
+            <ul class="nav-links" id="nav-links">
+                <li class="user-greeting"></li>
                 <li><a href="/rgFuncionario/rgrgfuncionario.html"><i class="fa-solid fa-users-gear"></i> Painel Funcionário</a></li>
-                <li><button class="nav-button" type="button" onclick="logout()">Sair</button></li>
+                <li><button class="nav-button" type="button" onclick="logout()"><i class="fa-solid fa-arrow-right-from-bracket"></i> Sair</button></li>
             </ul>
         </div>
     </nav>
 
-    <main>
-        <header class="hero-section">
-            <div class="container hero-content">
-                <h1>Bem-vindo ADM</h1>
+    <main class="dashboard-shell">
+        <section class="welcome-section">
+            <div class="container welcome-content">
+                <div>
+                    <span class="eyebrow"><i class="fa-solid fa-shield-halved"></i> Gestão Thémis</span>
+                    <h1>Painel <span>administrativo</span></h1>
+                    <p>Gerencie pessoas, cursos e acompanhe as atividades recentes da instituição.</p>
+                </div>
+                <div class="welcome-mark" aria-hidden="true"><i class="fa-solid fa-user-shield"></i></div>
             </div>
-        </header>
-        <section id="dashboard-lists" class="dashboard-section">
-            <div class="container admin-grid"> 
-                <!-- Card de Funcionários -->
-                <div class="admin-card">
-                    <div class="card-header">
-                        <h2><i class="fas fa-user-tie"></i> Funcionários</h2>
+        </section>
+        <section id="dashboard-lists" class="container admin-workspace" aria-label="Gerenciamento administrativo">
+            <aside class="admin-sidebar">
+                <div class="sidebar-heading"><span>Área de trabalho</span><strong>Administração</strong></div>
+                <nav class="module-nav" aria-label="Módulos administrativos">
+                    <a class="module-link active" href="#dashboard-lists"><i class="fa-solid fa-gauge-high"></i><span>Visão geral</span></a>
+                    <a class="module-link" href="#records-employees"><i class="fa-solid fa-user-tie"></i><span>Funcionários</span></a>
+                    <a class="module-link" href="#records-professors"><i class="fa-solid fa-chalkboard-user"></i><span>Professores</span></a>
+                    <a class="module-link" href="#records-students"><i class="fa-solid fa-user-graduate"></i><span>Alunos</span></a>
+                    <a class="module-link" href="#records-courses"><i class="fa-solid fa-book-open"></i><span>Cursos</span></a>
+                    <a class="module-link" href="#records-audit"><i class="fa-solid fa-clipboard-list"></i><span>Auditoria</span></a>
+                    <a class="module-link" href="#reports"><i class="fa-solid fa-chart-line"></i><span>Relatórios</span></a>
+                </nav>
+            </aside>
+
+            <div class="admin-main">
+                <div class="workspace-toolbar">
+                    <div>
+                        <span class="card-kicker">Base de dados</span>
+                        <h2>Cadastros e atividade</h2>
                     </div>
-                    <ol id="dadosfuincionario" class="data-list"></ol>
+                    <label class="record-search">
+                        <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
+                        <input id="adminSearch" type="search" placeholder="Buscar nome, CPF, curso ou ação" autocomplete="off">
+                        <button id="clearAdminSearch" type="button" aria-label="Limpar pesquisa"><i class="fa-solid fa-xmark"></i></button>
+                    </label>
+                </div>
+                <p id="searchStatus" class="search-status" aria-live="polite"></p>
+
+                <div class="admin-actions" aria-label="Editar registros">
+                    <button class="action-btn" type="button" onclick="openModal('funcionario')"><i class="fas fa-user-pen"></i>Editar funcionário</button>
+                    <button class="action-btn" type="button" onclick="openModal('professor')"><i class="fas fa-chalkboard-user"></i>Editar professor</button>
+                    <button class="action-btn" type="button" onclick="openModal('aluno')"><i class="fas fa-user-pen"></i>Editar aluno</button>
+                    <button class="action-btn" type="button" onclick="openModal('curso')"><i class="fas fa-book-open"></i>Editar curso</button>
+                    <button class="action-btn primary-btn" type="button" onclick="openModal('curso_novo')"><i class="fas fa-plus"></i>Novo curso</button>
                 </div>
 
-                <div class="admin-card">
-                    <div class="card-header">
-                        <h2><i class="fas fa-chalkboard-user"></i> Professores</h2>
-                    </div>
-                    <ol id="dadosprofessor" class="data-list"></ol>
-                </div>
-                
-                <!-- Card de Alunos -->
-                <div class="admin-card">
-                    <div class="card-header">
-                        <h2><i class="fas fa-user-graduate"></i> Alunos</h2>
-                    </div>
-                    <ol id="dadosaluno" class="data-list"></ol>
-                </div>
+                <div class="admin-grid">
+                    <article class="admin-card" id="records-employees">
+                        <div class="card-header">
+                            <div><span class="card-kicker">Equipe</span><h2><i class="fas fa-user-tie"></i> Funcionários</h2></div>
+                        </div>
+                        <ol id="dadosfuincionario" class="data-list"></ol>
+                    </article>
 
-                <!-- Card de Cursos -->
-                <div class="admin-card">
-                    <div class="card-header">
-                        <h2><i class="fas fa-book"></i> Cursos</h2>
-                    </div>
-                    <ol id="dadoscursos" class="data-list"></ol>
-                </div>
+                    <article class="admin-card" id="records-professors">
+                        <div class="card-header">
+                            <div><span class="card-kicker">Equipe acadêmica</span><h2><i class="fas fa-chalkboard-user"></i> Professores</h2></div>
+                        </div>
+                        <ol id="dadosprofessor" class="data-list"></ol>
+                    </article>
 
-                <!-- Card de Auditoria (Logs) -->
-                <div class="admin-card">
-                    <div class="card-header">
-                        <h2><i class="fas fa-clipboard-list"></i> Auditoria</h2>
-                    </div>
-                    <ul id="dadosauditoria" class="data-list" style="font-size: 0.85em;"></ul>
+                    <article class="admin-card" id="records-students">
+                        <div class="card-header">
+                            <div><span class="card-kicker">Matrículas</span><h2><i class="fas fa-user-graduate"></i> Alunos</h2></div>
+                        </div>
+                        <ol id="dadosaluno" class="data-list"></ol>
+                    </article>
+
+                    <article class="admin-card" id="records-courses">
+                        <div class="card-header">
+                            <div><span class="card-kicker">Formação</span><h2><i class="fas fa-book"></i> Cursos</h2></div>
+                        </div>
+                        <ol id="dadoscursos" class="data-list"></ol>
+                    </article>
+
+                    <article class="admin-card audit-card" id="records-audit">
+                        <div class="card-header">
+                            <div><span class="card-kicker">Rastreamento</span><h2><i class="fas fa-clipboard-list"></i> Auditoria</h2></div>
+                        </div>
+                        <ul id="dadosauditoria" class="data-list"></ul>
+                    </article>
                 </div>
             </div>
         </section>
 
-        <!-- Botões de Ação Global -->
-        <div class="buttons-container admin-actions">
-            <button class="action-btn" onclick="openModal('funcionario')"><i class="fas fa-pen"></i>Editar Funcionário</button>
-            <button class="action-btn" onclick="openModal('professor')"><i class="fas fa-chalkboard-user"></i>Editar Professor</button>
-            <button class="action-btn" onclick="openModal('aluno')"><i class="fas fa-pen"></i>Editar Aluno</button>
-            <button class="action-btn" onclick="openModal('curso')"><i class="fas fa-pen"></i>Editar Curso</button>
-            <button class="action-btn primary-btn" onclick="openModal('curso_novo')"><i class="fas fa-plus"></i> Novo Curso</button>
-        </div>
-
-        <section class="chart-section container">
+        <section id="reports" class="chart-section container" aria-label="Relatório de inscrições">
             <div class="chart-card admin-card">
                 <div class="card-header">
-                    <h2><i class="fas fa-chart-line"></i> Inscrições Mensais</h2>
+                    <div><span class="card-kicker">Indicadores</span><h2><i class="fas fa-chart-line"></i> Inscrições mensais</h2></div>
                 </div>
                 <div class="chart-body">
                     <canvas id="inscricoesChart"></canvas>

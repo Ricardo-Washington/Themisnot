@@ -16,6 +16,23 @@ const db = firebase.firestore();
 const defaultProductImage = '/img/logo.png';
 let disciplinasDisponiveis = [];
 
+const mobileMenuButton = document.getElementById('mobile-menu-btn');
+const navigationLinks = document.getElementById('nav-links');
+if (mobileMenuButton && navigationLinks) {
+    mobileMenuButton.addEventListener('click', () => {
+        const isExpanded = navigationLinks.classList.toggle('active');
+        mobileMenuButton.setAttribute('aria-expanded', String(isExpanded));
+        mobileMenuButton.innerHTML = `<i class="fa-solid ${isExpanded ? 'fa-xmark' : 'fa-bars'}"></i>`;
+    });
+    navigationLinks.addEventListener('click', event => {
+        if (event.target.closest('a, button')) {
+            navigationLinks.classList.remove('active');
+            mobileMenuButton.setAttribute('aria-expanded', 'false');
+            mobileMenuButton.innerHTML = '<i class="fa-solid fa-bars"></i>';
+        }
+    });
+}
+
 function getProdutoImagem(produto) {
     if (produto.imagem && produto.imagem.trim()) return produto.imagem;
     const nome = (produto.nome || '').toLowerCase();
@@ -656,9 +673,16 @@ function logout() {
 
 // Funcionalidade de Abas (Tabs)
 function openTab(tabName) {
-    document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
-    document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
-    
+    document.querySelectorAll('.tab-content').forEach(tab => {
+        const isActive = tab.id === tabName;
+        tab.classList.toggle('active', isActive);
+        tab.hidden = !isActive;
+    });
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.remove('active');
+        btn.setAttribute('aria-selected', String(btn.getAttribute('onclick') === `openTab('${tabName}')`));
+    });
+
     document.getElementById(tabName).classList.add('active');
     
     // Ativa o botao

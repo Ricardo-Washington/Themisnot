@@ -39,49 +39,45 @@ const form = {
 firebase.auth().onAuthStateChanged(async (user) => {
     if (!user) {
         window.location.href = "/login/login.html";
-    } else {
-        // Busca o documento do usuário no Firestore
+        return;
+    }
+
+    try {
         const userDoc = await db.collection('usuarios').doc(user.uid).get();
-        if (userDoc.exists) {
-            const dados = userDoc.data();
-            preencherPainelAcademico(dados, user);
-           // Injeta a saudacao do usuario na navbar
-           if (dados && (dados.nome || dados.nomeCompleto)) {
-               const nomeExibicao = dados.nome || dados.nomeCompleto;
-               const pNome = nomeExibicao.split(' ')[0];
-               document.querySelectorAll('.user-greeting').forEach(el => {
-                   let greetingHTML = `<a href="/meuPerfil/meu_perfil.html" style="color: inherit; text-decoration: none;" title="Ver Meu Perfil">Olá, ${pNome} <i class="fa fa-user-circle"></i></a>`;
-                   
-                   // Se for funcionário, mostra o atalho
-                   if (dados.atribuicao === 'funcionario' || dados.atribuicao === 'admin' || dados.atribuicao === 'adm') {
-                       greetingHTML += `<a href="/rgFuncionario/rgrgfuncionario.html" style="margin-left: 15px; color: var(--orange); font-size: 0.85em; text-decoration: underline; font-weight: bold;"><i class="fas fa-tools"></i> Painel Funcionário</a>`;
-                   }
-                   // Se for administrador top-level, mostra o atalho extra
-                   if (dados.atribuicao === 'adm') {
-                       greetingHTML += `<a href="/adm/adm.html" style="margin-left: 15px; color: #ff3333; font-size: 0.85em; text-decoration: underline; font-weight: bold;"><i class="fas fa-crown"></i> Painel Master</a>`;
-                   }
-                   
-                   const link = document.createElement('a');
-                   link.href = '/meuPerfil/meu_perfil.html';
-                   link.title = 'Ver Meu Perfil';
-                   link.style.color = 'inherit';
-                   link.style.textDecoration = 'none';
-                   link.textContent = `Olá, ${pNome}`;
-
-                   const icon = document.createElement('i');
-                   icon.className = 'fa fa-user-circle';
-                   icon.style.marginLeft = '6px';
-
-                   el.textContent = '';
-                   el.appendChild(link);
-                   el.appendChild(icon);
-               });
-           }
-            // Se já existe cadastro, NÃO abre o modal!
+        if (!userDoc.exists) {
+            openModal();
             return;
         }
-        // Se não existe, é o primeiro login. Abre o modal.
-        openModal();
+
+        const dados = userDoc.data() || {};
+        if (String(dados.atribuicao || '').toLowerCase() !== 'aluno') {
+            redirecionarPorAtribuicao(dados.atribuicao);
+            return;
+        }
+
+        document.getElementById('studentDashboard').hidden = false;
+        preencherPainelAcademico(dados, user);
+
+        if (dados.nome || dados.nomeCompleto) {
+            const primeiroNome = String(dados.nome || dados.nomeCompleto).split(' ')[0];
+            document.querySelectorAll('.user-greeting').forEach(el => {
+                const perfilLink = document.createElement('a');
+                perfilLink.href = '/meuPerfil/meu_perfil.html';
+                perfilLink.title = 'Ver Meu Perfil';
+                perfilLink.style.color = 'inherit';
+                perfilLink.style.textDecoration = 'none';
+                perfilLink.textContent = `Olá, ${primeiroNome}`;
+
+                const perfilIcon = document.createElement('i');
+                perfilIcon.className = 'fa fa-user-circle';
+                perfilIcon.style.marginLeft = '6px';
+
+                el.replaceChildren(perfilLink, perfilIcon);
+            });
+        }
+    } catch (error) {
+        console.error('Erro ao verificar acesso à área do aluno:', error);
+        window.location.href = '/login/login.html';
     }
 });
 
@@ -273,6 +269,7 @@ async function cadastrarDados(event) {
         console.log("Dados do usuário salvos com sucesso!");
         alert('Cadastro realizado com sucesso! Seja bem-vindo.');
         closeModal();
+        window.location.reload();
     } catch (error) {
         console.error("Erro ao salvar os dados do usuário:", error);
         alert("Erro ao cadastrar. Tente novamente.");

@@ -18,16 +18,30 @@ const disciplinasPadrao = {
 };
 
 firebase.auth().onAuthStateChanged(async user => {
-    if (!user) return;
-    const aluno = await db.collection('usuarios').doc(user.uid).get();
-    if (!aluno.exists) return;
-    const dados = aluno.data();
-    const cursoAluno = dados.cursoSolicitado || dados.curso || '';
-    const cursos = await db.collection('cursos').get();
-    const curso = cursos.docs.map(doc => ({ id: doc.id, ...doc.data() }))
-        .find(item => item.id === cursoAluno || item.nome === cursoAluno || item.nome?.toLowerCase() === cursoAluno.toLowerCase());
-    document.getElementById('course-label').textContent = `Curso: ${curso?.nome || cursoAluno || 'não vinculado'}`;
-    renderizarDisciplinas(curso?.disciplinas || disciplinasPadrao[curso?.id] || []);
+    if (!user) {
+        window.location.href = '/login/login.html';
+        return;
+    }
+
+    try {
+        const aluno = await db.collection('usuarios').doc(user.uid).get();
+        const dados = aluno.data() || {};
+        if (!aluno.exists || String(dados.atribuicao || '').toLowerCase() !== 'aluno') {
+            redirecionarPorAtribuicao(dados.atribuicao);
+            return;
+        }
+
+        document.getElementById('studentDisciplines').hidden = false;
+        const cursoAluno = dados.cursoSolicitado || dados.curso || '';
+        const cursos = await db.collection('cursos').get();
+        const curso = cursos.docs.map(doc => ({ id: doc.id, ...doc.data() }))
+            .find(item => item.id === cursoAluno || item.nome === cursoAluno || item.nome?.toLowerCase() === cursoAluno.toLowerCase());
+        document.getElementById('course-label').textContent = `Curso: ${curso?.nome || cursoAluno || 'não vinculado'}`;
+        renderizarDisciplinas(curso?.disciplinas || disciplinasPadrao[curso?.id] || []);
+    } catch (error) {
+        console.error('Erro ao verificar acesso às disciplinas do aluno:', error);
+        window.location.href = '/login/login.html';
+    }
 });
 
 function renderizarDisciplinas(disciplinas) {

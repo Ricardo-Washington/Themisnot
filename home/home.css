@@ -484,6 +484,7 @@ body {
 .logout-button { background: transparent; border: 0; cursor: pointer; font-family: inherit; }
 
 .dashboard-shell { padding-top: 66px; min-height: 100vh; }
+#studentDashboard[hidden] { display: none !important; }
 .welcome-section { border-bottom: 1px solid var(--line); background: linear-gradient(110deg, rgba(255, 107, 26, 0.12), transparent 55%); }
 .welcome-content { min-height: 285px; display: flex; align-items: center; justify-content: space-between; gap: 30px; }
 .eyebrow, .card-kicker { color: var(--orange-solid); font-size: 0.72rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }

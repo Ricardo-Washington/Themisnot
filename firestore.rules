@@ -27,6 +27,12 @@ service cloud.firestore {
         get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.atribuicao == 'professor';
     }
 
+    function isAluno() {
+      return isSignedIn() &&
+        exists(/databases/$(database)/documents/usuarios/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.atribuicao in ['aluno', 'Aluno'];
+    }
+
     function lecionaDisciplina(dados) {
       return isProfessor()
         && dados.professorId == request.auth.uid
@@ -76,7 +82,7 @@ service cloud.firestore {
 
     match /boletins/{boletimId} {
       allow read: if isFuncionario() || isAdmin()
-        || (isSignedIn() && resource.data.alunoId == request.auth.uid)
+        || (isAluno() && resource.data.alunoId == request.auth.uid)
         || (isProfessor() && resource.data.professorId == request.auth.uid);
       allow create: if lecionaDisciplina(request.resource.data);
       allow update: if lecionaDisciplina(request.resource.data)

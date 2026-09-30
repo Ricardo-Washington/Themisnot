@@ -46,6 +46,53 @@ let usuarioAtual = null;
 let tipoAtual = null; 
 let disciplinasProfessorDisponiveis = [];
 
+const mobileMenuButton = document.getElementById('mobile-menu-btn');
+const navigationLinks = document.getElementById('nav-links');
+if (mobileMenuButton && navigationLinks) {
+  mobileMenuButton.addEventListener('click', () => {
+    const isExpanded = navigationLinks.classList.toggle('active');
+    mobileMenuButton.setAttribute('aria-expanded', String(isExpanded));
+    mobileMenuButton.innerHTML = `<i class="fa-solid ${isExpanded ? 'fa-xmark' : 'fa-bars'}"></i>`;
+  });
+  navigationLinks.addEventListener('click', event => {
+    if (event.target.closest('a, button')) {
+      navigationLinks.classList.remove('active');
+      mobileMenuButton.setAttribute('aria-expanded', 'false');
+      mobileMenuButton.innerHTML = '<i class="fa-solid fa-bars"></i>';
+    }
+  });
+}
+
+const adminSearch = document.getElementById('adminSearch');
+const clearAdminSearch = document.getElementById('clearAdminSearch');
+const searchStatus = document.getElementById('searchStatus');
+
+function aplicarBuscaAdm() {
+  const termo = adminSearch?.value.trim().toLocaleLowerCase('pt-BR') || '';
+  const registros = Array.from(document.querySelectorAll('[data-search-record]'));
+  let encontrados = 0;
+
+  registros.forEach(registro => {
+    const corresponde = !termo || registro.textContent.toLocaleLowerCase('pt-BR').includes(termo);
+    registro.hidden = !corresponde;
+    if (corresponde) encontrados += 1;
+  });
+
+  if (searchStatus) {
+    searchStatus.textContent = termo
+      ? `${encontrados} de ${registros.length} registros correspondem à pesquisa.`
+      : `${registros.length} registros disponíveis para consulta.`;
+  }
+}
+
+adminSearch?.addEventListener('input', aplicarBuscaAdm);
+clearAdminSearch?.addEventListener('click', () => {
+  if (!adminSearch) return;
+  adminSearch.value = '';
+  aplicarBuscaAdm();
+  adminSearch.focus();
+});
+
 // A função principal para buscar e separar os dados
 function findUsers() {
   firebase.firestore()// busca do fire base 
@@ -299,12 +346,14 @@ function renderizarLista(idDaLista, dados, tipo = '') {
     vazio.classList.add('item');
     vazio.textContent = tipo === 'professor' ? 'Nenhum professor cadastrado.' : 'Nenhum cadastro encontrado.';
     lista.appendChild(vazio);
+    aplicarBuscaAdm();
     return;
   }
 
   dados.forEach(usuario => {
     const li = document.createElement('li');
     li.classList.add('item');
+    li.setAttribute('data-search-record', '');
 
     const nome = document.createElement('p');
     const nomeStrong = document.createElement('strong');
@@ -338,6 +387,7 @@ function renderizarLista(idDaLista, dados, tipo = '') {
 
     lista.appendChild(li);
   });
+  aplicarBuscaAdm();
 }
 
 function renderizarCursos(idDaLista, dados) {
@@ -347,6 +397,7 @@ function renderizarCursos(idDaLista, dados) {
   dados.forEach(curso => {
     const li = document.createElement('li');
     li.classList.add('item');
+    li.setAttribute('data-search-record', '');
 
     const nome = document.createElement('p');
     nome.innerHTML = `<strong>Curso:</strong> ${curso.nome}`;
@@ -362,6 +413,7 @@ function renderizarCursos(idDaLista, dados) {
 
     lista.appendChild(li);
   });
+  aplicarBuscaAdm();
 }
 
 function renderizarLogs(idDaLista, dados) {
@@ -370,12 +422,14 @@ function renderizarLogs(idDaLista, dados) {
   
   if (dados.length === 0) {
       lista.innerHTML = '<p style="color:var(--white); text-align:center;">Nenhum log recente.</p>';
+      aplicarBuscaAdm();
       return;
   }
 
   dados.forEach(log => {
       const li = document.createElement('li');
       li.classList.add('item');
+      li.setAttribute('data-search-record', '');
       li.style.borderLeftColor = '#888';
       
       const p1 = document.createElement('p');
@@ -394,6 +448,7 @@ function renderizarLogs(idDaLista, dados) {
       li.appendChild(p3);
       lista.appendChild(li);
   });
+  aplicarBuscaAdm();
 }
 
 // Modal
