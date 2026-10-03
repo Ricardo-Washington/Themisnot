@@ -34,6 +34,12 @@ main { padding-top: 74px; }
 .section-heading h2 { margin-top: 5px; font-size: 1.45rem; text-align: left; }
 .heading-icon { color: var(--orange); font-size: 1.3rem; }
 .discipline-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 15px; }
+.course-tabs { display: grid; gap: 16px; }
+.course-tab-list { display: flex; flex-wrap: wrap; gap: 8px; }
+.course-tab { min-height: 38px; padding: 9px 13px; border: 1px solid var(--line); color: #bbb; background: var(--panel); font: 600 .75rem 'Montserrat',sans-serif; cursor: pointer; transition: color .2s, border-color .2s, background .2s; }
+.course-tab:hover, .course-tab.active { border-color: var(--orange); color: #fff; background: var(--orange-soft); }
+.course-tab:focus-visible { outline: 2px solid var(--orange); outline-offset: 2px; }
+.course-panel { display: grid; grid-template-columns: repeat(auto-fit,minmax(min(100%,280px),1fr)); gap: 15px; }
 .discipline-card { position: relative; min-height: 170px; padding: 22px; border: 1px solid var(--line); border-left: 3px solid var(--orange); background: var(--panel); cursor: pointer; transition: border-color .2s, transform .2s, background .2s; }
 .discipline-card:hover, .discipline-card.selected { border-color: var(--orange); background: linear-gradient(135deg,rgba(255,107,26,.14),var(--panel)); transform: translateY(-2px); }
 .discipline-card h3 { max-width: 75%; margin-top: 12px; color: #fff; font-size: 1.1rem; }
@@ -43,6 +49,25 @@ main { padding-top: 74px; }
 .discipline-meta span { padding: 5px 8px; background: rgba(255,255,255,.06); }
 .discipline-meta i { margin-right: 4px; color: var(--orange); }
 .section-description { margin: -6px 0 18px; color: #999; font-size: .8rem; }
+.availability-request-list { display: grid; gap: 12px; }
+.availability-confirmed { padding: 12px 15px; border-left: 2px solid #72d39a; color: #b9e6ca; background: rgba(114,211,154,.07); font-size: .75rem; line-height: 1.55; }
+.availability-pending { padding: 12px 15px; border-left: 2px solid #e2a537; color: #f0d49b; background: rgba(226,165,55,.07); font-size: .75rem; line-height: 1.55; }
+.availability-card { padding: 20px; border: 1px solid var(--line); border-left: 3px solid var(--orange); background: var(--panel); }
+.availability-card-heading h3 { margin-top: 5px; color: #fff; font-size: 1.05rem; }
+.availability-card-heading p { margin-top: 7px; color: #999; font-size: .75rem; }
+.availability-form { display: grid; gap: 16px; margin-top: 18px; }
+.availability-form fieldset { min-width: 0; border: 0; }
+.availability-form legend { margin-bottom: 9px; color: #bbb; font-size: .75rem; font-weight: 700; }
+.availability-days { display: grid; grid-template-columns: repeat(auto-fit,minmax(132px,1fr)); gap: 7px; }
+.availability-days label { display: flex; align-items: center; gap: 8px; min-height: 38px; padding: 8px 10px; border: 1px solid var(--line); color: #ddd; background: rgba(255,255,255,.035); font-size: .72rem; cursor: pointer; }
+.availability-days input { accent-color: var(--orange); }
+.availability-times { display: flex; align-items: end; flex-wrap: wrap; gap: 12px; }
+.availability-times label { display: grid; gap: 6px; color: #aaa; font-size: .7rem; }
+.availability-times input { min-height: 39px; padding: 8px 10px; border: 1px solid #444; color: #fff; background: #101010; font: .8rem 'Montserrat',sans-serif; }
+.availability-times input:focus { border-color: var(--orange); outline: none; }
+.availability-feedback { flex-basis: 100%; color: #72d39a; font-size: .75rem; line-height: 1.5; }
+.availability-feedback.warning { color: #ffb66a; }
+.availability-feedback.success { color: #72d39a; }
 .grade-section { padding-top: 7px; }
 .grade-panel { border: 1px solid var(--line); background: var(--panel); }
 .grade-panel-header { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 22px 24px; border-bottom: 1px solid var(--line); }

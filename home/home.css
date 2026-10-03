@@ -528,6 +528,19 @@ body {
 .next-step-section p { color: #999; font-size: 0.82rem; margin-top: 8px; }
 .primary-button { display: inline-flex; align-items: center; gap: 9px; background: var(--orange-solid); color: #111; font-size: 0.8rem; font-weight: 700; padding: 12px 16px; white-space: nowrap; }
 .primary-button:hover { background: #ff914f; color: #111; }
+.other-courses-section { padding: 38px 0 72px; border-top: 1px solid var(--line); background: rgba(9, 9, 9, 0.68); }
+.other-courses-heading { margin-bottom: 22px; }
+.other-courses-heading h2 { margin: 6px 0 5px; text-align: left; font-size: 1.6rem; }
+.other-courses-heading p { color: #999; font-size: 0.84rem; }
+.other-courses-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); gap: 16px; }
+.other-course-card { overflow: hidden; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); }
+.other-course-card img { display: block; width: 100%; aspect-ratio: 16 / 9; object-fit: cover; background: var(--panel-light); }
+.other-course-copy { display: flex; min-height: 220px; flex-direction: column; align-items: flex-start; padding: 17px; }
+.other-course-copy h3 { color: #fff; font-size: 1rem; line-height: 1.4; }
+.other-course-copy > p { margin-top: 8px; color: #aaa; font-size: 0.78rem; }
+.other-course-details { display: flex; width: 100%; justify-content: space-between; gap: 10px; margin-top: 14px; color: #d1d1d1; font-size: 0.72rem; }
+.other-course-link { display: inline-flex; align-items: center; gap: 8px; margin-top: auto; padding-top: 18px; color: var(--orange-solid); font-size: 0.78rem; font-weight: 700; }
+.other-course-link:hover { color: #ff9a61; }
 
 @media (max-width: 768px) {
     .nav-content { padding: 0 16px; }
@@ -540,6 +553,9 @@ body {
     .dashboard-grid { grid-template-columns: 1fr; }
     .next-step-section { align-items: flex-start; flex-direction: column; }
     .primary-button { width: 100%; justify-content: center; }
+    .other-courses-content { padding-right: 16px; padding-left: 16px; }
+    .other-course-copy { min-height: 0; }
+    .other-course-details { flex-wrap: wrap; }
 }
 
 @media (max-width: 520px) {

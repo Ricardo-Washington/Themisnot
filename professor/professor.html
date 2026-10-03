@@ -10,8 +10,10 @@
     <script src="https://www.gstatic.com/firebasejs/12.1.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/12.1.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/12.1.0/firebase-functions-compat.js"></script>
     <script src="/js/auth-guard.js"></script>
-    <script src="professor.js" defer></script>
+    <script src="/js/academic-workflow.js" defer></script>
+    <script src="professor.js?v=availability-firestore-2" defer></script>
 </head>
 <body>
     <nav class="navbar">
@@ -46,6 +48,11 @@
                 <div class="summary-item"><i class="fa-solid fa-users"></i><div><strong id="student-total">0</strong><span>alunos vinculados</span></div></div>
                 <div class="summary-item"><i class="fa-solid fa-calendar-days"></i><div><strong id="next-class">--</strong><span>próxima aula</span></div></div>
             </div>
+
+            <section class="section-block" id="availability-requests">
+                <div class="section-heading"><div><span class="card-kicker">Planejamento de aulas</span><h2>Solicitações de disponibilidade</h2></div><i class="fa-solid fa-calendar-check heading-icon"></i></div>
+                <div id="availability-request-list" class="availability-request-list"><div class="loading-state">Carregando solicitações...</div></div>
+            </section>
 
             <section class="section-block" id="disciplinas">
                 <div class="section-heading"><div><span class="card-kicker">Sua agenda acadêmica</span><h2>Disciplinas que leciono</h2></div><i class="fa-solid fa-book-open heading-icon"></i></div>

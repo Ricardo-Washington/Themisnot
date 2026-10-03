@@ -11,12 +11,45 @@ if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 
 let professorId = '';
+let professorPerfil = {};
 let assignments = [];
 let courses = [];
 let students = [];
 let gradeRecords = {};
 let selectedAssignment = null;
-let professorDisciplinasKeys = [];
+let professorDisciplinasIds = [];
+let availabilityRecords = [];
+let availabilityRequests = [];
+
+function normalizarDisciplinasProfessor(perfil) {
+    const rawValues = [
+        ...(Array.isArray(perfil.disciplinasIds) ? perfil.disciplinasIds : []),
+        ...(Array.isArray(perfil.disciplinas) ? perfil.disciplinas : [])
+    ];
+
+    const ids = rawValues
+        .map(value => {
+            if (value == null) return '';
+            if (typeof value === 'object') {
+                if (value.id) return String(value.id);
+                const nome = value.nome || value.disciplinaNome || value.disciplina || value.name;
+                return nome ? window.academicWorkflow.disciplineId(String(nome)) : '';
+            }
+
+            const texto = String(value).trim();
+            if (!texto) return '';
+            if (texto.includes('::')) {
+                const partes = texto.split('::');
+                const nome = partes[partes.length - 1];
+                return nome ? window.academicWorkflow.disciplineId(String(nome)) : '';
+            }
+
+            return window.academicWorkflow.disciplineId(texto);
+        })
+        .filter(Boolean);
+
+    return [...new Set(ids)];
+}
 
 firebase.auth().onAuthStateChanged(async user => {
     if (!user) {
@@ -33,11 +66,11 @@ firebase.auth().onAuthStateChanged(async user => {
         }
 
         professorId = user.uid;
+        professorPerfil = professor;
         const primeiroNome = String(professor.nome || user.email || 'professor').split(' ')[0];
         document.getElementById('teacher-name').textContent = primeiroNome;
         document.getElementById('teacher-greeting').textContent = `Olá, ${primeiroNome}`;
-        assignments = normalizarDisciplinas(professor.disciplinas || professor.disciplinasVinculadas);
-        professorDisciplinasKeys = Array.isArray(professor.disciplinasKeys) ? professor.disciplinasKeys : [];
+        professorDisciplinasIds = normalizarDisciplinasProfessor(professor);
         await carregarDadosAcademicos();
     } catch (error) {
         console.error('Erro ao carregar área do professor:', error);
@@ -46,64 +79,188 @@ firebase.auth().onAuthStateChanged(async user => {
 });
 
 async function carregarDadosAcademicos() {
-    const [coursesSnapshot, studentsSnapshot, gradesSnapshot] = await Promise.all([
+    const [coursesSnapshot, rosterSnapshot, gradesSnapshot, availabilitySnapshot, requestsSnapshot] = await Promise.all([
         db.collection('cursos').get(),
-            db.collection('usuarios').where('atribuicao', 'in', ['aluno', 'Aluno']).get(),
-        db.collection('boletins').where('professorId', '==', professorId).get()
+        db.collection('matriculas_disciplina').where('professorId', '==', professorId).get(),
+        db.collection('boletins').where('professorId', '==', professorId).get(),
+        db.collection('disponibilidades').where('professorId', '==', professorId).get(),
+        db.collection('notificacoes').where('professorId', '==', professorId).get()
     ]);
 
     courses = coursesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    if (!assignments.length && professorDisciplinasKeys.length) {
-        assignments = reconstruirDisciplinasPorChaves(professorDisciplinasKeys);
-    }
-    students = studentsSnapshot.docs
-        .map(doc => ({ id: doc.id, ...doc.data() }))
-        .filter(student => String(student.atribuicao || '').toLowerCase() === 'aluno');
+
+    const idsDasMatriculas = rosterSnapshot.docs
+        .map(doc => doc.data())
+        .filter(item => item && item.professorId === professorId && item.disciplinaKey)
+        .map(item => {
+            const partes = String(item.disciplinaKey).split('::');
+            const nomeDisciplina = partes.slice(2).join('::');
+            return nomeDisciplina ? window.academicWorkflow.disciplineId(nomeDisciplina) : '';
+        })
+        .filter(Boolean);
+
+    professorDisciplinasIds = [...new Set([...professorDisciplinasIds, ...normalizarDisciplinasProfessor(professorPerfil), ...idsDasMatriculas])];
+    assignments = reconstruirDisciplinasPorIds(professorDisciplinasIds);
+    students = rosterSnapshot.docs.map(doc => ({ id: doc.data().alunoId, ...doc.data() }));
     gradeRecords = {};
     gradesSnapshot.forEach(doc => {
         gradeRecords[doc.id] = { id: doc.id, ...doc.data() };
     });
+    availabilityRecords = availabilitySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    availabilityRequests = requestsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
+        .filter(request => request.tipo === 'solicitar_disponibilidade'
+            && request.status === 'pendente'
+            && !availabilityRecords.some(record =>
+                record.id === request.id || record.disciplinaKey === request.disciplinaKey
+            ));
 
     assignments = assignments.map(assignment => enriquecerDisciplina(assignment));
-    if (assignments.length) await sincronizarChavesDeDisciplinas();
     renderizarResumo();
+    renderizarSolicitacoesDisponibilidade();
     renderizarDisciplinas();
 }
 
-function reconstruirDisciplinasPorChaves(chaves) {
-    return chaves.map(chave => {
-        const partes = String(chave).split('::');
-        if (partes.length >= 3) {
-            return { cursoId: partes[0], turmaId: partes[1] === 'sem-turma' ? '' : partes[1], nome: partes.slice(2).join('::') };
-        }
-        return { cursoId: partes[0] || '', turmaId: '', nome: partes.slice(1).join('::') || 'Disciplina' };
-    });
+function reconstruirDisciplinasPorIds(ids) {
+    return ids.flatMap(id => courses.flatMap(course => {
+        const subject = (course.disciplinas || []).find(item => window.academicWorkflow.subjectId(item) === id);
+        if (!subject) return [];
+        const nome = typeof subject === 'string' ? subject : subject.nome;
+        const classes = Array.isArray(course.turmas) && course.turmas.length ? course.turmas : [{ id: '' }];
+        return classes.map(classItem => ({
+            cursoId: course.id,
+            cursoNome: course.nome || course.id,
+            nome,
+            disciplinaId: id,
+            turmaId: classItem.id || classItem.turmaId || '',
+            dataInicio: classItem.dataInicio || course.dataInicio || '',
+            dataTermino: classItem.dataTermino || classItem.dataFim || course.dataTermino || course.dataFim || '',
+            turno: classItem.turno || course.turno || ''
+        }));
+    }));
 }
 
-async function sincronizarChavesDeDisciplinas() {
-    const disciplinasKeys = assignments.map(assignment => assignment.key);
-    await db.collection('usuarios').doc(professorId).update({ disciplinasKeys });
+function obterPeriodoDoCurso(curso) {
+    const periodo = (curso?.periodo || curso?.turno || '').toString().trim().toLowerCase();
+    if (periodo.includes('not')) return 'noturno';
+    if (periodo.includes('dia')) return 'diurno';
+    return 'diurno';
 }
 
-function normalizarDisciplinas(disciplinas) {
-    if (disciplinas && !Array.isArray(disciplinas) && typeof disciplinas === 'object') {
-        disciplinas = Object.values(disciplinas);
+function obterDiasPermitidosDoCurso(curso) {
+    return obterPeriodoDoCurso(curso) === 'noturno' ? [2, 3, 4, 5, 6] : [1, 2, 3, 4, 5];
+}
+
+function obterHorarioPermitido(curso) {
+    const periodo = obterPeriodoDoCurso(curso);
+    if (periodo === 'noturno') {
+        return { inicio: '18:00', termino: '22:00' };
     }
-    if (!Array.isArray(disciplinas)) return [];
-    return disciplinas.map(item => {
-        if (typeof item === 'string') return { nome: item, cursoId: '', cursoNome: '' };
-        return {
-            nome: item.nome || item.disciplinaNome || item.disciplina || 'Disciplina',
-            cursoId: item.cursoId || item.idCurso || '',
-            cursoNome: item.cursoNome || item.nomeCurso || '',
-            turmaId: item.turmaId || item.idTurma || '',
-            dataInicio: item.dataInicio || '',
-            dataTermino: item.dataTermino || item.dataFim || '',
-            turno: item.turno || '',
-            diaSemana: item.diaSemana || item.dia || '',
-            horario: item.horario || ''
-        };
+    return { inicio: '08:00', termino: '18:00' };
+}
+
+function renderizarSolicitacoesDisponibilidade() {
+    const container = document.getElementById('availability-request-list');
+    container.textContent = '';
+    if (!availabilityRequests.length && !availabilityRecords.length) {
+        const empty = document.createElement('div');
+        empty.className = 'empty-state';
+        empty.textContent = 'Nenhuma solicitação de disponibilidade pendente.';
+        container.appendChild(empty);
+    }
+
+    const nomesDias = ['', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado', 'Domingo'];
+    availabilityRecords.forEach(record => {
+        const confirmation = document.createElement('div');
+        const approved = record.status === 'aprovada' || !record.status;
+        confirmation.className = approved ? 'availability-confirmed' : 'availability-pending';
+        const days = (record.diasSemana || []).map(day => nomesDias[day]).filter(Boolean).join(', ');
+        const status = approved ? 'Aprovada pelo ADM' : 'Aguardando revisão do ADM';
+        confirmation.textContent = `${status} · ${record.cursoNome || 'Curso'} · ${record.disciplinaNome || 'Disciplina'}: ${days}, ${record.horarioInicio} às ${record.horarioTermino} (${record.dataInicio} até ${record.dataTermino})`;
+        container.appendChild(confirmation);
     });
+    if (!availabilityRequests.length) return;
+
+    const dias = ['Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado', 'Domingo'];
+    availabilityRequests.forEach(request => {
+        const course = courses.find(item => item.id === request.cursoId || item.nome === request.cursoNome) || {};
+        const saved = availabilityRecords.find(item => item.disciplinaKey === request.disciplinaKey) || {};
+        const diasPermitidos = obterDiasPermitidosDoCurso(course);
+        const horarioPermitido = obterHorarioPermitido(course);
+        const card = document.createElement('article');
+        card.className = 'availability-card';
+        card.innerHTML = `<div class="availability-card-heading"><div><span class="card-kicker">${escapeHtml(request.cursoNome || 'Curso')}</span><h3>${escapeHtml(request.disciplinaNome || 'Disciplina')}</h3><p>Turma ${escapeHtml(request.turmaId || 'sem identificação')} · ${escapeHtml(request.dataInicio || '')} até ${escapeHtml(request.dataTermino || '')}</p></div></div><form class="availability-form" data-request-id="${escapeHtml(request.id)}"><fieldset><legend>Dias disponíveis</legend><div class="availability-days">${dias.map((dia, index) => {
+            const permitido = diasPermitidos.includes(index + 1);
+            return `<label><input type="checkbox" name="diaSemana" value="${index + 1}" ${saved.diasSemana?.includes(index + 1) ? 'checked' : ''} ${permitido ? '' : 'disabled'}><span>${dia}</span></label>`;
+        }).join('')}</div></fieldset><div class="availability-times"><label>Início <input type="time" name="inicio" value="${escapeHtml(saved.horarioInicio || horarioPermitido.inicio)}" min="${horarioPermitido.inicio}" max="${horarioPermitido.termino}" required></label><label>Término <input type="time" name="termino" value="${escapeHtml(saved.horarioTermino || horarioPermitido.termino)}" min="${horarioPermitido.inicio}" max="${horarioPermitido.termino}" required></label><button class="outline-button" type="submit"><i class="fa-solid fa-calendar-check"></i> Confirmar disponibilidade</button></div><p class="availability-feedback" aria-live="polite"></p></form>`;
+        card.querySelector('form').addEventListener('submit', event => salvarDisponibilidade(event, request));
+        container.appendChild(card);
+    });
+}
+
+async function salvarDisponibilidade(event, request) {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const feedback = form.querySelector('.availability-feedback');
+    const diasSemana = Array.from(form.querySelectorAll('input[name="diaSemana"]:checked')).map(input => Number(input.value));
+    const horarioInicio = form.elements.inicio.value;
+    const horarioTermino = form.elements.termino.value;
+    feedback.className = 'availability-feedback';
+    feedback.textContent = '';
+
+    if (!diasSemana.length || !horarioInicio || !horarioTermino || horarioInicio >= horarioTermino) {
+        feedback.classList.add('warning');
+        feedback.textContent = 'Selecione ao menos um dia e informe uma faixa de horário válida.';
+        return;
+    }
+
+    try {
+        const notificationRef = db.collection('notificacoes').doc(request.id);
+        const availabilityRef = db.collection('disponibilidades').doc(request.id);
+        await db.runTransaction(async transaction => {
+            const notificationSnapshot = await transaction.get(notificationRef);
+            if (!notificationSnapshot.exists
+                || notificationSnapshot.data().professorId !== professorId
+                || notificationSnapshot.data().status !== 'pendente') {
+                throw new Error('Esta solicitação não está mais disponível para confirmação.');
+            }
+
+            const notification = notificationSnapshot.data();
+            transaction.set(availabilityRef, {
+                professorId,
+                cursoId: notification.cursoId,
+                cursoNome: notification.cursoNome,
+                turmaId: notification.turmaId || '',
+                disciplinaId: notification.disciplinaId,
+                disciplinaNome: notification.disciplinaNome,
+                disciplinaKey: notification.disciplinaKey,
+                dataInicio: notification.dataInicio,
+                dataTermino: notification.dataTermino,
+                diasSemana: [...new Set(diasSemana)],
+                horarioInicio,
+                horarioTermino,
+                status: 'aguardando_adm',
+                atualizadoEm: firebase.firestore.FieldValue.serverTimestamp()
+            });
+        });
+        const data = {
+            ...request,
+            id: request.id,
+            professorId,
+            diasSemana,
+            horarioInicio,
+            horarioTermino,
+            status: 'aguardando_adm'
+        };
+        availabilityRecords = [...availabilityRecords.filter(item => item.id !== data.id), data];
+        availabilityRequests = availabilityRequests.filter(item => item.id !== request.id);
+        renderizarSolicitacoesDisponibilidade();
+        feedback.classList.add('success');
+        feedback.textContent = 'Disponibilidade registrada e enviada ao ADM para revisão.';
+    } catch (error) {
+        console.error('Erro ao salvar disponibilidade:', error);
+        feedback.classList.add('warning');
+        feedback.textContent = error.message || 'Não foi possível registrar a disponibilidade. Atualize a página e tente novamente.';
+    }
 }
 
 function enriquecerDisciplina(assignment) {
@@ -138,15 +295,56 @@ function renderizarDisciplinas() {
         return;
     }
 
-    assignments.forEach((assignment, index) => {
-        const courseStudents = estudantesDaDisciplina(assignment);
-        const card = document.createElement('article');
-        card.className = 'discipline-card';
-        card.dataset.assignmentKey = assignment.key;
-        card.innerHTML = `<span class="card-kicker">${escapeHtml(assignment.cursoNome)}</span><span class="discipline-number">${String(index + 1).padStart(2, '0')}</span><h3>${escapeHtml(assignment.nome)}</h3><p>${courseStudents.length} aluno(s) vinculados a esta turma.</p><div class="discipline-meta"><span><i class="fa-solid fa-fingerprint"></i>ID: ${escapeHtml(assignment.turmaId || 'não definido')}</span><span><i class="fa-solid fa-calendar-days"></i>${escapeHtml(assignment.dataCurso)} até ${escapeHtml(assignment.dataTermino)}</span><span><i class="fa-solid fa-clock"></i>${escapeHtml(assignment.turno || assignment.horario || 'Turno a definir')}</span><span><i class="fa-solid fa-calendar-week"></i>${escapeHtml(assignment.diaSemana || 'Dia a definir')}</span></div>`;
-        card.addEventListener('click', () => selecionarDisciplina(assignment));
-        grid.appendChild(card);
+    const cursosAgrupados = new Map();
+    assignments.forEach(assignment => {
+        const key = assignment.cursoId || assignment.cursoNome;
+        const itens = cursosAgrupados.get(key) || [];
+        itens.push(assignment);
+        cursosAgrupados.set(key, itens);
     });
+
+    const cursos = [...cursosAgrupados.entries()];
+    const tabs = document.createElement('div');
+    tabs.className = 'course-tabs';
+    const tabList = document.createElement('div');
+    tabList.className = 'course-tab-list';
+    const panels = document.createElement('div');
+    panels.className = 'course-tab-panels';
+    let selectedCourseKey = '';
+
+    cursos.forEach(([cursoKey, cursoAssignments], index) => {
+        const nomeCurso = cursoAssignments[0]?.cursoNome || 'Curso';
+        const tab = document.createElement('button');
+        tab.type = 'button';
+        tab.className = `course-tab ${index === 0 ? 'active' : ''}`;
+        tab.textContent = nomeCurso;
+        tab.addEventListener('click', () => {
+            document.querySelectorAll('.course-tab').forEach(item => item.classList.toggle('active', item === tab));
+            document.querySelectorAll('.course-panel').forEach(panel => panel.hidden = panel.dataset.courseKey !== cursoKey);
+        });
+        if (!selectedCourseKey) selectedCourseKey = cursoKey;
+        tabList.appendChild(tab);
+
+        const panel = document.createElement('div');
+        panel.className = 'course-panel';
+        panel.dataset.courseKey = cursoKey;
+        panel.hidden = cursoKey !== selectedCourseKey;
+
+        cursoAssignments.forEach((assignment, assignmentIndex) => {
+            const courseStudents = estudantesDaDisciplina(assignment);
+            const card = document.createElement('article');
+            card.className = 'discipline-card';
+            card.dataset.assignmentKey = assignment.key;
+            card.innerHTML = `<span class="card-kicker">${escapeHtml(assignment.cursoNome)}</span><span class="discipline-number">${String(assignmentIndex + 1).padStart(2, '0')}</span><h3>${escapeHtml(assignment.nome)}</h3><p>${courseStudents.length} aluno(s) vinculados a esta turma.</p><div class="discipline-meta"><span><i class="fa-solid fa-fingerprint"></i>ID: ${escapeHtml(assignment.turmaId || 'não definido')}</span><span><i class="fa-solid fa-calendar-days"></i>${escapeHtml(assignment.dataCurso)} até ${escapeHtml(assignment.dataTermino)}</span><span><i class="fa-solid fa-clock"></i>${escapeHtml(assignment.turno || assignment.horario || 'Turno a definir')}</span><span><i class="fa-solid fa-calendar-week"></i>${escapeHtml(assignment.diaSemana || 'Dia a definir')}</span></div>`;
+            card.addEventListener('click', () => selecionarDisciplina(assignment));
+            panel.appendChild(card);
+        });
+        panels.appendChild(panel);
+    });
+
+    tabs.appendChild(tabList);
+    tabs.appendChild(panels);
+    grid.appendChild(tabs);
 }
 
 function selecionarDisciplina(assignment) {
@@ -163,9 +361,10 @@ function selecionarDisciplina(assignment) {
 
 function estudantesDaDisciplina(assignment) {
     return students.filter(student => {
-        const curso = String(student.cursoSolicitado || student.curso || '').toLowerCase();
-        const mesmaTurma = !assignment.turmaId || String(student.turmaId || '').toLowerCase() === String(assignment.turmaId).toLowerCase();
-        return mesmaTurma && (curso === String(assignment.cursoId).toLowerCase() || curso === String(assignment.cursoNome).toLowerCase());
+        return student.disciplinaKey === assignment.key
+            && student.professorId === professorId
+            && student.cursoId === assignment.cursoId
+            && String(student.turmaId || '') === String(assignment.turmaId || '');
     });
 }
 
@@ -183,7 +382,7 @@ function renderizarTabelaNotas() {
         const record = gradeRecords[recordId] || {};
         const row = document.createElement('tr');
         row.dataset.studentId = student.id;
-        row.innerHTML = `<td><strong>${escapeHtml(student.nome || student.email || 'Aluno')}</strong><br><small>${escapeHtml(student.email || '')}</small></td><td><input class="grade-input" type="number" min="0" max="10" step="0.1" value="${record.nota ?? ''}" placeholder="0,0"></td><td><input class="absence-input" type="number" min="0" step="1" value="${record.faltas ?? 0}"></td><td><span class="status-badge">${situacaoDoAluno(record)}</span></td>`;
+        row.innerHTML = `<td><strong>${escapeHtml(student.alunoNome || 'Aluno')}</strong></td><td><input class="grade-input" type="number" min="0" max="10" step="0.1" value="${record.nota ?? ''}" placeholder="0,0"></td><td><input class="absence-input" type="number" min="0" step="1" value="${record.faltas ?? 0}"></td><td><span class="status-badge">${situacaoDoAluno(record)}</span></td>`;
         row.querySelectorAll('input').forEach(input => input.addEventListener('input', () => atualizarSituacao(row)));
         body.appendChild(row);
     });
@@ -226,7 +425,7 @@ document.getElementById('save-all-button').addEventListener('click', async () =>
                 throw new Error('Confira as notas entre 0 e 10 e as faltas a partir de zero.');
             }
             const recordId = idDoBoletim(row.dataset.studentId, selectedAssignment);
-            const data = { professorId, alunoId: row.dataset.studentId, cursoId: selectedAssignment.cursoId, cursoNome: selectedAssignment.cursoNome, turmaId: selectedAssignment.turmaId, disciplinaNome: selectedAssignment.nome, disciplinaKey: selectedAssignment.key, nota, faltas, atualizadoEm: firebase.firestore.FieldValue.serverTimestamp() };
+            const data = { professorId, alunoId: row.dataset.studentId, cursoId: selectedAssignment.cursoId, cursoNome: selectedAssignment.cursoNome, turmaId: selectedAssignment.turmaId, disciplinaId: selectedAssignment.disciplinaId, disciplinaNome: selectedAssignment.nome, disciplinaKey: selectedAssignment.key, nota, faltas, atualizadoEm: firebase.firestore.FieldValue.serverTimestamp() };
             batch.set(db.collection('boletins').doc(recordId), data, { merge: true });
             recordsToUpdate.push({ id: recordId, ...data });
         });

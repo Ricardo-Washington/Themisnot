@@ -34,32 +34,165 @@ service cloud.firestore {
     }
 
     function lecionaDisciplina(dados) {
+      let professor = get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data;
       return isProfessor()
         && dados.professorId == request.auth.uid
-        && dados.disciplinaKey in get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.disciplinasKeys
-        && dados.alunoId != null
+        && dados.alunoId is string
+        && exists(/databases/$(database)/documents/usuarios/$(dados.alunoId))
+        && dados.disciplinaKey is string
+        && dados.cursoId is string
+        && dados.disciplinaId is string
+        && dados.disciplinaNome is string
+        && dados.disciplinaId in professor.disciplinasIds
         && get(/databases/$(database)/documents/usuarios/$(dados.alunoId)).data.atribuicao in ['aluno', 'Aluno']
-        && (get(/databases/$(database)/documents/usuarios/$(dados.alunoId)).data.cursoSolicitado == dados.cursoNome
-          || get(/databases/$(database)/documents/usuarios/$(dados.alunoId)).data.cursoSolicitado == dados.cursoId)
-        && get(/databases/$(database)/documents/usuarios/$(dados.alunoId)).data.turmaId == dados.turmaId;
+        && get(/databases/$(database)/documents/usuarios/$(dados.alunoId)).data.cursoId == dados.cursoId
+        && get(/databases/$(database)/documents/usuarios/$(dados.alunoId)).data.turmaId == dados.turmaId
+        && get(/databases/$(database)/documents/usuarios/$(dados.alunoId)).data.professoresPorDisciplina[dados.disciplinaKey] == request.auth.uid
+        && dados.disciplinaKey in get(/databases/$(database)/documents/usuarios/$(dados.alunoId)).data.disciplinasKeys
+        && dados.disciplinaNome is string
+        && dados.turmaId is string;
+    }
+
+    function boletimValido(dados) {
+      return lecionaDisciplina(dados)
+        && (dados.nota == null || (dados.nota is number && dados.nota >= 0 && dados.nota <= 10))
+        && dados.faltas is int
+        && dados.faltas >= 0;
+    }
+
+    function disponibilidadeValida(dados) {
+      return dados.professorId is string
+        && dados.cursoId is string
+        && dados.cursoId.size() > 0
+        && dados.cursoNome is string
+        && dados.turmaId is string
+        && dados.disciplinaId is string
+        && dados.disciplinaNome is string
+        && dados.disciplinaKey is string
+        && dados.dataInicio is string
+        && dados.dataInicio.matches('^\\d{4}-\\d{2}-\\d{2}$')
+        && dados.dataTermino is string
+        && dados.dataTermino.matches('^\\d{4}-\\d{2}-\\d{2}$')
+        && dados.dataInicio <= dados.dataTermino
+        && dados.diasSemana is list
+        && dados.diasSemana.size() > 0
+        && dados.diasSemana.size() <= 7
+        && dados.diasSemana.toSet().hasOnly([1, 2, 3, 4, 5, 6, 7])
+        && dados.horarioInicio is string
+        && dados.horarioInicio.matches('^([01]\\d|2[0-3]):[0-5]\\d$')
+        && dados.horarioTermino is string
+        && dados.horarioTermino.matches('^([01]\\d|2[0-3]):[0-5]\\d$')
+        && dados.horarioInicio < dados.horarioTermino;
+    }
+
+    function professorCriaDisponibilidade(notificacaoId) {
+      let caminhoSolicitacao = /databases/$(database)/documents/notificacoes/$(notificacaoId);
+      let solicitacao = get(caminhoSolicitacao).data;
+      return isProfessor()
+        && exists(caminhoSolicitacao)
+        && solicitacao.professorId == request.auth.uid
+        && solicitacao.status == 'pendente'
+        && request.resource.data.keys().hasAll([
+          'professorId', 'cursoId', 'cursoNome', 'turmaId', 'disciplinaId',
+          'disciplinaNome', 'disciplinaKey', 'dataInicio', 'dataTermino',
+          'diasSemana', 'horarioInicio', 'horarioTermino', 'status', 'atualizadoEm'
+        ])
+        && request.resource.data.keys().hasOnly([
+          'professorId', 'cursoId', 'cursoNome', 'turmaId', 'disciplinaId',
+          'disciplinaNome', 'disciplinaKey', 'dataInicio', 'dataTermino',
+          'diasSemana', 'horarioInicio', 'horarioTermino', 'status', 'atualizadoEm'
+        ])
+        && disponibilidadeValida(request.resource.data)
+        && request.resource.data.professorId == request.auth.uid
+        && request.resource.data.cursoId == solicitacao.cursoId
+        && request.resource.data.cursoNome == solicitacao.cursoNome
+        && request.resource.data.turmaId == solicitacao.turmaId
+        && request.resource.data.disciplinaId == solicitacao.disciplinaId
+        && request.resource.data.disciplinaNome == solicitacao.disciplinaNome
+        && request.resource.data.disciplinaKey == solicitacao.disciplinaKey
+        && request.resource.data.dataInicio == solicitacao.dataInicio
+        && request.resource.data.dataTermino == solicitacao.dataTermino
+        && request.resource.data.status == 'aguardando_adm'
+        && request.resource.data.atualizadoEm == request.time;
+    }
+
+    function professorAtualizaDisponibilidadePendente() {
+      return isProfessor()
+        && resource.data.professorId == request.auth.uid
+        && resource.data.status == 'aguardando_adm'
+        && request.resource.data.professorId == resource.data.professorId
+        && request.resource.data.cursoId == resource.data.cursoId
+        && request.resource.data.cursoNome == resource.data.cursoNome
+        && request.resource.data.turmaId == resource.data.turmaId
+        && request.resource.data.disciplinaId == resource.data.disciplinaId
+        && request.resource.data.disciplinaNome == resource.data.disciplinaNome
+        && request.resource.data.disciplinaKey == resource.data.disciplinaKey
+        && request.resource.data.dataInicio == resource.data.dataInicio
+        && request.resource.data.dataTermino == resource.data.dataTermino
+        && request.resource.data.status == 'aguardando_adm'
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'diasSemana', 'horarioInicio', 'horarioTermino', 'atualizadoEm'
+        ])
+        && disponibilidadeValida(request.resource.data)
+        && request.resource.data.atualizadoEm == request.time;
+    }
+
+    function validDisciplineData() {
+      return request.resource.data.keys().hasOnly(['nome', 'cursoIds', 'atualizadoEm'])
+        && request.resource.data.nome is string
+        && request.resource.data.nome.size() > 0
+        && request.resource.data.nome.size() <= 120
+        && request.resource.data.cursoIds is list
+        && request.resource.data.cursoIds.size() <= 100;
+    }
+
+    function academicFieldsUnchanged() {
+      return !request.resource.data.diff(resource.data).affectedKeys().hasAny([
+        'atribuicao', 'cursoId', 'cursoSolicitado', 'turmaId', 'disciplinas',
+        'disciplinasIds', 'disciplinasKeys', 'professoresPorDisciplina',
+        'dataInicio', 'dataTermino', 'rosterAtualizadoEm'
+      ]);
     }
 
     match /usuarios/{userId} {
       allow read: if isSignedIn() && (isOwner(userId) || isFuncionario() || isAdmin()
-        || (isProfessor() && resource.data.atribuicao in ['aluno', 'Aluno']));
+        );
       allow create: if isOwner(userId)
-        && request.resource.data.atribuicao == 'aluno';
+        && request.resource.data.atribuicao == 'aluno'
+        && !request.resource.data.keys().hasAny([
+          'cursoId', 'cursoSolicitado', 'turmaId', 'disciplinas', 'disciplinasKeys',
+          'disciplinasIds', 'professoresPorDisciplina', 'dataInicio', 'dataTermino'
+        ])
+        || (isAdmin()
+          && request.resource.data.atribuicao in ['funcionario', 'professor']
+          && request.resource.data.keys().hasOnly([
+            'nome', 'email', 'cpf', 'orgaoRg', 'endereco', 'cep', 'logradouro',
+            'numero', 'bairro', 'cidade', 'uf', 'telefone', 'telefoneAlt', 'rg',
+            'nascimento', 'atribuicao', 'disciplinasIds', 'createdAt', 'cadastradoPor'
+          ])
+          && request.resource.data.nome is string
+          && request.resource.data.nome.size() > 0
+          && request.resource.data.nome.size() <= 120
+          && request.resource.data.email is string
+          && request.resource.data.email.size() <= 254
+          && request.resource.data.createdAt is timestamp
+          && request.resource.data.cadastradoPor == request.auth.uid
+          && (request.resource.data.atribuicao != 'professor'
+            || (request.resource.data.disciplinasIds is list
+              && request.resource.data.disciplinasIds.size() > 0
+              && request.resource.data.disciplinasIds.size() <= 100))
+          && (request.resource.data.atribuicao != 'funcionario'
+            || !request.resource.data.keys().hasAny(['disciplinasIds'])));
       allow update: if isAdmin()
         || (isFuncionario()
           && resource.data.atribuicao == 'professor'
           && request.resource.data.atribuicao == 'professor'
-          && request.resource.data.disciplinas == resource.data.disciplinas
-          && request.resource.data.disciplinasKeys == resource.data.disciplinasKeys)
+          && request.resource.data.disciplinasIds == resource.data.disciplinasIds)
         || (isFuncionario()
           && resource.data.atribuicao in ['aluno', 'Aluno']
           && request.resource.data.atribuicao == resource.data.atribuicao)
         || (isOwner(userId)
-          && request.resource.data.atribuicao == resource.data.atribuicao);
+          && academicFieldsUnchanged());
       allow delete: if isOwner(userId) || isAdmin()
         || (isFuncionario() && resource.data.atribuicao == 'professor');
     }
@@ -67,6 +200,17 @@ service cloud.firestore {
     match /cursos/{cursoId} {
       allow read: if true;
       allow create, update, delete: if isFuncionario();
+    }
+
+    match /disciplinas/{disciplinaId} {
+      allow read: if isSignedIn();
+      allow create: if isFuncionario()
+        && validDisciplineData()
+        && request.resource.data.cursoIds.size() > 0;
+      allow update: if isFuncionario()
+        && validDisciplineData()
+        && (request.resource.data.cursoIds.size() > 0 || isAdmin());
+      allow delete: if isAdmin();
     }
 
     match /produtos/{produtoId} {
@@ -84,10 +228,76 @@ service cloud.firestore {
       allow read: if isFuncionario() || isAdmin()
         || (isAluno() && resource.data.alunoId == request.auth.uid)
         || (isProfessor() && resource.data.professorId == request.auth.uid);
-      allow create: if lecionaDisciplina(request.resource.data);
-      allow update: if lecionaDisciplina(request.resource.data)
-        && resource.data.professorId == request.auth.uid;
+      allow create: if boletimValido(request.resource.data);
+      allow update: if boletimValido(request.resource.data)
+        && resource.data.professorId == request.auth.uid
+        && resource.data.alunoId == request.resource.data.alunoId
+        && resource.data.disciplinaKey == request.resource.data.disciplinaKey;
       allow delete: if lecionaDisciplina(resource.data);
+    }
+
+    match /notificacoes/{notificacaoId} {
+      allow read: if isAdmin() || isFuncionario()
+        || (isProfessor() && resource.data.professorId == request.auth.uid);
+      allow create: if isAdmin() || isFuncionario()
+        && request.resource.data.keys().hasOnly([
+          'tipo', 'destinatarioId', 'professorId', 'cursoId', 'cursoNome', 'turmaId',
+          'disciplinaNome', 'disciplinaId', 'disciplinaKey', 'dataInicio', 'dataTermino', 'status', 'criadoEm'
+        ])
+        && request.resource.data.tipo == 'solicitar_disponibilidade'
+        && request.resource.data.professorId is string
+        && request.resource.data.destinatarioId == request.resource.data.professorId
+        && request.resource.data.status == 'pendente'
+        && request.resource.data.disciplinaKey is string
+        && request.resource.data.disciplinaId is string
+        && request.resource.data.disciplinaId in get(/databases/$(database)/documents/usuarios/$(request.resource.data.professorId)).data.disciplinasIds
+        && request.resource.data.dataInicio is string
+        && request.resource.data.dataTermino is string
+        && request.resource.data.dataInicio <= request.resource.data.dataTermino;
+      allow update, delete: if isAdmin();
+    }
+
+    match /disponibilidades/{disponibilidadeId} {
+      allow read: if isAdmin() || isFuncionario()
+        || (isProfessor() && resource.data.professorId == request.auth.uid);
+      allow create: if professorCriaDisponibilidade(disponibilidadeId);
+      allow update: if (isAdmin()
+          && disponibilidadeValida(request.resource.data)
+          && request.resource.data.status in ['aguardando_adm', 'aprovada']
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            'dataInicio', 'dataTermino', 'diasSemana', 'horarioInicio', 'horarioTermino',
+            'status', 'atualizadoEm', 'revisadoEm', 'revisadoPor'
+          ])
+          && request.resource.data.revisadoPor == request.auth.uid
+          && request.resource.data.revisadoEm == request.time
+          && request.resource.data.atualizadoEm == request.time)
+        || professorAtualizaDisponibilidadePendente();
+      allow delete: if false;
+    }
+
+    match /disponibilidade_slots/{slotId} {
+      allow read: if isAdmin();
+      allow create, update: if isAdmin()
+        && request.resource.data.keys().hasOnly(['reservas'])
+        && request.resource.data.reservas is list
+        && request.resource.data.reservas.size() <= 200;
+      allow delete: if false;
+    }
+
+    match /matriculas_disciplina/{matriculaId} {
+      allow read: if isAdmin() || isFuncionario()
+        || (isProfessor() && resource.data.professorId == request.auth.uid);
+      allow create, update: if isAdmin() || isFuncionario()
+        && request.resource.data.keys().hasOnly([
+          'alunoId', 'alunoNome', 'professorId', 'cursoId', 'cursoNome',
+          'turmaId', 'disciplinaId', 'disciplinaKey', 'disciplinaNome'
+        ])
+        && request.resource.data.alunoId is string
+        && request.resource.data.professorId is string
+        && request.resource.data.disciplinaKey is string
+        && request.resource.data.alunoNome is string
+        && request.resource.data.alunoNome.size() <= 120;
+      allow delete: if isAdmin() || isFuncionario();
     }
 
     match /{document=**} {

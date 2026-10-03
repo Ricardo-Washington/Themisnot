@@ -10,10 +10,12 @@
     <script src="https://www.gstatic.com/firebasejs/12.1.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/12.1.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/12.1.0/firebase-functions-compat.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="/js/firebase-config-shared.js" defer></script>
+    <script src="/js/academic-workflow.js" defer></script>
     <script src="/js/logger.js" defer></script>
-    <script src="adm.js" defer></script>
+    <script src="adm.js?v=availability-firestore-1" defer></script>
     <script src="/js/auth-guard.js" defer></script>
     <title>Thémis | Administração</title>
 </head>
@@ -29,7 +31,6 @@
             </ul>
         </div>
     </nav>
-
     <main class="dashboard-shell">
         <section class="welcome-section">
             <div class="container welcome-content">
@@ -50,6 +51,7 @@
                     <a class="module-link" href="#records-professors"><i class="fa-solid fa-chalkboard-user"></i><span>Professores</span></a>
                     <a class="module-link" href="#records-students"><i class="fa-solid fa-user-graduate"></i><span>Alunos</span></a>
                     <a class="module-link" href="#records-courses"><i class="fa-solid fa-book-open"></i><span>Cursos</span></a>
+                    <a class="module-link" href="#records-availability"><i class="fa-solid fa-calendar-check"></i><span>Disponibilidade</span></a>
                     <a class="module-link" href="#records-audit"><i class="fa-solid fa-clipboard-list"></i><span>Auditoria</span></a>
                     <a class="module-link" href="#reports"><i class="fa-solid fa-chart-line"></i><span>Relatórios</span></a>
                 </nav>
@@ -70,11 +72,14 @@
                 <p id="searchStatus" class="search-status" aria-live="polite"></p>
 
                 <div class="admin-actions" aria-label="Editar registros">
+                    <button class="action-btn" type="button" onclick="openModal('funcionario_novo')"><i class="fas fa-user-plus"></i>Novo funcionário</button>
+                    <button class="action-btn" type="button" onclick="openModal('professor_novo')"><i class="fas fa-chalkboard-user"></i>Novo professor</button>
+                    <button class="action-btn" type="button" onclick="openModal('disciplina_nova')"><i class="fas fa-book"></i>Nova disciplina</button>
+                    <button class="action-btn" type="button" onclick="openModal('curso_novo')"><i class="fas fa-plus"></i>Novo curso</button>
                     <button class="action-btn" type="button" onclick="openModal('funcionario')"><i class="fas fa-user-pen"></i>Editar funcionário</button>
                     <button class="action-btn" type="button" onclick="openModal('professor')"><i class="fas fa-chalkboard-user"></i>Editar professor</button>
                     <button class="action-btn" type="button" onclick="openModal('aluno')"><i class="fas fa-user-pen"></i>Editar aluno</button>
                     <button class="action-btn" type="button" onclick="openModal('curso')"><i class="fas fa-book-open"></i>Editar curso</button>
-                    <button class="action-btn primary-btn" type="button" onclick="openModal('curso_novo')"><i class="fas fa-plus"></i>Novo curso</button>
                 </div>
 
                 <div class="admin-grid">
@@ -82,28 +87,57 @@
                         <div class="card-header">
                             <div><span class="card-kicker">Equipe</span><h2><i class="fas fa-user-tie"></i> Funcionários</h2></div>
                         </div>
-                        <ol id="dadosfuincionario" class="data-list"></ol>
+                        <ol id="dadosfuincionario" class="data-list"><li class="item">Carregando funcionários...</li></ol>
                     </article>
 
                     <article class="admin-card" id="records-professors">
                         <div class="card-header">
                             <div><span class="card-kicker">Equipe acadêmica</span><h2><i class="fas fa-chalkboard-user"></i> Professores</h2></div>
                         </div>
-                        <ol id="dadosprofessor" class="data-list"></ol>
+                        <ol id="dadosprofessor" class="data-list"><li class="item">Carregando professores...</li></ol>
                     </article>
 
                     <article class="admin-card" id="records-students">
                         <div class="card-header">
                             <div><span class="card-kicker">Matrículas</span><h2><i class="fas fa-user-graduate"></i> Alunos</h2></div>
                         </div>
-                        <ol id="dadosaluno" class="data-list"></ol>
+                        <ol id="dadosaluno" class="data-list"><li class="item">Carregando alunos...</li></ol>
                     </article>
 
                     <article class="admin-card" id="records-courses">
                         <div class="card-header">
                             <div><span class="card-kicker">Formação</span><h2><i class="fas fa-book"></i> Cursos</h2></div>
                         </div>
-                        <ol id="dadoscursos" class="data-list"></ol>
+                        <ol id="dadoscursos" class="data-list"><li class="item">Carregando cursos...</li></ol>
+                    </article>
+
+                    <article class="admin-card" id="records-disciplines">
+                        <div class="card-header">
+                            <div><span class="card-kicker">Acadêmico</span><h2><i class="fas fa-book-open"></i> Disciplinas cadastradas</h2></div>
+                        </div>
+                        <div class="discipline-filters">
+                            <label>
+                                <span>Curso</span>
+                                <select id="disciplineFilterCourse">
+                                    <option value="todos">Todos os cursos</option>
+                                </select>
+                            </label>
+                            <label>
+                                <span>Professor</span>
+                                <select id="disciplineFilterProfessor">
+                                    <option value="todos">Todos os professores</option>
+                                </select>
+                            </label>
+                        </div>
+                        <ol id="dadosdisciplinas" class="data-list"><li class="item">Carregando disciplinas...</li></ol>
+                    </article>
+
+                    <article class="admin-card availability-admin-card" id="records-availability">
+                        <div class="card-header">
+                            <div><span class="card-kicker">Planejamento acadêmico</span><h2><i class="fas fa-calendar-check"></i> Disponibilidade dos professores</h2></div>
+                        </div>
+                        <p class="availability-admin-help">Revise as escolhas dos professores. Conflitos de dia e horário no mesmo curso precisam ser ajustados antes da aprovação; horários aprovados ficam reservados.</p>
+                        <div id="availability-admin-list" class="availability-admin-list"><p class="item">Carregando disponibilidades...</p></div>
                     </article>
 
                     <article class="admin-card audit-card" id="records-audit">
@@ -160,6 +194,12 @@
                 <input type="text" id="editNome" placeholder="Nome">
                 <label class="requiredq">E-mail </label>
                 <input type="email" id="editEmail" placeholder="E-mail">
+                <div id="camposCadastroSenha" style="display:none; flex-direction:column; gap:12px;">
+                    <label class="requiredq" for="editSenhaInicial">Senha inicial</label>
+                    <input type="password" id="editSenhaInicial" autocomplete="new-password" placeholder="Mínimo de 6 caracteres">
+                    <label class="requiredq" for="editConfirmarSenhaInicial">Confirmar senha</label>
+                    <input type="password" id="editConfirmarSenhaInicial" autocomplete="new-password" placeholder="Repita a senha">
+                </div>
                 <label class="requiredq">CPF </label>
                 <input type="text" id="editCpf" placeholder="CPF">
                 <label class="requiredq">Órgão Expedidor do RG </label>
@@ -167,7 +207,8 @@
                 <label class="requiredq">Endereço </label>
                 <input type="text" id="editEndereco" placeholder="Endereço">
                 <label class="requiredq">CEP </label>
-                <input type="text" id="editCep" placeholder="00000-000">
+                <input type="text" id="editCep" inputmode="numeric" maxlength="9" autocomplete="postal-code" placeholder="00000-000">
+                <span id="editCepError" class="discipline-error" aria-live="polite"></span>
                 <label class="requiredq">Logradouro </label>
                 <input type="text" id="editLogradouro" placeholder="Rua, avenida...">
                 <label class="requiredq">Número </label>
@@ -219,21 +260,23 @@
                 <label class="requiredq">Valor do Curso (R$)</label>
                 <input type="text" id="editPreco" placeholder="Ex: R$ 600,00">
                 <label class="requiredq">Carga Horária</label>
-                <input type="text" id="editCargaHr" placeholder="Ex: 40 horas">
-                <label class="requiredq">Próxima Turma (Data)</label>
-                <input type="text" id="editDataTurma" placeholder="Ex: 20/05/2026">
-                <label class="requiredq">ID da Turma</label>
-                <input type="text" id="editTurmaId" placeholder="Ex: VIG-2026-01">
-                <label class="requiredq">Data de Início</label>
-                <input type="date" id="editDataInicio">
-                <label class="requiredq">Data de Término</label>
-                <input type="date" id="editDataTermino">
-                <label class="requiredq">Turno</label>
-                <select id="editTurno">
-                    <option value="">Selecione</option>
-                    <option value="Diurno">Diurno</option>
-                    <option value="Noturno">Noturno</option>
-                </select>
+                <input type="text" id="editCargaHoraria" placeholder="Ex: 40 horas">
+                <div id="novoCursoDisciplinasFields" class="professor-discipline-fields" style="display:none;">
+                    <label>Disciplinas do curso</label>
+                    <p class="discipline-help">Selecione as disciplinas já cadastradas que farão parte deste curso.</p>
+                    <div id="novoCursoDisciplinasOptions" class="professor-discipline-options"></div>
+                    <span id="novoCursoDisciplinasError" class="discipline-error" aria-live="polite"></span>
+                </div>
+                <button type="button" class="details-button" id="finalizeCourseButton" style="display:none;">Finalizar curso</button>
+            </div>
+
+            <div id="camposDisciplina" style="display:none;">
+                <label class="requiredq" for="editNomeDisciplina">Nome da disciplina</label>
+                <input type="text" id="editNomeDisciplina" maxlength="120" placeholder="Ex: Primeiros Socorros">
+                <label class="requiredq" for="disciplinaCursos">Cursos em que será lecionada</label>
+                <select id="disciplinaCursos" multiple size="6" aria-describedby="disciplinaCursosAjuda"></select>
+                <p id="disciplinaCursosAjuda" class="discipline-help">Use Ctrl ou Command para selecionar mais de um curso.</p>
+                <span id="novaDisciplinaError" class="discipline-error" aria-live="polite"></span>
             </div>
 
             <button type="submit" class="details-button">Salvar</button>

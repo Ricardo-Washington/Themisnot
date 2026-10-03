@@ -45,9 +45,12 @@ let cursosList = [];
 let usuarioAtual = null;
 let tipoAtual = null; 
 let disciplinasProfessorDisponiveis = [];
+let disciplinasCadastradasCache = [];
+let disciplinasCatalogoNovoCurso = [];
 
 const mobileMenuButton = document.getElementById('mobile-menu-btn');
 const navigationLinks = document.getElementById('nav-links');
+
 if (mobileMenuButton && navigationLinks) {
   mobileMenuButton.addEventListener('click', () => {
     const isExpanded = navigationLinks.classList.toggle('active');
@@ -93,13 +96,24 @@ clearAdminSearch?.addEventListener('click', () => {
   adminSearch.focus();
 });
 
+const disciplineFilterCourse = document.getElementById('disciplineFilterCourse');
+disciplineFilterCourse?.addEventListener('change', () => {
+  if (!disciplinasCadastradasCache.length) return;
+  renderizarDisciplinasCadastradas();
+});
+
+const disciplineFilterProfessor = document.getElementById('disciplineFilterProfessor');
+disciplineFilterProfessor?.addEventListener('change', () => {
+  if (!disciplinasCadastradasCache.length) return;
+  renderizarDisciplinasCadastradas();
+});
+
 // A função principal para buscar e separar os dados
 function findUsers() {
-  firebase.firestore()// busca do fire base 
+  firebase.firestore()
     .collection('usuarios')
-    .orderBy('dataCadastro', 'desc')
     .get()
-    .then(snapshot => {
+    .then(async snapshot => {
       const todosUsuarios = snapshot.docs.map(doc => ({...doc.data(), id: doc.id}));
 
       usuariosFuncionarios = todosUsuarios.filter(user => user.atribuicao === 'funcionario');
@@ -108,15 +122,283 @@ function findUsers() {
       renderizarLista('dadosfuincionario', usuariosFuncionarios);
       renderizarLista('dadosprofessor', usuariosProfessores, 'professor');
       renderizarLista('dadosaluno', usuariosAlunos);
+      fetchTeacherAvailabilities(todosUsuarios);
       // Atualiza o gráfico de inscrições mensais usando apenas os alunos
       renderarGraficoInscricoes(usuariosAlunos);
+
+      try {
+        await renderizarDisciplinasCadastradas();
+        const coursesSnapshot = await db.collection('cursos').get();
+        const courses = coursesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        await window.academicWorkflow.ensureCourseDisciplineRecords(db, courses);
+        const disciplineSnapshot = await db.collection('disciplinas').get();
+        const knownDisciplineIds = new Set(disciplineSnapshot.docs.map(doc => doc.id));
+        await Promise.all(usuariosProfessores.map(async professor => {
+          const migratedIds = new Set((professor.disciplinasIds || []).filter(id => knownDisciplineIds.has(id)));
+          (professor.disciplinas || []).forEach(item => {
+            const name = typeof item === 'string' ? item : item?.nome;
+            if (name && knownDisciplineIds.has(window.academicWorkflow.disciplineId(name))) {
+              migratedIds.add(window.academicWorkflow.disciplineId(name));
+            }
+          });
+          (professor.disciplinasIds || []).forEach(oldId => {
+            const matchingCourse = courses.find(course => String(oldId).startsWith(`${course.id}::`));
+            if (!matchingCourse) return;
+            const oldName = String(oldId).slice(matchingCourse.id.length + 2);
+            const globalId = window.academicWorkflow.disciplineId(oldName);
+            if (knownDisciplineIds.has(globalId)) migratedIds.add(globalId);
+          });
+          const disciplinasIds = [...migratedIds];
+          const mustMigrate = JSON.stringify(disciplinasIds) !== JSON.stringify(professor.disciplinasIds || [])
+            || Array.isArray(professor.disciplinas) || Array.isArray(professor.disciplinasKeys);
+          if (!mustMigrate) return;
+          await db.collection('usuarios').doc(professor.id).update({
+            disciplinasIds,
+            disciplinas: firebase.firestore.FieldValue.delete(),
+            disciplinasKeys: firebase.firestore.FieldValue.delete()
+          });
+          professor.disciplinasIds = disciplinasIds;
+        }));
+        const coursesNeedingRosterSync = [...new Set(usuariosAlunos
+          .filter(student => !student.rosterAtualizadoEm && student.cursoId)
+          .map(student => student.cursoId))];
+        await Promise.all(coursesNeedingRosterSync.map(courseId =>
+          window.academicWorkflow.syncCourseStudentTeachers(firebase.firestore(), courseId)
+        ));
+      } catch (error) {
+        console.error('As listas ADM foram carregadas, mas a migração acadêmica falhou:', error);
+      }
     })
     .catch(error => {
       console.error("Erro ao buscar usuários: ", error);
+      mostrarEstadoLista('dadosfuincionario', 'Não foi possível carregar funcionários. Verifique a conexão e as permissões do Firestore.');
+      mostrarEstadoLista('dadosprofessor', 'Não foi possível carregar professores. Verifique a conexão e as permissões do Firestore.');
+      mostrarEstadoLista('dadosaluno', 'Não foi possível carregar alunos. Verifique a conexão e as permissões do Firestore.');
     });
   
   fetchCursos();
   fetchLogs(); // inicia a busca de logs
+}
+
+async function fetchTeacherAvailabilities(users) {
+  const container = document.getElementById('availability-admin-list');
+  if (!container) return;
+  try {
+    const snapshot = await db.collection('disponibilidades').get();
+    const professorNames = new Map(users
+      .filter(user => user.atribuicao === 'professor')
+      .map(user => [user.id, user.nome || user.nomeCompleto || user.email || user.id]));
+    const records = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    renderTeacherAvailabilities(container, records, professorNames);
+  } catch (error) {
+    console.error('Erro ao carregar disponibilidades dos professores:', error);
+    container.innerHTML = '<p class="item">Não foi possível carregar as disponibilidades. Verifique as permissões e tente novamente.</p>';
+  }
+}
+
+function teacherAvailabilityApproved(record) {
+  return !record.status || record.status === 'aprovada';
+}
+
+function teacherAvailabilityOverlaps(first, second) {
+  return first.cursoId === second.cursoId
+    && dataRangesOverlap(first, second)
+    && (first.diasSemana || []).some(day => (second.diasSemana || []).includes(day))
+    && first.horarioInicio < second.horarioTermino
+    && first.horarioTermino > second.horarioInicio;
+}
+
+function dataRangesOverlap(first, second) {
+  return first.dataInicio <= second.dataTermino && first.dataTermino >= second.dataInicio;
+}
+
+function renderTeacherAvailabilities(container, records, professorNames) {
+  container.textContent = '';
+  if (!records.length) {
+    const empty = document.createElement('p');
+    empty.className = 'item';
+    empty.textContent = 'Nenhuma disponibilidade enviada pelos professores.';
+    container.appendChild(empty);
+    return;
+  }
+
+  const dayNames = ['', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado', 'Domingo'];
+  records.sort((first, second) => Number(teacherAvailabilityApproved(first)) - Number(teacherAvailabilityApproved(second)));
+  records.forEach(record => {
+    const conflicts = records.filter(other =>
+      other.id !== record.id && teacherAvailabilityOverlaps(record, other)
+    );
+    const approved = teacherAvailabilityApproved(record);
+    const article = document.createElement('article');
+    article.className = `availability-admin-item${conflicts.length ? ' has-conflict' : ''}`;
+    article.dataset.searchRecord = '';
+    article.dataset.courseId = record.cursoId || '';
+    const status = approved ? 'Aprovada e reservada' : 'Aguardando revisão';
+    const conflictMessage = conflicts.length
+      ? `Conflito com ${conflicts.map(item => professorNames.get(item.professorId) || 'outro professor').join(', ')}.`
+      : 'Sem conflito de horário detectado.';
+    const selectedDays = new Set(record.diasSemana || []);
+    article.innerHTML = `
+      <div class="availability-admin-heading">
+        <div>
+          <span class="availability-status ${approved ? 'approved' : 'pending'}">${status}</span>
+          <h3>${escapeHtml(professorNames.get(record.professorId) || 'Professor não identificado')}</h3>
+          <p>${escapeHtml(record.cursoNome || 'Curso')} · Turma ${escapeHtml(record.turmaId || 'sem identificação')} · ${escapeHtml(record.disciplinaNome || 'Disciplina')}</p>
+        </div>
+        <p class="availability-conflict-message">${escapeHtml(conflictMessage)}</p>
+      </div>
+      <form class="availability-admin-form" data-availability-id="${escapeHtml(record.id)}">
+        <fieldset>
+          <legend>Dias da semana</legend>
+          <div class="availability-admin-days">${dayNames.slice(1).map((day, index) => `
+            <label><input type="checkbox" name="diasSemana" value="${index + 1}" ${selectedDays.has(index + 1) ? 'checked' : ''}><span>${day}</span></label>
+          `).join('')}</div>
+        </fieldset>
+        <div class="availability-admin-fields">
+          <label>Data de início<input type="date" name="dataInicio" value="${escapeHtml(record.dataInicio || '')}" required></label>
+          <label>Data de término<input type="date" name="dataTermino" value="${escapeHtml(record.dataTermino || '')}" required></label>
+          <label>Horário inicial<input type="time" name="horarioInicio" value="${escapeHtml(record.horarioInicio || '')}" required></label>
+          <label>Horário final<input type="time" name="horarioTermino" value="${escapeHtml(record.horarioTermino || '')}" required></label>
+        </div>
+        <div class="availability-admin-actions">
+          <button class="item-edit-button" type="submit" data-action="save">Salvar alterações</button>
+          ${approved ? '' : '<button class="item-edit-button approve-availability-button" type="submit" data-action="approve">Salvar e aprovar</button>'}
+          <span class="availability-admin-feedback" aria-live="polite"></span>
+        </div>
+      </form>`;
+    article.querySelector('form').addEventListener('submit', revisarDisponibilidadeProfessor);
+    container.appendChild(article);
+  });
+  aplicarBuscaAdm();
+}
+
+async function revisarDisponibilidadeProfessor(event) {
+  event.preventDefault();
+  const form = event.currentTarget;
+  const feedback = form.querySelector('.availability-admin-feedback');
+  const action = event.submitter?.dataset.action || 'save';
+  const diasSemana = Array.from(form.querySelectorAll('input[name="diasSemana"]:checked'))
+    .map(input => Number(input.value));
+  const horarioInicio = form.elements.horarioInicio.value;
+  const horarioTermino = form.elements.horarioTermino.value;
+  const dataInicio = form.elements.dataInicio.value;
+  const dataTermino = form.elements.dataTermino.value;
+  feedback.textContent = '';
+
+  if (!diasSemana.length || horarioInicio >= horarioTermino || dataInicio > dataTermino) {
+    feedback.textContent = 'Revise os dias, horários e datas informados.';
+    return;
+  }
+
+  form.querySelectorAll('button').forEach(button => { button.disabled = true; });
+  try {
+    const availabilityId = form.dataset.availabilityId;
+    const availabilityRef = db.collection('disponibilidades').doc(availabilityId);
+    const courseSnapshot = await db.collection('disponibilidades')
+      .where('cursoId', '==', form.closest('.availability-admin-item').dataset.courseId)
+      .get();
+    const courseAvailabilityRefs = courseSnapshot.docs
+      .filter(doc => doc.id !== availabilityId)
+      .map(doc => doc.ref);
+
+    await db.runTransaction(async transaction => {
+      const availabilitySnapshot = await transaction.get(availabilityRef);
+      if (!availabilitySnapshot.exists) {
+        throw new Error('Esta disponibilidade não existe mais. Atualize a página.');
+      }
+      const current = availabilitySnapshot.data();
+      const courseAvailabilitySnapshots = await Promise.all(
+        courseAvailabilityRefs.map(ref => transaction.get(ref))
+      );
+      const approved = action === 'approve' || teacherAvailabilityApproved(current);
+      const updated = {
+        ...current,
+        diasSemana: [...new Set(diasSemana)],
+        horarioInicio,
+        horarioTermino,
+        dataInicio,
+        dataTermino
+      };
+      const conflictingRecord = approved && courseAvailabilitySnapshots
+        .filter(snapshot => snapshot.exists)
+        .map(snapshot => snapshot.data())
+        .find(existing => teacherAvailabilityApproved(existing)
+          && teacherAvailabilityOverlaps(updated, existing));
+      if (conflictingRecord) {
+        throw new Error('Este horário conflita com outra disponibilidade aprovada para o mesmo curso.');
+      }
+
+      const previousDays = approved && Array.isArray(current.diasSemana) ? current.diasSemana : [];
+      const slotDays = [...new Set([...previousDays, ...(approved ? updated.diasSemana : [])])];
+      const slotRefs = slotDays.map(day => ({
+        day,
+        ref: db.collection('disponibilidade_slots')
+          .doc(encodeURIComponent(`${current.cursoId}::${day}`))
+      }));
+      const slotSnapshots = await Promise.all(slotRefs.map(slot => transaction.get(slot.ref)));
+
+      if (approved) {
+        const overlappingSlot = slotSnapshots.some((snapshot, index) => {
+          const day = slotRefs[index].day;
+          if (!updated.diasSemana.includes(day) || !snapshot.exists) return false;
+          return (snapshot.data().reservas || []).some(reservation =>
+            reservation.disponibilidadeId !== availabilityId
+            && dataRangesOverlap(updated, reservation)
+            && updated.horarioInicio < reservation.horarioTermino
+            && updated.horarioTermino > reservation.horarioInicio
+          );
+        });
+        if (overlappingSlot) {
+          throw new Error('Este horário já foi reservado para o mesmo curso.');
+        }
+      }
+
+      transaction.update(availabilityRef, {
+        diasSemana: updated.diasSemana,
+        horarioInicio,
+        horarioTermino,
+        dataInicio,
+        dataTermino,
+        status: approved ? 'aprovada' : 'aguardando_adm',
+        atualizadoEm: firebase.firestore.FieldValue.serverTimestamp(),
+        revisadoEm: firebase.firestore.FieldValue.serverTimestamp(),
+        revisadoPor: firebase.auth().currentUser.uid
+      });
+
+      slotRefs.forEach((slot, index) => {
+        const existingReservations = slotSnapshots[index].exists
+          ? slotSnapshots[index].data().reservas || []
+          : [];
+        const reservations = existingReservations
+          .filter(reservation => reservation.disponibilidadeId !== availabilityId);
+        if (approved && updated.diasSemana.includes(slot.day)) {
+          reservations.push({
+            disponibilidadeId: availabilityId,
+            dataInicio,
+            dataTermino,
+            horarioInicio,
+            horarioTermino
+          });
+        }
+        if (reservations.length) {
+          transaction.set(slot.ref, { reservas: reservations });
+        } else {
+          transaction.set(slot.ref, { reservas: [] });
+        }
+      });
+    });
+    showToast(action === 'approve' ? 'Disponibilidade aprovada e horário reservado.' : 'Alterações salvas.', 'success');
+    fetchTeacherAvailabilities([
+      ...usuariosFuncionarios,
+      ...usuariosProfessores,
+      ...usuariosAlunos
+    ]);
+  } catch (error) {
+    console.error('Erro ao revisar disponibilidade:', error);
+    feedback.textContent = error.message || 'Não foi possível salvar a disponibilidade.';
+    showToast(feedback.textContent, 'error');
+    form.querySelectorAll('button').forEach(button => { button.disabled = false; });
+  }
 }
 
 function fetchLogs() {
@@ -138,18 +420,44 @@ function fetchCursos() {//busca os cursos no fire base
   firebase.firestore()
     .collection('cursos')
     .get()
-    .then(snapshot => {
+    .then(async snapshot => {
       cursosList = snapshot.docs.map(doc => ({...doc.data(), id: doc.id}));
       if (cursosList.length === 0) {
         initCursos();
       } else {
-        sincronizarDisciplinasPadrao(cursosList);
         renderizarCursos('dadoscursos', cursosList);//renderiza os cursos
+        try {
+          await sincronizarDisciplinasPadrao(cursosList);
+          const latestSnapshot = await firebase.firestore().collection('cursos').get();
+          cursosList = latestSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
+          await window.academicWorkflow.ensureCourseDisciplineRecords(firebase.firestore(), cursosList);
+          cursosList = cursosList.map(course => ({
+            ...course,
+            disciplinas: (course.disciplinas || []).map(subject => ({
+              id: window.academicWorkflow.subjectId(subject),
+              nome: typeof subject === 'string' ? subject : subject.nome
+            }))
+          }));
+          renderizarCursos('dadoscursos', cursosList);
+          await renderizarDisciplinasCadastradas();
+        } catch (error) {
+          console.error('Cursos exibidos sem concluir a sincronização de disciplinas:', error);
+        }
       }
     })
     .catch(error => {
       console.error("Erro ao buscar cursos: ", error);//tratamento de erro 
+      mostrarEstadoLista('dadoscursos', 'Não foi possível carregar cursos. Verifique a conexão e as permissões do Firestore.');
     });
+}
+
+function mostrarEstadoLista(idDaLista, mensagem) {
+  const lista = document.getElementById(idDaLista);
+  if (!lista) return;
+  const item = document.createElement('li');
+  item.className = 'item';
+  item.textContent = mensagem;
+  lista.replaceChildren(item);
 }
 
 const disciplinasPorCursoPadrao = {
@@ -206,7 +514,7 @@ async function sincronizarDisciplinasPadrao(cursos) {
   let alteracoes = 0;
   cursos.forEach(curso => {
     const disciplinas = disciplinasDoCursoPadrao(curso);
-    if (!disciplinas || JSON.stringify(curso.disciplinas || []) === JSON.stringify(disciplinas)) return;
+    if (!disciplinas || (Array.isArray(curso.disciplinas) && curso.disciplinas.length)) return;
     batch.update(firebase.firestore().collection('cursos').doc(curso.id), { disciplinas });
     alteracoes += 1;
   });
@@ -403,17 +711,290 @@ function renderizarCursos(idDaLista, dados) {
     nome.innerHTML = `<strong>Curso:</strong> ${curso.nome}`;
     li.appendChild(nome);
 
+    const disciplinas = document.createElement('p');
+    const nomesDisciplinas = (curso.disciplinas || []).map(item => typeof item === 'string' ? item : item.nome).filter(Boolean);
+    disciplinas.textContent = `Disciplinas: ${nomesDisciplinas.join(', ') || 'nenhuma vinculada'}`;
+    li.appendChild(disciplinas);
+
     const detalhes = document.createElement('p');
-    detalhes.textContent = `Preço: R$ ${curso.preco} | C. Horária: ${curso.cargaHoraria}`;
+    detalhes.textContent = `Preço: R$ ${curso.preco} | C. Horária: ${curso.cargaHoraria || curso.cargaHr || '--'}`;
     li.appendChild(detalhes);
 
-    const turma = document.createElement('p');
-    turma.textContent = `Próxima Turma: ${curso.proximaTurma}`;
-    li.appendChild(turma);
+    const status = document.createElement('p');
+    status.textContent = `Status: ${curso.status === 'em_vigor' ? 'Em vigor' : curso.status === 'finalizado' ? 'Finalizado' : 'Em espera'}`;
+    li.appendChild(status);
+
+    if (curso.status !== 'em_vigor' && curso.status !== 'finalizado') {
+      const activateButton = document.createElement('button');
+      activateButton.type = 'button';
+      activateButton.classList.add('details-button');
+      activateButton.textContent = 'Colocar em vigor';
+
+      const activationFields = document.createElement('div');
+      activationFields.classList.add('course-activation-fields');
+      activationFields.style.display = 'none';
+
+      const startLabel = document.createElement('label');
+      startLabel.textContent = 'Data de início da vigência';
+      const startInput = document.createElement('input');
+      startInput.type = 'date';
+      startLabel.appendChild(startInput);
+
+      const endLabel = document.createElement('label');
+      endLabel.textContent = 'Data de término da vigência';
+      const endInput = document.createElement('input');
+      endInput.type = 'date';
+      endLabel.appendChild(endInput);
+
+      const classIdLabel = document.createElement('label');
+      classIdLabel.textContent = 'ID da turma';
+      const classIdInput = document.createElement('input');
+      classIdInput.type = 'text';
+      classIdInput.placeholder = 'Ex: VIG-2026-01';
+      classIdLabel.appendChild(classIdInput);
+
+      const shiftLabel = document.createElement('label');
+      shiftLabel.textContent = 'Turno';
+      const shiftInput = document.createElement('select');
+      shiftInput.innerHTML = '<option value="">Selecione</option><option value="Diurno">Diurno</option><option value="Noturno">Noturno</option>';
+      shiftLabel.appendChild(shiftInput);
+
+      const activationActions = document.createElement('div');
+      activationActions.classList.add('course-activation-actions');
+      const confirmButton = document.createElement('button');
+      confirmButton.type = 'button';
+      confirmButton.classList.add('details-button');
+      confirmButton.textContent = 'Confirmar ativação';
+      const cancelButton = document.createElement('button');
+      cancelButton.type = 'button';
+      cancelButton.classList.add('details-button');
+      cancelButton.textContent = 'Cancelar';
+      activationActions.append(confirmButton, cancelButton);
+      activationFields.append(startLabel, endLabel, classIdLabel, shiftLabel, activationActions);
+
+      activateButton.addEventListener('click', () => {
+        activateButton.style.display = 'none';
+        activationFields.style.display = 'grid';
+        startInput.focus();
+      });
+      cancelButton.addEventListener('click', () => {
+        activationFields.style.display = 'none';
+        activateButton.style.display = 'block';
+      });
+      confirmButton.addEventListener('click', async () => {
+        const turmaId = classIdInput.value.trim();
+        if (!startInput.value || !endInput.value || endInput.value < startInput.value || !turmaId || !shiftInput.value) {
+          showToast('Informe as datas da vigência, o ID da turma e o turno.', 'error');
+          return;
+        }
+        confirmButton.disabled = true;
+        try {
+          await ativarCursoNaAba(curso.id, startInput.value, endInput.value, turmaId, shiftInput.value);
+        } finally {
+          confirmButton.disabled = false;
+        }
+      });
+
+      li.append(activateButton, activationFields);
+    }
 
     lista.appendChild(li);
   });
   aplicarBuscaAdm();
+}
+
+async function ativarCursoNaAba(courseId, dataInicio, dataTermino, turmaId, turno) {
+  const courseRef = db.collection('cursos').doc(courseId);
+  let cursoAtivado = false;
+
+  try {
+    if (!dataInicio || !dataTermino || dataTermino < dataInicio || !turmaId || !turno) {
+      throw new Error('Informe as datas da vigência, o ID da turma e o turno.');
+    }
+    const courseSnapshot = await courseRef.get();
+    if (!courseSnapshot.exists) throw new Error('Curso não encontrado.');
+    const course = { id: courseSnapshot.id, ...courseSnapshot.data() };
+    if (course.status === 'finalizado') throw new Error('Um curso finalizado não pode ser ativado.');
+
+    const turmas = Array.isArray(course.turmas) ? course.turmas : [];
+    const turmaExistente = turmas.find(turma => (turma.id || turma.turmaId) === turmaId);
+    const turmasAtualizadas = [
+      ...turmas.filter(turma => (turma.id || turma.turmaId) !== turmaId),
+      {
+        ...turmaExistente,
+        id: turmaId,
+        dataInicio,
+        dataTermino,
+        turno,
+        status: 'planejada'
+      }
+    ];
+
+    await courseRef.update({
+      status: 'em_vigor',
+      dataInicio,
+      dataTermino,
+      turno,
+      turmas: turmasAtualizadas
+    });
+    cursoAtivado = true;
+    const cursoAtualizado = await courseRef.get();
+    const notificationsCreated = await window.academicWorkflow.notifyCourseProfessors(db, courseId, { id: cursoAtualizado.id, ...cursoAtualizado.data() });
+    await window.academicWorkflow.syncCourseStudentTeachers(db, courseId);
+    if (window.registrarLogAudit) registrarLogAudit(`Colocou o Curso em vigor: ${course.nome || courseId}`, 'adm', {
+      cursoId: courseId,
+      turmaId,
+      turno,
+      dataInicio,
+      dataTermino
+    });
+    showToast(`Curso em vigor. ${notificationsCreated} solicitação(ões) enviada(s) aos professores.`, 'success');
+    fetchCursos();
+    fetchLogs();
+  } catch (error) {
+    showToast(cursoAtivado
+      ? 'Curso ativado, mas houve um erro ao notificar os professores: ' + error.message
+      : 'Erro ao ativar curso: ' + error.message, 'error');
+    if (cursoAtivado) fetchCursos();
+  }
+}
+
+function normalizarDisciplinasProfessorParaIds(perfil) {
+  const valores = [
+    ...(Array.isArray(perfil?.disciplinasIds) ? perfil.disciplinasIds : []),
+    ...(Array.isArray(perfil?.disciplinas) ? perfil.disciplinas : [])
+  ];
+
+  return [...new Set(valores
+    .map(value => {
+      if (value == null) return '';
+      if (typeof value === 'object') {
+        if (value.id) return String(value.id);
+        const nome = value.nome || value.disciplinaNome || value.disciplina || value.name;
+        return nome ? window.academicWorkflow.disciplineId(String(nome)) : '';
+      }
+      const texto = String(value).trim();
+      if (!texto) return '';
+      if (texto.includes('::')) {
+        const partes = texto.split('::');
+        const nome = partes[partes.length - 1];
+        return nome ? window.academicWorkflow.disciplineId(String(nome)) : '';
+      }
+      return window.academicWorkflow.disciplineId(texto);
+    })
+    .filter(Boolean))];
+}
+
+function popularFiltrosDisciplinas() {
+  const selectCurso = document.getElementById('disciplineFilterCourse');
+  const selectProfessor = document.getElementById('disciplineFilterProfessor');
+  if (!selectCurso || !selectProfessor) return;
+
+  const cursos = [...new Set(disciplinasCadastradasCache.flatMap(item => item.cursos))].sort((a, b) => a.localeCompare(b));
+  const professores = [...new Set(disciplinasCadastradasCache.flatMap(item => item.professores.filter(nome => nome !== 'Sem professor vinculado')))].sort((a, b) => a.localeCompare(b));
+
+  const cursoAtual = selectCurso.value;
+  const professorAtual = selectProfessor.value;
+
+  selectCurso.innerHTML = '<option value="todos">Todos os cursos</option>' + cursos.map(curso => `<option value="${escapeHtml(curso)}">${escapeHtml(curso)}</option>`).join('');
+  selectProfessor.innerHTML = '<option value="todos">Todos os professores</option>' + professores.map(professor => `<option value="${escapeHtml(professor)}">${escapeHtml(professor)}</option>`).join('');
+
+  selectCurso.value = cursos.includes(cursoAtual) ? cursoAtual : 'todos';
+  selectProfessor.value = professores.includes(professorAtual) ? professorAtual : 'todos';
+}
+
+function getFiltrosDisciplinas() {
+  const selectCurso = document.getElementById('disciplineFilterCourse');
+  const selectProfessor = document.getElementById('disciplineFilterProfessor');
+  return {
+    curso: selectCurso ? selectCurso.value : 'todos',
+    professor: selectProfessor ? selectProfessor.value : 'todos'
+  };
+}
+
+async function renderizarDisciplinasCadastradas() {
+  const lista = document.getElementById('dadosdisciplinas');
+  if (!lista) return;
+
+  try {
+    const [disciplinasSnapshot, cursosSnapshot] = await Promise.all([
+      db.collection('disciplinas').get(),
+      db.collection('cursos').get()
+    ]);
+
+    const cursos = cursosSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    const nomesCursos = new Map(cursos.map(curso => [curso.id, curso.nome || curso.id]));
+    const professoresPorDisciplina = new Map();
+
+    usuariosProfessores.forEach(professor => {
+      const nomeProfessor = professor.nome || 'Professor sem nome';
+      const ids = normalizarDisciplinasProfessorParaIds(professor);
+      ids.forEach(id => {
+        const conjunto = professoresPorDisciplina.get(id) || new Set();
+        conjunto.add(nomeProfessor);
+        professoresPorDisciplina.set(id, conjunto);
+      });
+    });
+
+    disciplinasCadastradasCache = disciplinasSnapshot.docs
+      .map(doc => {
+        const data = doc.data() || {};
+        const nome = data.nome || doc.id;
+        const courseIds = Array.isArray(data.cursoIds) ? data.cursoIds : [];
+        const professores = [...(professoresPorDisciplina.get(doc.id) || [])].sort((a, b) => a.localeCompare(b));
+        return {
+          nome,
+          professores: professores.length ? professores : ['Sem professor vinculado'],
+          cursos: courseIds.map(id => nomesCursos.get(id) || id).filter(Boolean)
+        };
+      })
+      .sort((a, b) => a.nome.localeCompare(b.nome));
+
+    popularFiltrosDisciplinas();
+
+    const filtros = getFiltrosDisciplinas();
+    const disciplinas = disciplinasCadastradasCache.filter(item => {
+      const cursoOk = filtros.curso === 'todos' || item.cursos.includes(filtros.curso);
+      const professorOk = filtros.professor === 'todos' || item.professores.includes(filtros.professor);
+      return cursoOk && professorOk;
+    });
+
+    lista.innerHTML = '';
+
+    if (!disciplinas.length) {
+      const vazio = document.createElement('li');
+      vazio.classList.add('item');
+      vazio.textContent = 'Nenhuma disciplina encontrada para os filtros selecionados.';
+      lista.appendChild(vazio);
+      aplicarBuscaAdm();
+      return;
+    }
+
+    disciplinas.forEach(disciplina => {
+      const li = document.createElement('li');
+      li.classList.add('item');
+      li.setAttribute('data-search-record', '');
+
+      const nome = document.createElement('p');
+      nome.innerHTML = `<strong>Disciplina:</strong> ${disciplina.nome}`;
+      li.appendChild(nome);
+
+      const professores = document.createElement('p');
+      professores.textContent = `Professor(es): ${disciplina.professores.join(', ')}`;
+      li.appendChild(professores);
+
+      const cursos = document.createElement('p');
+      cursos.textContent = `Cursos: ${disciplina.cursos.length ? disciplina.cursos.join(', ') : 'Nenhum curso vinculado'}`;
+      li.appendChild(cursos);
+
+      lista.appendChild(li);
+    });
+
+    aplicarBuscaAdm();
+  } catch (error) {
+    console.error('Erro ao carregar disciplinas cadastradas:', error);
+    lista.innerHTML = '<li class="item">Não foi possível carregar as disciplinas.</li>';
+  }
 }
 
 function renderizarLogs(idDaLista, dados) {
@@ -452,7 +1033,7 @@ function renderizarLogs(idDaLista, dados) {
 }
 
 // Modal
-function openModal(tipo, usuarioId = '') {
+async function openModal(tipo, usuarioId = '') {
   tipoAtual = tipo;
   const modal = document.getElementById('editModal');
   const select = document.getElementById('selectUsuario');
@@ -460,6 +1041,8 @@ function openModal(tipo, usuarioId = '') {
   // Campos
   const camposUsuario = document.getElementById('camposUsuario');
   const camposCurso = document.getElementById('camposCurso');
+  const camposDisciplina = document.getElementById('camposDisciplina');
+  camposDisciplina.style.display = 'none';
   
   const nomeInput = document.getElementById('editNome');
   const emailInput = document.getElementById('editEmail');
@@ -477,15 +1060,12 @@ function openModal(tipo, usuarioId = '') {
   const rgInput = document.getElementById('editRg');
   const nascimentoInput = document.getElementById('editNascimento');
   const atribuicaoSelect = document.getElementById('editAtribuicao');
+  const camposCadastroSenha = document.getElementById('camposCadastroSenha');
   
   const nomeCursoInput = document.getElementById('editNomeCurso');
   const precoInput = document.getElementById('editPreco');
-  const cargaHrInput = document.getElementById('editCargaHr');
-  const dataTurmaInput = document.getElementById('editDataTurma');
-  const turmaIdInput = document.getElementById('editTurmaId');
-  const dataInicioInput = document.getElementById('editDataInicio');
-  const dataTerminoInput = document.getElementById('editDataTermino');
-  const turnoInput = document.getElementById('editTurno');
+  const cargaHorariaInput = document.getElementById('editCargaHoraria');
+  const finalizeCourseButton = document.getElementById('finalizeCourseButton');
   
   const deleteBtn = document.getElementById('deleteButton');
   const modalTitle = document.getElementById('modalTitle');
@@ -497,6 +1077,8 @@ function openModal(tipo, usuarioId = '') {
     camposCurso.style.display = 'flex';
     camposCurso.style.flexDirection = 'column';
     camposCurso.style.gap = '18px';
+    document.getElementById('novoCursoDisciplinasFields').style.display = tipo === 'curso_novo' ? 'flex' : 'none';
+    finalizeCourseButton.style.display = 'none';
     
     if (tipo === 'curso_novo') {
         modalTitle.textContent = 'Criar Novo Curso';
@@ -511,13 +1093,10 @@ function openModal(tipo, usuarioId = '') {
         usuarioAtual = null;
         nomeCursoInput.value = '';
         precoInput.value = '';
-        cargaHrInput.value = '';
-        dataTurmaInput.value = '';
-        turmaIdInput.value = '';
-        dataInicioInput.value = '';
-        dataTerminoInput.value = '';
-        turnoInput.value = '';
+        cargaHorariaInput.value = '';
         deleteBtn.style.display = 'none';
+        finalizeCourseButton.style.display = 'none';
+        await carregarDisciplinasParaNovoCurso();
     } else {
         modalTitle.textContent = 'Editar Curso';
         select.style.display = 'block';
@@ -539,17 +1118,61 @@ function openModal(tipo, usuarioId = '') {
       usuarioAtual = cursosList[0];
       nomeCursoInput.value = usuarioAtual.nome || '';
       precoInput.value = usuarioAtual.preco || '';
-      cargaHrInput.value = usuarioAtual.cargaHoraria || '';
-      dataTurmaInput.value = usuarioAtual.proximaTurma || '';
+      cargaHorariaInput.value = usuarioAtual.cargaHoraria || usuarioAtual.cargaHr || '';
       const turmaAtual = Array.isArray(usuarioAtual.turmas) ? usuarioAtual.turmas[usuarioAtual.turmas.length - 1] : null;
-      turmaIdInput.value = turmaAtual?.id || turmaAtual?.turmaId || '';
-      dataInicioInput.value = turmaAtual?.dataInicio || usuarioAtual.dataInicio || '';
-      dataTerminoInput.value = turmaAtual?.dataTermino || turmaAtual?.dataFim || usuarioAtual.dataTermino || '';
-      turnoInput.value = turmaAtual?.turno || usuarioAtual.turno || '';
-      deleteBtn.style.display = 'none';
+      finalizeCourseButton.style.display = usuarioAtual.status === 'em_vigor' ? 'block' : 'none';
+      deleteBtn.style.display = 'inline-block';
     }
   } // fim do bloco de edicao de curso
+  } else if (tipo === 'funcionario_novo' || tipo === 'professor_novo') {
+    const atribuicao = tipo === 'professor_novo' ? 'professor' : 'funcionario';
+    document.getElementById('editForm').reset();
+    camposUsuario.style.display = 'flex';
+    camposUsuario.style.flexDirection = 'column';
+    camposUsuario.style.gap = '18px';
+    camposCurso.style.display = 'none';
+    camposDisciplina.style.display = 'none';
+    select.style.display = 'none';
+    select.previousElementSibling.style.display = 'none';
+    camposCadastroSenha.style.display = 'flex';
+    camposCadastroSenha.style.flexDirection = 'column';
+    camposCadastroSenha.style.gap = '12px';
+    modalTitle.textContent = atribuicao === 'professor' ? 'Cadastrar Professor' : 'Cadastrar Funcionário';
+    usuarioAtual = null;
+    atribuicaoSelect.value = atribuicao;
+    atribuicaoSelect.disabled = true;
+    await atualizarCampoDisciplinasProfessor(atribuicao, []);
+    atualizarCamposMatriculaAluno(atribuicao);
+    deleteBtn.style.display = 'none';
+  } else if (tipo === 'disciplina_nova') {
+    camposUsuario.style.display = 'none';
+    camposCurso.style.display = 'none';
+    camposDisciplina.style.display = 'flex';
+    camposDisciplina.style.flexDirection = 'column';
+    camposDisciplina.style.gap = '12px';
+    modalTitle.textContent = 'Criar disciplina';
+    select.style.display = 'none';
+    select.previousElementSibling.style.display = 'none';
+    document.getElementById('editNomeDisciplina').value = '';
+    document.getElementById('novaDisciplinaError').textContent = '';
+    deleteBtn.style.display = 'none';
+    if (!cursosList.length) {
+      const snapshot = await db.collection('cursos').get();
+      cursosList = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    }
+    const courseSelect = document.getElementById('disciplinaCursos');
+    courseSelect.innerHTML = '';
+    cursosList.forEach(course => {
+      const option = document.createElement('option');
+      option.value = course.id;
+      option.textContent = course.nome || course.id;
+      courseSelect.appendChild(option);
+    });
   } else {
+    camposDisciplina.style.display = 'none';
+    camposCadastroSenha.style.display = 'none';
+    atribuicaoSelect.disabled = false;
+    select.previousElementSibling.style.display = 'block';
     // Bloco de Usuarios (Funcionario e Aluno)
     camposUsuario.style.display = 'flex';
     select.style.display = 'block';
@@ -587,7 +1210,7 @@ function openModal(tipo, usuarioId = '') {
       rgInput.value = usuarioAtual.rg || '';
       nascimentoInput.value = usuarioAtual.nascimento || '';
       atribuicaoSelect.value = usuarioAtual.atribuicao || '';
-      atualizarCampoDisciplinasProfessor(usuarioAtual.atribuicao, usuarioAtual.disciplinas || []);
+      atualizarCampoDisciplinasProfessor(usuarioAtual.atribuicao, usuarioAtual.disciplinasIds || []);
       atualizarCamposMatriculaAluno(usuarioAtual.atribuicao, usuarioAtual);
       deleteBtn.style.display = 'inline-block';
     } else {
@@ -621,19 +1244,41 @@ function closeModal() {
   document.getElementById('editModal').style.display = 'none';
 }
 
+document.getElementById('finalizeCourseButton').addEventListener('click', async () => {
+  if (tipoAtual !== 'curso' || !usuarioAtual || !confirm(`Finalizar o curso ${usuarioAtual.nome}?`)) return;
+
+  try {
+    const courseRef = db.collection('cursos').doc(usuarioAtual.id);
+    const courseSnapshot = await courseRef.get();
+    if (!courseSnapshot.exists) throw new Error('Curso não encontrado.');
+    const course = courseSnapshot.data() || {};
+    const turmas = (Array.isArray(course.turmas) ? course.turmas : []).map(turma => ({ ...turma, status: 'finalizada' }));
+    await courseRef.update({ status: 'finalizado', turmas });
+    let erroNotificacoes = null;
+    try {
+      await window.academicWorkflow.notifyCourseProfessors(db, usuarioAtual.id, { ...course, id: courseSnapshot.id, status: 'finalizado', turmas });
+    } catch (error) {
+      erroNotificacoes = error;
+      console.error('Curso finalizado, mas não foi possível cancelar solicitações pendentes:', error);
+    }
+    if (window.registrarLogAudit) registrarLogAudit(`Finalizou o Curso: ${usuarioAtual.nome}`, 'adm', { cursoId: usuarioAtual.id });
+    showToast(erroNotificacoes ? 'Curso finalizado, mas houve um erro ao cancelar solicitações pendentes.' : 'Curso finalizado!', erroNotificacoes ? 'error' : 'success');
+    closeModal();
+    fetchCursos();
+    fetchLogs();
+  } catch (error) {
+    showToast('Erro ao finalizar curso: ' + error.message, 'error');
+  }
+});
+
 // Atualiza campos ao trocar usuário/curso selecionado
 document.getElementById('selectUsuario').addEventListener('change', function() {
   if (tipoAtual === 'curso') {
     usuarioAtual = cursosList.find(c => c.id === this.value);
     document.getElementById('editNomeCurso').value = usuarioAtual?.nome || '';
     document.getElementById('editPreco').value = usuarioAtual?.preco || '';
-    document.getElementById('editCargaHr').value = usuarioAtual?.cargaHoraria || '';
-    document.getElementById('editDataTurma').value = usuarioAtual?.proximaTurma || '';
-    const turmaAtual = Array.isArray(usuarioAtual?.turmas) ? usuarioAtual.turmas[usuarioAtual.turmas.length - 1] : null;
-    document.getElementById('editTurmaId').value = turmaAtual?.id || turmaAtual?.turmaId || '';
-    document.getElementById('editDataInicio').value = turmaAtual?.dataInicio || usuarioAtual?.dataInicio || '';
-    document.getElementById('editDataTermino').value = turmaAtual?.dataTermino || turmaAtual?.dataFim || usuarioAtual?.dataTermino || '';
-    document.getElementById('editTurno').value = turmaAtual?.turno || usuarioAtual?.turno || '';
+    document.getElementById('editCargaHoraria').value = usuarioAtual?.cargaHoraria || usuarioAtual?.cargaHr || '';
+    document.getElementById('finalizeCourseButton').style.display = usuarioAtual?.status === 'em_vigor' ? 'block' : 'none';
   } else {
     let lista = tipoAtual === 'funcionario' ? usuariosFuncionarios : (tipoAtual === 'professor' ? usuariosProfessores : usuariosAlunos);
     usuarioAtual = lista.find(u => u.id === this.value);
@@ -653,13 +1298,13 @@ document.getElementById('selectUsuario').addEventListener('change', function() {
     document.getElementById('editRg').value = usuarioAtual?.rg || '';
     document.getElementById('editNascimento').value = usuarioAtual?.nascimento || '';
     document.getElementById('editAtribuicao').value = usuarioAtual?.atribuicao || '';
-    atualizarCampoDisciplinasProfessor(usuarioAtual?.atribuicao, usuarioAtual?.disciplinas || []);
+    atualizarCampoDisciplinasProfessor(usuarioAtual?.atribuicao, usuarioAtual?.disciplinasIds || []);
     atualizarCamposMatriculaAluno(usuarioAtual?.atribuicao, usuarioAtual);
   }
 });
 
 document.getElementById('editAtribuicao').addEventListener('change', function() {
-  atualizarCampoDisciplinasProfessor(this.value, this.value === 'professor' ? (usuarioAtual?.disciplinas || []) : []);
+  atualizarCampoDisciplinasProfessor(this.value, this.value === 'professor' ? (usuarioAtual?.disciplinasIds || []) : []);
   atualizarCamposMatriculaAluno(this.value, usuarioAtual);
 });
 
@@ -683,25 +1328,21 @@ async function atualizarCampoDisciplinasProfessor(atribuicao, selecionadas = [])
   const container = document.getElementById('editProfessorDisciplinas');
   container.innerHTML = '<span>Carregando disciplinas...</span>';
   try {
-    const snapshot = await db.collection('cursos').get();
-    const opcoes = [];
-    const chaves = new Set();
-    snapshot.forEach(doc => {
-      const curso = doc.data() || {};
-      const turmas = Array.isArray(curso.turmas) && curso.turmas.length ? curso.turmas : [{ id: '', dataInicio: curso.dataInicio || '', dataTermino: curso.dataTermino || '', turno: curso.turno || '' }];
-      turmas.forEach(turma => (Array.isArray(curso.disciplinas) ? curso.disciplinas : []).forEach(item => {
-        const nome = typeof item === 'string' ? item : item.nome;
-        if (!nome) return;
-        const turmaId = turma.id || turma.turmaId || '';
-        const chave = `${doc.id}::${turmaId || 'sem-turma'}::${nome}`;
-        if (chaves.has(chave)) return;
-        chaves.add(chave);
-        opcoes.push({ chave, cursoId: doc.id, cursoNome: curso.nome || doc.id, nome, turmaId, dataInicio: turma.dataInicio || '', dataTermino: turma.dataTermino || '', turno: turma.turno || '' });
-      }));
-    });
+    if (!cursosList.length) {
+      const coursesSnapshot = await db.collection('cursos').get();
+      cursosList = coursesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    }
+    await window.academicWorkflow.ensureCourseDisciplineRecords(db, cursosList);
+    const snapshot = await db.collection('disciplinas').get();
+    const opcoes = snapshot.docs.map(doc => {
+      const discipline = doc.data() || {};
+      const courseNames = (discipline.cursoIds || [])
+        .map(courseId => cursosList.find(course => course.id === courseId)?.nome || courseId);
+      return { chave: doc.id, nome: discipline.nome || doc.id, cursoIds: discipline.cursoIds || [], cursoNome: courseNames.join(', ') };
+    }).filter(item => item.cursoNome);
     disciplinasProfessorDisponiveis = opcoes;
-    const selecionadasChaves = new Set(selecionadas.map(item => `${item.cursoId}::${item.turmaId || 'sem-turma'}::${item.nome}`));
-    container.innerHTML = opcoes.length ? opcoes.map(item => `<label class="professor-discipline-option"><input type="checkbox" value="${escapeHtml(item.chave)}" ${selecionadasChaves.has(item.chave) ? 'checked' : ''}><span><strong>${escapeHtml(item.nome)}</strong><small>${escapeHtml(item.cursoNome)}${item.turmaId ? ` • Turma ${escapeHtml(item.turmaId)}` : ''}</small></span></label>`).join('') : '<span>Nenhuma disciplina cadastrada nos cursos.</span>';
+    const selecionadasChaves = new Set(selecionadas);
+    container.innerHTML = opcoes.length ? opcoes.map(item => `<label class="professor-discipline-option"><input type="checkbox" value="${escapeHtml(item.chave)}" ${selecionadasChaves.has(item.chave) ? 'checked' : ''}><span><strong>${escapeHtml(item.nome)}</strong><small>${escapeHtml(item.cursoNome)}</small></span></label>`).join('') : '<span>Nenhuma disciplina cadastrada nos cursos.</span>';
   } catch (error) {
     console.error('Erro ao carregar disciplinas do professor:', error);
     container.innerHTML = '<span>Não foi possível carregar as disciplinas.</span>';
@@ -710,9 +1351,82 @@ async function atualizarCampoDisciplinasProfessor(atribuicao, selecionadas = [])
 
 function obterDisciplinasProfessorSelecionadas() {
   return Array.from(document.querySelectorAll('#editProfessorDisciplinas input:checked'))
-    .map(input => disciplinasProfessorDisponiveis.find(item => item.chave === input.value))
-    .filter(Boolean)
-    .map(({ chave, ...disciplina }) => disciplina);
+    .map(input => input.value);
+}
+
+async function carregarDisciplinasParaNovoCurso() {
+  const container = document.getElementById('novoCursoDisciplinasOptions');
+  const errorElement = document.getElementById('novoCursoDisciplinasError');
+  container.innerHTML = '<span>Carregando disciplinas...</span>';
+  errorElement.textContent = '';
+
+  try {
+    const coursesSnapshot = await db.collection('cursos').get();
+    cursosList = coursesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    await window.academicWorkflow.ensureCourseDisciplineRecords(db, cursosList);
+    const disciplinesSnapshot = await db.collection('disciplinas').get();
+    disciplinasCatalogoNovoCurso = disciplinesSnapshot.docs
+      .map(doc => ({ id: doc.id, nome: doc.data()?.nome || doc.id }))
+      .sort((left, right) => left.nome.localeCompare(right.nome));
+
+    container.replaceChildren();
+    if (!disciplinasCatalogoNovoCurso.length) {
+      container.textContent = 'Nenhuma disciplina cadastrada.';
+      return;
+    }
+
+    disciplinasCatalogoNovoCurso.forEach(discipline => {
+      const label = document.createElement('label');
+      label.className = 'professor-discipline-option';
+      const checkbox = document.createElement('input');
+      checkbox.type = 'checkbox';
+      checkbox.value = discipline.id;
+      const name = document.createElement('span');
+      name.textContent = discipline.nome;
+      label.append(checkbox, name);
+      container.appendChild(label);
+    });
+  } catch (error) {
+    console.error('Erro ao carregar disciplinas para novo curso:', error);
+    disciplinasCatalogoNovoCurso = [];
+    container.textContent = 'Não foi possível carregar as disciplinas.';
+    errorElement.textContent = error.message || 'Tente novamente.';
+  }
+}
+
+function obterDisciplinasDoNovoCurso() {
+  const selecionadas = new Set(Array.from(document.querySelectorAll('#novoCursoDisciplinasOptions input:checked'))
+    .map(input => input.value));
+  return disciplinasCatalogoNovoCurso
+    .filter(discipline => selecionadas.has(discipline.id))
+    .map(({ id, nome }) => ({ id, nome }));
+}
+
+async function criarContaDeEquipe(profile, atribuicao, disciplinasIds = []) {
+  const appName = 'themis-staff-registration';
+  const secondaryApp = firebase.apps.find(app => app.name === appName)
+    || firebase.initializeApp(firebase.app().options, appName);
+  const secondaryAuth = firebase.auth(secondaryApp);
+  const { password, ...profileData } = profile;
+  let credential = null;
+
+  try {
+    credential = await secondaryAuth.createUserWithEmailAndPassword(profile.email, password);
+    await credential.user.updateProfile({ displayName: profile.nome });
+    await db.collection('usuarios').doc(credential.user.uid).set({
+      ...profileData,
+      atribuicao,
+      ...(atribuicao === 'professor' ? { disciplinasIds } : {}),
+      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+      cadastradoPor: firebase.auth().currentUser.uid
+    });
+    return credential.user.uid;
+  } catch (error) {
+    if (credential?.user) await credential.user.delete().catch(() => {});
+    throw error;
+  } finally {
+    await secondaryAuth.signOut().catch(() => {});
+  }
 }
 
 function escapeHtml(value) {
@@ -725,20 +1439,23 @@ async function montarVinculoAcademico(cursoInformado, turmaId, dataInicio, dataT
   const curso = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
     .find(item => item.id.toLowerCase() === valorCurso || String(item.nome || '').toLowerCase() === valorCurso);
   if (!curso) return null;
-  const turma = (curso.turmas || []).find(item => (item.id || item.turmaId) === turmaId);
+  const turmas = Array.isArray(curso.turmas) ? curso.turmas : [];
+  const turma = turmas.find(item => (item.id || item.turmaId) === turmaId) || (turmas.length === 1 ? turmas[0] : null);
+  if (!turma) return null;
   const cursoNome = curso.nome || curso.id;
-  const disciplinas = (Array.isArray(curso.disciplinas) ? curso.disciplinas : []).map(item => {
-    const nome = typeof item === 'string' ? item : item.nome;
-    return { nome, cursoId: curso.id, cursoNome, turmaId, dataInicio, dataTermino };
-  }).filter(item => item.nome);
+  const turmaFinal = turmaId || turma?.id || turma?.turmaId || '';
+  if (!turmaFinal) return null;
+  const { disciplines, missing } = await window.academicWorkflow.buildStudentDisciplineLinks(firebase.firestore(), { ...curso, id: curso.id }, turmaFinal);
   return {
     cursoId: curso.id,
     cursoSolicitado: cursoNome,
-    turmaId: turmaId || turma?.id || turma?.turmaId || '',
-    dataInicio: dataInicio || turma?.dataInicio || '',
-    dataTermino: dataTermino || turma?.dataTermino || turma?.dataFim || '',
-    disciplinas,
-    disciplinasKeys: disciplinas.map(item => `${item.cursoId}::${item.turmaId || 'sem-turma'}::${item.nome}`)
+    turmaId: turmaFinal,
+    dataInicio: turma.dataInicio || curso.dataInicio || '',
+    dataTermino: turma.dataTermino || turma.dataFim || curso.dataTermino || curso.dataFim || '',
+    disciplinas: disciplines,
+    disciplinasKeys: disciplines.map(item => item.disciplinaKey),
+    professoresPorDisciplina: Object.fromEntries(disciplines.map(item => [item.disciplinaKey, item.professorId])),
+    disciplinasSemProfessor: missing
   };
 }
 
@@ -746,16 +1463,125 @@ async function montarVinculoAcademico(cursoInformado, turmaId, dataInicio, dataT
 document.getElementById('editForm').addEventListener('submit', async function(e) {
   e.preventDefault();
 
+  if (tipoAtual === 'funcionario_novo' || tipoAtual === 'professor_novo') {
+    const atribuicao = tipoAtual === 'professor_novo' ? 'professor' : 'funcionario';
+    const nome = document.getElementById('editNome').value.trim();
+    const email = document.getElementById('editEmail').value.trim().toLowerCase();
+    const senha = document.getElementById('editSenhaInicial').value;
+    const confirmarSenha = document.getElementById('editConfirmarSenhaInicial').value;
+    const disciplinasIds = atribuicao === 'professor' ? obterDisciplinasProfessorSelecionadas() : [];
+
+    if (!nome || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      showToast('Informe um nome e um e-mail válido.', 'error');
+      return;
+    }
+    if (senha.length < 6 || senha !== confirmarSenha) {
+      showToast('As senhas devem coincidir e ter pelo menos 6 caracteres.', 'error');
+      return;
+    }
+    if (atribuicao === 'professor' && !disciplinasIds.length) {
+      document.getElementById('professorDisciplinasError').textContent = 'Selecione pelo menos uma disciplina.';
+      return;
+    }
+    if (atribuicao === 'professor') {
+      const conflicts = await window.academicWorkflow.findDisciplineAssignmentConflicts(db, disciplinasIds);
+      if (conflicts.length) {
+        document.getElementById('professorDisciplinasError').textContent = `Já atribuídas a outro professor: ${conflicts.join(', ')}.`;
+        return;
+      }
+    }
+
+    const profile = {
+      nome,
+      email,
+      password: senha,
+      cpf: document.getElementById('editCpf').value.trim(),
+      orgaoRg: document.getElementById('editOrgaoRg').value.trim(),
+      endereco: document.getElementById('editEndereco').value.trim(),
+      cep: document.getElementById('editCep').value.trim(),
+      logradouro: document.getElementById('editLogradouro').value.trim(),
+      numero: document.getElementById('editNumero').value.trim(),
+      bairro: document.getElementById('editBairro').value.trim(),
+      cidade: document.getElementById('editCidade').value.trim(),
+      uf: document.getElementById('editUf').value.trim().toUpperCase(),
+      telefone: document.getElementById('editTelefone').value.trim(),
+      telefoneAlt: document.getElementById('editTelefoneAlt').value.trim(),
+      rg: document.getElementById('editRg').value.trim(),
+      nascimento: document.getElementById('editNascimento').value.trim()
+    };
+
+    try {
+      const uid = await criarContaDeEquipe(profile, atribuicao, disciplinasIds);
+      let notificationError = null;
+      if (atribuicao === 'professor') {
+        const courseIds = [...new Set(disciplinasProfessorDisponiveis
+          .filter(item => disciplinasIds.includes(item.chave))
+          .flatMap(item => item.cursoIds))];
+        try {
+          await Promise.all(courseIds.map(async courseId => {
+            const courseDoc = await db.collection('cursos').doc(courseId).get();
+            if (courseDoc.exists) await window.academicWorkflow.notifyCourseProfessors(db, courseId, { id: courseDoc.id, ...courseDoc.data() });
+            await window.academicWorkflow.syncCourseStudentTeachers(db, courseId);
+          }));
+        } catch (error) {
+          notificationError = error;
+          console.error('Professor cadastrado, mas houve falha ao atualizar os cursos:', error);
+        }
+      }
+
+      if (window.registrarLogAudit) registrarLogAudit(`Cadastrou ${atribuicao === 'professor' ? 'Professor' : 'Funcionário'}: ${nome} | ${email}`, 'adm', { uid });
+      showToast(notificationError
+        ? 'Cadastro realizado, mas houve uma falha ao atualizar os cursos vinculados.'
+        : `${atribuicao === 'professor' ? 'Professor' : 'Funcionário'} cadastrado com sucesso!`, notificationError ? 'error' : 'success');
+      closeModal();
+      findUsers();
+      fetchLogs();
+    } catch (error) {
+      console.error(`Erro ao cadastrar ${atribuicao}:`, error);
+      showToast(error.message || 'Não foi possível concluir o cadastro.', 'error');
+    }
+    return;
+  }
+
+  if (tipoAtual === 'disciplina_nova') {
+    const errorElement = document.getElementById('novaDisciplinaError');
+    const nome = document.getElementById('editNomeDisciplina').value.trim();
+    const courseIds = Array.from(document.getElementById('disciplinaCursos').selectedOptions).map(option => option.value);
+    errorElement.textContent = '';
+    if (!nome || nome.length > 120) {
+      errorElement.textContent = 'Informe um nome de até 120 caracteres.';
+      return;
+    }
+    if (!courseIds.length) {
+      errorElement.textContent = 'Selecione ao menos um curso.';
+      return;
+    }
+    try {
+      const discipline = await window.academicWorkflow.linkDisciplineToCourses(db, nome, courseIds);
+      await Promise.all(courseIds.map(async courseId => {
+        const courseDoc = await db.collection('cursos').doc(courseId).get();
+        if (!courseDoc.exists) return;
+        const course = { id: courseDoc.id, ...courseDoc.data() };
+        await window.academicWorkflow.notifyCourseProfessors(db, courseId, course);
+        await window.academicWorkflow.syncCourseStudentTeachers(db, courseId);
+      }));
+      if (window.registrarLogAudit) registrarLogAudit(`Criou disciplina: ${discipline.nome}`, 'adm', { disciplinaId: discipline.id, cursoIds: discipline.cursoIds });
+      showToast(`Disciplina criada e vinculada a ${courseIds.length} curso(s).`, 'success');
+      closeModal();
+      fetchCursos();
+      fetchLogs();
+    } catch (error) {
+      console.error('Erro ao criar disciplina:', error);
+      errorElement.textContent = error.message || 'Não foi possível criar a disciplina.';
+    }
+    return;
+  }
+
   if (tipoAtual === 'curso_novo') {
       const nomeCurso = document.getElementById('editNomeCurso').value;
       const preco = document.getElementById('editPreco').value;
-      const cargaHr = document.getElementById('editCargaHr').value;
-      const dataTurma = document.getElementById('editDataTurma').value;
-      const turmaId = document.getElementById('editTurmaId').value.trim();
-      const dataInicio = document.getElementById('editDataInicio').value;
-      const dataTermino = document.getElementById('editDataTermino').value;
-      const turno = document.getElementById('editTurno').value;
-      
+      const cargaHoraria = document.getElementById('editCargaHoraria').value;
+      const disciplinas = obterDisciplinasDoNovoCurso();
       if (!nomeCurso) {
           alert('Por favor, digite o nome do curso.');
           return;
@@ -765,14 +1591,23 @@ document.getElementById('editForm').addEventListener('submit', async function(e)
         .collection('cursos')
         .add({
           nome: nomeCurso,
+          disciplinas,
           preco: preco || '',
-          cargaHoraria: cargaHr || '',
-          proximaTurma: dataTurma || '',
-          turmas: turmaId ? [{ id: turmaId, dataInicio, dataTermino, turno, status: 'planejada' }] : []
+          cargaHoraria: cargaHoraria || '',
+          status: 'em_espera'
         })
-        .then(() => {
-          if (window.registrarLogAudit) registrarLogAudit(`Criou Curso: ${nomeCurso}`, 'adm', {preco, cargaHr});
-          showToast("Curso criado com sucesso!", "success");
+        .then(async courseRef => {
+          let disciplinasSincronizadas = true;
+          if (disciplinas.length) {
+            try {
+              await window.academicWorkflow.ensureCourseDisciplineRecords(db, [{ id: courseRef.id, disciplinas }]);
+            } catch (error) {
+              disciplinasSincronizadas = false;
+              console.error('Curso criado, mas não foi possível vincular as disciplinas:', error);
+            }
+          }
+          if (window.registrarLogAudit) registrarLogAudit(`Criou Curso: ${nomeCurso}`, 'adm', {preco, cargaHoraria, disciplinas: disciplinas.map(item => item.id)});
+          showToast(disciplinasSincronizadas ? 'Curso criado com sucesso!' : 'Curso criado, mas houve erro ao sincronizar as disciplinas.', disciplinasSincronizadas ? 'success' : 'error');
           closeModal();
           fetchCursos();
           fetchLogs();
@@ -788,28 +1623,17 @@ document.getElementById('editForm').addEventListener('submit', async function(e)
 
   if (tipoAtual === 'curso') {
       const preco = document.getElementById('editPreco').value;
-      const cargaHr = document.getElementById('editCargaHr').value;
-      const dataTurma = document.getElementById('editDataTurma').value;
-      const turmaId = document.getElementById('editTurmaId').value.trim();
-      const dataInicio = document.getElementById('editDataInicio').value;
-      const dataTermino = document.getElementById('editDataTermino').value;
-      const turno = document.getElementById('editTurno').value;
-      const turmasAtuais = Array.isArray(usuarioAtual.turmas) ? usuarioAtual.turmas : [];
-      const turmas = turmaId
-        ? [...turmasAtuais.filter(turma => (turma.id || turma.turmaId) !== turmaId), { id: turmaId, dataInicio, dataTermino, turno, status: dataTermino && new Date(dataTermino) < new Date() ? 'finalizada' : 'planejada' }]
-        : turmasAtuais;
-      
+      const cargaHoraria = document.getElementById('editCargaHoraria').value;
       firebase.firestore()
         .collection('cursos')
         .doc(usuarioAtual.id)
         .update({
           preco: preco,
-          cargaHoraria: cargaHr,
-          proximaTurma: dataTurma,
-          turmas
+          cargaHoraria
         })
-        .then(() => {
-          if (window.registrarLogAudit) registrarLogAudit(`Atualizou Curso: ${usuarioAtual.nome}`, 'adm', {preco, cargaHr});
+        .then(async () => {
+          await window.academicWorkflow.syncCourseStudentTeachers(firebase.firestore(), usuarioAtual.id);
+          if (window.registrarLogAudit) registrarLogAudit(`Atualizou Curso: ${usuarioAtual.nome}`, 'adm', {preco, cargaHoraria});
           showToast("Curso atualizado com sucesso!", "success");
           closeModal();
           fetchCursos();
@@ -846,15 +1670,28 @@ document.getElementById('editForm').addEventListener('submit', async function(e)
           alert('Curso não encontrado. Informe um curso cadastrado.');
           return;
         }
+        if (vinculoAcademico.disciplinasSemProfessor.length) {
+          alert(`A matrícula exige professor responsável em todas as disciplinas. Pendentes: ${vinculoAcademico.disciplinasSemProfessor.join(', ')}.`);
+          return;
+        }
       }
-        const disciplinas = novaAtribuicao === 'professor' ? obterDisciplinasProfessorSelecionadas() : [];
+        const disciplinasIds = novaAtribuicao === 'professor' ? obterDisciplinasProfessorSelecionadas() : [];
 
-        if (novaAtribuicao === 'professor' && disciplinas.length === 0) {
+        if (novaAtribuicao === 'professor' && disciplinasIds.length === 0) {
           document.getElementById('professorDisciplinasError').textContent = 'Selecione pelo menos uma disciplina.';
           return;
         }
+        if (novaAtribuicao === 'professor') {
+          const conflicts = await window.academicWorkflow.findDisciplineAssignmentConflicts(
+            firebase.firestore(), disciplinasIds, usuarioAtual.id
+          );
+          if (conflicts.length) {
+            document.getElementById('professorDisciplinasError').textContent = `Já atribuídas a outro professor: ${conflicts.join(', ')}.`;
+            return;
+          }
+        }
 
-            const disciplinasKeys = disciplinas.map(disciplina => `${disciplina.cursoId}::${disciplina.turmaId || 'sem-turma'}::${disciplina.nome}`);
+            const { disciplinasSemProfessor, ...vinculoAcademicoPersistido } = vinculoAcademico;
 
       firebase.firestore()
         .collection('usuarios')
@@ -880,14 +1717,37 @@ document.getElementById('editForm').addEventListener('submit', async function(e)
           turmaId: novaAtribuicao === 'aluno' ? turmaAluno : firebase.firestore.FieldValue.delete(),
           dataInicio: novaAtribuicao === 'aluno' ? inicioAluno : firebase.firestore.FieldValue.delete(),
           dataTermino: novaAtribuicao === 'aluno' ? terminoAluno : firebase.firestore.FieldValue.delete(),
-          ...(novaAtribuicao === 'aluno' ? vinculoAcademico : {
+          ...(novaAtribuicao === 'aluno' ? {
+            ...vinculoAcademicoPersistido,
+            disciplinasIds: firebase.firestore.FieldValue.delete()
+          } : {
+            cursoId: firebase.firestore.FieldValue.delete(),
             disciplinas: firebase.firestore.FieldValue.delete(),
-            disciplinasKeys: firebase.firestore.FieldValue.delete()
-          }),
-          disciplinas: novaAtribuicao === 'professor' ? disciplinas : firebase.firestore.FieldValue.delete(),
-          disciplinasKeys: novaAtribuicao === 'professor' ? disciplinasKeys : firebase.firestore.FieldValue.delete()
+            disciplinasKeys: firebase.firestore.FieldValue.delete(),
+            professoresPorDisciplina: firebase.firestore.FieldValue.delete(),
+            disciplinasIds: novaAtribuicao === 'professor' ? (usuarioAtual.disciplinasIds || []) : firebase.firestore.FieldValue.delete()
+          })
         })
-        .then(() => {
+        .then(async () => {
+          if (novaAtribuicao === 'professor') {
+            await firebase.functions().httpsCallable('updateTeacherAssignments')({
+              teacherId: usuarioAtual.id,
+              disciplinasIds
+            });
+            const courseIds = [...new Set(disciplinasProfessorDisponiveis
+              .filter(item => disciplinasIds.includes(item.chave))
+              .flatMap(item => item.cursoIds))];
+            await Promise.all(courseIds.map(async courseId => {
+              const courseDoc = await firebase.firestore().collection('cursos').doc(courseId).get();
+              if (courseDoc.exists) await window.academicWorkflow.notifyCourseProfessors(firebase.firestore(), courseId, { id: courseDoc.id, ...courseDoc.data() });
+              await window.academicWorkflow.syncCourseStudentTeachers(firebase.firestore(), courseId);
+            }));
+          } else if (novaAtribuicao === 'aluno') {
+            await window.academicWorkflow.syncStudentRosters(firebase.firestore(), usuarioAtual.id, {
+              ...vinculoAcademicoPersistido,
+              nome: novoNome
+            });
+          }
           if (window.registrarLogAudit) registrarLogAudit(`Editou o Usuário: ${novoNome} | ${novoCpf}`, 'adm', {novaAtribuicao});
           showToast("Usuário atualizado com sucesso!", "success");
           closeModal();
@@ -920,25 +1780,52 @@ function showToast(message, type = 'success') {
   }, 3000);
 }
 
-// Excluir usuário
-document.getElementById('deleteButton').addEventListener('click', function() {
+// Excluir usuário ou curso
+document.getElementById('deleteButton').addEventListener('click', async function() {
   if (!usuarioAtual) return;
-  if (confirm(`Excluir ${usuarioAtual.nome}?`)) {
-    const nomeExcluido = usuarioAtual.nome;
-    const cpfExcluido = usuarioAtual.cpf;
-    
-    firebase.firestore()
-      .collection('usuarios')
-      .doc(usuarioAtual.id)
-      .delete()
-      .then(() => {
-        if (window.registrarLogAudit) registrarLogAudit(`Excluiu o Usuário: ${nomeExcluido} | ${cpfExcluido}`, 'adm', {});
-        showToast("Usuário excluído!", "success");
+
+  if (confirm(`Excluir ${usuarioAtual.nome || 'registro'}?`)) {
+    try {
+      if (tipoAtual === 'curso') {
+        const courseId = usuarioAtual.id;
+        const courseRef = firebase.firestore().collection('cursos').doc(courseId);
+        const [courseDoc, disciplinaSnapshot] = await Promise.all([
+          courseRef.get(),
+          firebase.firestore().collection('disciplinas').get()
+        ]);
+
+        if (!courseDoc.exists) {
+          throw new Error('Curso não encontrado para exclusão.');
+        }
+
+        const batch = firebase.firestore().batch();
+        batch.delete(courseRef);
+
+        disciplinaSnapshot.docs.forEach(doc => {
+          const disciplina = doc.data() || {};
+          const cursoIds = Array.isArray(disciplina.cursoIds) ? disciplina.cursoIds.filter(id => id !== courseId) : [];
+          if (Array.isArray(disciplina.cursoIds) && cursoIds.length !== disciplina.cursoIds.length) {
+            batch.update(doc.ref, { cursoIds });
+          }
+        });
+
+        await batch.commit();
+        if (window.registrarLogAudit) registrarLogAudit(`Excluiu o Curso: ${usuarioAtual.nome}`, 'adm', { cursoId: courseId });
+        showToast('Curso excluído!', 'success');
         closeModal();
         findUsers();
-      })
-      .catch(error => {
-        showToast("Erro ao excluir: " + error.message, "error");
-      });
+        return;
+      }
+
+      const nomeExcluido = usuarioAtual.nome;
+      const cpfExcluido = usuarioAtual.cpf;
+      await firebase.firestore().collection('usuarios').doc(usuarioAtual.id).delete();
+      if (window.registrarLogAudit) registrarLogAudit(`Excluiu o Usuário: ${nomeExcluido} | ${cpfExcluido}`, 'adm', {});
+      showToast('Usuário excluído!', 'success');
+      closeModal();
+      findUsers();
+    } catch (error) {
+      showToast('Erro ao excluir: ' + error.message, 'error');
+    }
   }
 });

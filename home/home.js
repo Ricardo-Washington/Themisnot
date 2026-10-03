@@ -94,6 +94,22 @@ const disciplinasPadrao = {
     armasNaoLetais: ['Uso Progressivo da Força', 'Agentes Químicos e Espargidores', 'Armas de Condutividade Elétrica', 'Primeiros Socorros']
 };
 
+const paginasCursos = {
+    vigilante: '/cursos/vigilante/vigilante.html',
+    escoltaArm: '/cursos/escoltaArm/escolta.html',
+    grandesEventos: '/cursos/grandes%20eventos/grandesEventos.html',
+    Reciclagem: '/cursos/Reciclagem/reciclagem.html',
+    armasNaoLetais: '/cursos/armasNaoLetais/armasNaoLetais.html'
+};
+
+const imagensCursos = {
+    vigilante: '/img/vigilant.png',
+    escoltaArm: '/img/escolta-Armada.png',
+    grandesEventos: '/img/major-eventes.PNG',
+    Reciclagem: '/img/recycling.png',
+    armasNaoLetais: '/img/guns-notkill.png'
+};
+
 async function preencherPainelAcademico(dados, user) {
     const primeiroNome = (dados.nome || user.email || 'aluno').split(' ')[0];
     const studentName = document.getElementById('student-name');
@@ -106,14 +122,22 @@ async function preencherPainelAcademico(dados, user) {
         courseName.textContent = 'Curso ainda não vinculado';
         courseStatus.textContent = 'A secretaria ainda não vinculou um curso à sua matrícula.';
         renderizarDisciplinas([]);
+        try {
+            const cursosSnapshot = await db.collection('cursos').get();
+            renderizarOutrosCursos(cursosSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })), '');
+        } catch (error) {
+            console.error('Erro ao carregar outros cursos:', error);
+            mostrarEstadoOutrosCursos('Não foi possível carregar outros cursos agora.');
+        }
         return;
     }
 
     try {
         const cursosSnapshot = await db.collection('cursos').get();
-        const cursoEncontrado = cursosSnapshot.docs
-            .map(doc => ({ id: doc.id, ...doc.data() }))
+        const cursos = cursosSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        const cursoEncontrado = cursos
             .find(curso => curso.id === cursoAluno || curso.nome === cursoAluno || curso.nome?.toLowerCase() === cursoAluno.toLowerCase());
+        renderizarOutrosCursos(cursos, cursoEncontrado?.id || cursoAluno);
         const nomeCurso = cursoEncontrado?.nome || cursoAluno;
         courseName.textContent = nomeCurso;
         const turma = cursoEncontrado?.turmas?.find(item => (item.id || item.turmaId) === dados.turmaId);
@@ -127,6 +151,7 @@ async function preencherPainelAcademico(dados, user) {
         renderizarDisciplinas(disciplinas);
     } catch (error) {
         console.error('Erro ao carregar dados acadêmicos:', error);
+        mostrarEstadoOutrosCursos('Não foi possível carregar outros cursos agora.');
         courseName.textContent = cursoAluno;
         courseStatus.textContent = 'Não foi possível carregar a grade agora.';
         renderizarDisciplinas([]);
@@ -136,6 +161,72 @@ async function preencherPainelAcademico(dados, user) {
     document.getElementById('grade-count').textContent = notas.length;
     document.getElementById('grade-average').textContent = notas.length ? calcularMedia(notas) : '--';
     document.getElementById('attendance-value').textContent = dados.frequencia ? `${dados.frequencia}%` : '--';
+}
+
+function renderizarOutrosCursos(cursos, cursoAtual) {
+    const lista = document.getElementById('other-courses-list');
+    if (!lista) return;
+
+    const identificadorAtual = String(cursoAtual || '').trim().toLocaleLowerCase('pt-BR');
+    const outrosCursos = cursos.filter(curso => {
+        const id = String(curso.id || '').trim().toLocaleLowerCase('pt-BR');
+        const nome = String(curso.nome || '').trim().toLocaleLowerCase('pt-BR');
+        return curso.status !== 'finalizado' && id !== identificadorAtual && nome !== identificadorAtual;
+    });
+
+    lista.replaceChildren();
+    if (!outrosCursos.length) {
+        mostrarEstadoOutrosCursos('Não há outros cursos disponíveis no momento.');
+        return;
+    }
+
+    outrosCursos.forEach(curso => {
+        const card = document.createElement('article');
+        card.className = 'other-course-card';
+
+        const image = document.createElement('img');
+        image.src = imagensCursos[curso.id] || '/img/cursos.png';
+        image.alt = '';
+        image.loading = 'lazy';
+
+        const content = document.createElement('div');
+        content.className = 'other-course-copy';
+        const title = document.createElement('h3');
+        title.textContent = curso.nome || 'Curso profissionalizante';
+        const summary = document.createElement('p');
+        summary.textContent = curso.descricao || 'Uma nova oportunidade para ampliar sua formação profissional.';
+
+        const details = document.createElement('div');
+        details.className = 'other-course-details';
+        const workload = document.createElement('span');
+        workload.textContent = curso.cargaHoraria || curso.cargaHr || 'Carga horária a consultar';
+        const price = document.createElement('span');
+        const priceValue = curso.preco;
+        price.textContent = typeof priceValue === 'number'
+            ? priceValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+            : priceValue
+                ? (String(priceValue).toLocaleLowerCase('pt-BR').includes('r$') ? String(priceValue) : `R$ ${priceValue}`)
+                : 'Valor a consultar';
+        details.append(workload, price);
+
+        const link = document.createElement('a');
+        link.className = 'other-course-link';
+        link.href = paginasCursos[curso.id] || '/index/index.html#cursos';
+        link.innerHTML = 'Conhecer curso <i class="fa-solid fa-arrow-right" aria-hidden="true"></i>';
+
+        content.append(title, summary, details, link);
+        card.append(image, content);
+        lista.appendChild(card);
+    });
+}
+
+function mostrarEstadoOutrosCursos(mensagem) {
+    const lista = document.getElementById('other-courses-list');
+    if (!lista) return;
+    const estado = document.createElement('p');
+    estado.className = 'loading-line';
+    estado.textContent = mensagem;
+    lista.replaceChildren(estado);
 }
 
 function calcularProgressoCurso(dataInicio, dataTermino, hoje = new Date()) {

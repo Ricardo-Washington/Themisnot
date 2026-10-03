@@ -88,6 +88,32 @@
     color: var(--orange, #ff5e00);
 }
 
+.discipline-filters {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0,1fr));
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.discipline-filters label {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    color: var(--white, #fff);
+    font-size: 0.8rem;
+    font-weight: 600;
+}
+
+.discipline-filters select {
+    width: 100%;
+    background: rgba(0, 0, 0, 0.25);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    color: var(--white, #fff);
+    border-radius: 8px;
+    padding: 9px 10px;
+    font: inherit;
+}
+
 /* Scrollable Lists */
 .data-list {
     list-style: none;
@@ -519,7 +545,9 @@ body {
 }
 
 .navbar .nav-content {
+    width: min(calc(100% - 48px), 1480px);
     min-height: 66px;
+    gap: 24px;
     margin-left: auto;
     margin-right: auto;
 }
@@ -560,6 +588,189 @@ body {
     font-size: 1.05rem;
 }
 
+.availability-admin-card {
+    grid-column: 1 / -1;
+    height: auto;
+    min-height: 0;
+}
+
+.availability-admin-help {
+    margin: -5px 0 18px;
+    color: #aaa;
+    font-size: 0.82rem;
+    line-height: 1.6;
+}
+
+.availability-admin-list {
+    display: grid;
+    gap: 14px;
+    max-height: 850px;
+    overflow-y: auto;
+    padding-right: 4px;
+}
+
+.availability-admin-item {
+    padding: 18px;
+    border: 1px solid var(--adm-line);
+    border-left: 3px solid #e2a537;
+    border-radius: 8px;
+    background: var(--adm-panel-light);
+}
+
+.availability-admin-item.has-conflict {
+    border-color: rgba(255, 112, 83, 0.55);
+    border-left-color: #ff7053;
+}
+
+.availability-admin-heading {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 18px;
+    margin-bottom: 16px;
+}
+
+.availability-admin-heading h3 {
+    margin: 8px 0 5px;
+    color: #fff;
+    font-size: 1rem;
+}
+
+.availability-admin-heading p {
+    margin: 0;
+    color: #aaa;
+    font-size: 0.78rem;
+    line-height: 1.5;
+}
+
+.availability-status {
+    display: inline-block;
+    padding: 5px 8px;
+    border-radius: 4px;
+    font-size: 0.68rem;
+    font-weight: 700;
+}
+
+.availability-status.pending {
+    color: #ffd58b;
+    background: rgba(226, 165, 55, 0.13);
+}
+
+.availability-status.approved {
+    color: #a8e8bd;
+    background: rgba(75, 179, 113, 0.13);
+}
+
+.availability-conflict-message {
+    max-width: 360px;
+    color: #ff9a83 !important;
+    text-align: right;
+}
+
+.availability-admin-form {
+    display: grid;
+    gap: 14px;
+}
+
+.availability-admin-form fieldset {
+    min-width: 0;
+    padding: 0;
+    border: 0;
+}
+
+.availability-admin-form legend {
+    margin-bottom: 8px;
+    color: #bbb;
+    font-size: 0.75rem;
+    font-weight: 700;
+}
+
+.availability-admin-days {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(125px, 1fr));
+    gap: 7px;
+}
+
+.availability-admin-days label {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 8px;
+    color: #ddd;
+    background: rgba(255, 255, 255, 0.035);
+    font-size: 0.72rem;
+}
+
+.availability-admin-days input {
+    accent-color: var(--adm-accent);
+}
+
+.availability-admin-fields {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 10px;
+}
+
+.availability-admin-fields label {
+    display: grid;
+    gap: 6px;
+    color: #aaa;
+    font-size: 0.72rem;
+}
+
+.availability-admin-fields input {
+    min-width: 0;
+    padding: 9px;
+    border: 1px solid var(--adm-line);
+    border-radius: 5px;
+    color: #fff;
+    background: #101010;
+    font: inherit;
+}
+
+.availability-admin-actions {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 9px;
+}
+
+.availability-admin-actions button:disabled {
+    cursor: wait;
+    opacity: 0.6;
+}
+
+.approve-availability-button {
+    color: #a8e8bd;
+    border-color: #4bb371;
+}
+
+.approve-availability-button:hover {
+    color: #fff;
+    background: #388e58;
+    border-color: #388e58;
+}
+
+.availability-admin-feedback {
+    color: #ff9a83;
+    font-size: 0.75rem;
+}
+
+@media (max-width: 760px) {
+    .availability-admin-heading {
+        flex-direction: column;
+    }
+
+    .availability-conflict-message {
+        max-width: none;
+        text-align: left;
+    }
+
+    .availability-admin-fields {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
 .mobile-menu-btn {
     display: none;
     color: var(--adm-accent);
@@ -580,7 +791,10 @@ body {
 }
 
 .welcome-content {
+    width: min(100%, 1480px);
     min-height: 250px;
+    margin: 0 auto;
+    padding: 28px 38px;
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -604,7 +818,7 @@ body {
     margin: 15px 0 12px;
     color: #f5f5f5;
     font-family: 'Anton', sans-serif;
-    font-size: clamp(2.5rem, 5vw, 4rem);
+    font-size: 3.5rem;
     font-weight: 400;
     line-height: 1.05;
 }
@@ -856,14 +1070,36 @@ body {
 .footer-section {
     background: rgba(10, 10, 10, 0.88);
     border-top: 1px solid var(--adm-line);
+    padding: 24px 0 16px;
+}
+
+.footer-content {
+    width: calc(100% - 40px);
+    max-width: 1200px;
+    gap: 20px;
+    line-height: 1.4;
 }
 
 .footer-info h4 {
     color: var(--adm-accent);
+    margin-bottom: 6px;
+}
+
+.footer-info p {
+    font-size: 0.88rem;
 }
 
 .social-links a:hover {
     color: var(--adm-accent);
+}
+
+.footer-copyright {
+    margin-top: 18px;
+    padding-top: 12px;
+}
+
+.footer-copyright p {
+    font-size: 0.82rem;
 }
 
 @media (max-width: 900px) {
@@ -879,6 +1115,7 @@ body {
 
 @media (max-width: 768px) {
     .navbar .nav-content {
+        width: 100%;
         padding: 0 16px;
     }
 
@@ -915,7 +1152,7 @@ body {
 
     .welcome-content {
         min-height: 225px;
-        padding: 30px 20px;
+        padding: 30px 24px;
     }
 
     .welcome-mark {
@@ -1214,6 +1451,55 @@ body {
     border-bottom: 0;
 }
 
+.course-activation-fields {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+    margin: 12px 0;
+}
+
+.course-activation-fields label {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    color: #e5e5e5;
+    font-size: 0.82rem;
+    font-weight: 500;
+}
+
+.course-activation-fields input,
+.course-activation-fields select {
+    box-sizing: border-box;
+    width: 100%;
+    min-width: 0;
+    min-height: 40px;
+    padding: 9px 12px;
+    border: 1px solid var(--adm-line);
+    border-radius: 7px;
+    background: #090909;
+    color: #f2f2f2;
+    font: inherit;
+    color-scheme: dark;
+    transition: border-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.course-activation-fields input:focus,
+.course-activation-fields select:focus {
+    outline: none;
+    border-color: var(--adm-accent);
+    box-shadow: 0 0 0 3px var(--adm-accent-soft);
+}
+
+.course-activation-actions {
+    display: flex;
+    grid-column: 1 / -1;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.course-activation-actions .details-button {
+    flex: 1 1 180px;
+}
+
 .audit-card {
     height: 330px;
 }
@@ -1298,6 +1584,14 @@ body {
 }
 
 @media (max-width: 600px) {
+    .course-activation-fields {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .course-activation-actions {
+        grid-column: auto;
+    }
+
     .admin-workspace.container {
         gap: 16px;
         margin-top: 20px;
