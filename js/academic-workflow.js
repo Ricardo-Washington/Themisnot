@@ -171,7 +171,7 @@
         const name = typeof subject === 'string' ? subject : subject.nome;
         const id = subjectId(subject);
         const assignedTeachers = teachers.filter(teacher => teacher.disciplineIds.includes(id));
-        const teacher = assignedTeachers.length === 1 ? assignedTeachers[0] : null;
+        const teacher = assignedTeachers.length ? assignedTeachers[0] : null;
         const key = disciplineKey(course.id, classId, name);
         return {
           nome: name,
@@ -191,16 +191,7 @@
   }
 
   async function findDisciplineAssignmentConflicts(db, disciplineIds, currentProfessorId = '') {
-    const snapshot = await db.collection('usuarios').where('atribuicao', '==', 'professor').get();
-    const selected = new Set(disciplineIds);
-    const conflicts = new Set();
-    snapshot.forEach(doc => {
-      if (doc.id === currentProfessorId) return;
-      teacherDisciplineIds(doc.data()).forEach(id => {
-        if (selected.has(id)) conflicts.add(decodeURIComponent(id));
-      });
-    });
-    return [...conflicts];
+    return [];
   }
 
   async function syncStudentRosters(db, studentId, student) {
@@ -258,7 +249,7 @@
             cursoNome: course.nome || courseId,
             turmaId: classId,
             disciplinaKey: disciplineKey(courseId, classId, name),
-            professorId: matches.length === 1 ? matches[0].id : ''
+            professorId: matches.length ? matches[0].id : ''
           };
         });
       const profileUpdate = {

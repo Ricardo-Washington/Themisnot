@@ -66,6 +66,53 @@ if (mobileMenuButton && navigationLinks) {
   });
 }
 
+function formatarCpfAdm(value) {
+  const digits = String(value || '').replace(/\D/g, '').slice(0, 11);
+  return digits
+    .replace(/(\d{3})(\d)/, '$1.$2')
+    .replace(/(\d{3})\.(\d{3})(\d)/, '$1.$2.$3')
+    .replace(/(\d{3})\.(\d{3})\.(\d{3})(\d{1,2})/, '$1.$2.$3-$4');
+}
+
+function formatarTelefoneAdm(value) {
+  const digits = String(value || '').replace(/\D/g, '').slice(0, 11);
+  if (!digits) return '';
+  if (digits.length <= 10) {
+    return digits.replace(/(\d{2})(\d{4})(\d{0,4})/, (_, ddd, prefixo, sufixo) => {
+      if (!sufixo) return `(${ddd}) ${prefixo}`;
+      return `(${ddd}) ${prefixo}-${sufixo}`;
+    });
+  }
+  return digits.replace(/(\d{2})(\d{5})(\d{0,4})/, (_, ddd, prefixo, sufixo) => {
+    if (!sufixo) return `(${ddd}) ${prefixo}`;
+    return `(${ddd}) ${prefixo}-${sufixo}`;
+  });
+}
+
+function aplicarMascarasUsuarioAdm() {
+  const campos = [
+    { id: 'editCpf', format: formatarCpfAdm },
+    { id: 'editTelefone', format: formatarTelefoneAdm },
+    { id: 'editTelefoneAlt', format: formatarTelefoneAdm }
+  ];
+
+  campos.forEach(({ id, format }) => {
+    const input = document.getElementById(id);
+    if (!input || input.dataset.mascaraAplicada === 'true') return;
+    input.dataset.mascaraAplicada = 'true';
+    input.addEventListener('input', () => {
+      input.value = format(input.value);
+    });
+  });
+}
+
+function obterValorCampo(id, fallback = '') {
+  const input = document.getElementById(id);
+  if (!input) return fallback;
+  const value = input.value ?? '';
+  return typeof value === 'string' ? value.trim() : String(value).trim();
+}
+
 const adminSearch = document.getElementById('adminSearch');
 const clearAdminSearch = document.getElementById('clearAdminSearch');
 const searchStatus = document.getElementById('searchStatus');
@@ -203,7 +250,6 @@ function teacherAvailabilityApproved(record) {
 function teacherAvailabilityOverlaps(first, second) {
   return first.cursoId === second.cursoId
     && dataRangesOverlap(first, second)
-    && (first.diasSemana || []).some(day => (second.diasSemana || []).includes(day))
     && first.horarioInicio < second.horarioTermino
     && first.horarioTermino > second.horarioInicio;
 }
@@ -222,7 +268,6 @@ function renderTeacherAvailabilities(container, records, professorNames) {
     return;
   }
 
-  const dayNames = ['', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado', 'Domingo'];
   records.sort((first, second) => Number(teacherAvailabilityApproved(first)) - Number(teacherAvailabilityApproved(second)));
   records.forEach(record => {
     const conflicts = records.filter(other =>
@@ -237,7 +282,6 @@ function renderTeacherAvailabilities(container, records, professorNames) {
     const conflictMessage = conflicts.length
       ? `Conflito com ${conflicts.map(item => professorNames.get(item.professorId) || 'outro professor').join(', ')}.`
       : 'Sem conflito de horário detectado.';
-    const selectedDays = new Set(record.diasSemana || []);
     article.innerHTML = `
       <div class="availability-admin-heading">
         <div>
@@ -248,12 +292,6 @@ function renderTeacherAvailabilities(container, records, professorNames) {
         <p class="availability-conflict-message">${escapeHtml(conflictMessage)}</p>
       </div>
       <form class="availability-admin-form" data-availability-id="${escapeHtml(record.id)}">
-        <fieldset>
-          <legend>Dias da semana</legend>
-          <div class="availability-admin-days">${dayNames.slice(1).map((day, index) => `
-            <label><input type="checkbox" name="diasSemana" value="${index + 1}" ${selectedDays.has(index + 1) ? 'checked' : ''}><span>${day}</span></label>
-          `).join('')}</div>
-        </fieldset>
         <div class="availability-admin-fields">
           <label>Data de início<input type="date" name="dataInicio" value="${escapeHtml(record.dataInicio || '')}" required></label>
           <label>Data de término<input type="date" name="dataTermino" value="${escapeHtml(record.dataTermino || '')}" required></label>
@@ -277,16 +315,14 @@ async function revisarDisponibilidadeProfessor(event) {
   const form = event.currentTarget;
   const feedback = form.querySelector('.availability-admin-feedback');
   const action = event.submitter?.dataset.action || 'save';
-  const diasSemana = Array.from(form.querySelectorAll('input[name="diasSemana"]:checked'))
-    .map(input => Number(input.value));
   const horarioInicio = form.elements.horarioInicio.value;
   const horarioTermino = form.elements.horarioTermino.value;
   const dataInicio = form.elements.dataInicio.value;
   const dataTermino = form.elements.dataTermino.value;
   feedback.textContent = '';
 
-  if (!diasSemana.length || horarioInicio >= horarioTermino || dataInicio > dataTermino) {
-    feedback.textContent = 'Revise os dias, horários e datas informados.';
+  if (horarioInicio >= horarioTermino || dataInicio > dataTermino) {
+    feedback.textContent = 'Revise os horários e datas informados.';
     return;
   }
 
@@ -313,7 +349,7 @@ async function revisarDisponibilidadeProfessor(event) {
       const approved = action === 'approve' || teacherAvailabilityApproved(current);
       const updated = {
         ...current,
-        diasSemana: [...new Set(diasSemana)],
+        diasSemana: [],
         horarioInicio,
         horarioTermino,
         dataInicio,
@@ -328,33 +364,8 @@ async function revisarDisponibilidadeProfessor(event) {
         throw new Error('Este horário conflita com outra disponibilidade aprovada para o mesmo curso.');
       }
 
-      const previousDays = approved && Array.isArray(current.diasSemana) ? current.diasSemana : [];
-      const slotDays = [...new Set([...previousDays, ...(approved ? updated.diasSemana : [])])];
-      const slotRefs = slotDays.map(day => ({
-        day,
-        ref: db.collection('disponibilidade_slots')
-          .doc(encodeURIComponent(`${current.cursoId}::${day}`))
-      }));
-      const slotSnapshots = await Promise.all(slotRefs.map(slot => transaction.get(slot.ref)));
-
-      if (approved) {
-        const overlappingSlot = slotSnapshots.some((snapshot, index) => {
-          const day = slotRefs[index].day;
-          if (!updated.diasSemana.includes(day) || !snapshot.exists) return false;
-          return (snapshot.data().reservas || []).some(reservation =>
-            reservation.disponibilidadeId !== availabilityId
-            && dataRangesOverlap(updated, reservation)
-            && updated.horarioInicio < reservation.horarioTermino
-            && updated.horarioTermino > reservation.horarioInicio
-          );
-        });
-        if (overlappingSlot) {
-          throw new Error('Este horário já foi reservado para o mesmo curso.');
-        }
-      }
-
       transaction.update(availabilityRef, {
-        diasSemana: updated.diasSemana,
+        diasSemana: [],
         horarioInicio,
         horarioTermino,
         dataInicio,
@@ -365,27 +376,25 @@ async function revisarDisponibilidadeProfessor(event) {
         revisadoPor: firebase.auth().currentUser.uid
       });
 
-      slotRefs.forEach((slot, index) => {
-        const existingReservations = slotSnapshots[index].exists
-          ? slotSnapshots[index].data().reservas || []
-          : [];
-        const reservations = existingReservations
-          .filter(reservation => reservation.disponibilidadeId !== availabilityId);
-        if (approved && updated.diasSemana.includes(slot.day)) {
-          reservations.push({
-            disponibilidadeId: availabilityId,
-            dataInicio,
-            dataTermino,
-            horarioInicio,
-            horarioTermino
+      if (approved) {
+        const relatedNotifications = await transaction.get(
+          db.collection('notificacoes')
+            .where('cursoId', '==', current.cursoId)
+            .where('disciplinaKey', '==', current.disciplinaKey)
+            .where('status', '==', 'pendente')
+        );
+
+        relatedNotifications.docs
+          .filter(doc => doc.id !== availabilityId && doc.data().professorId !== current.professorId)
+          .forEach(doc => {
+            transaction.update(doc.ref, {
+              status: 'cancelada',
+              canceladaEm: firebase.firestore.FieldValue.serverTimestamp(),
+              motivoCancelamento: 'Disponibilidade aprovada por outro professor na mesma disciplina.'
+            });
           });
-        }
-        if (reservations.length) {
-          transaction.set(slot.ref, { reservas: reservations });
-        } else {
-          transaction.set(slot.ref, { reservas: [] });
-        }
-      });
+      }
+
     });
     showToast(action === 'approve' ? 'Disponibilidade aprovada e horário reservado.' : 'Alterações salvas.', 'success');
     fetchTeacherAvailabilities([
@@ -724,6 +733,22 @@ function renderizarCursos(idDaLista, dados) {
     status.textContent = `Status: ${curso.status === 'em_vigor' ? 'Em vigor' : curso.status === 'finalizado' ? 'Finalizado' : 'Em espera'}`;
     li.appendChild(status);
 
+    if (curso.status === 'em_vigor') {
+      const removeVigorButton = document.createElement('button');
+      removeVigorButton.type = 'button';
+      removeVigorButton.classList.add('details-button');
+      removeVigorButton.textContent = 'Retirar da vigência';
+      removeVigorButton.addEventListener('click', async () => {
+        if (!confirm(`Retirar o curso ${curso.nome} da vigência?`)) return;
+        try {
+          await retirarCursoDeVigor(curso.id);
+        } catch (error) {
+          showToast('Erro ao retirar curso da vigência: ' + error.message, 'error');
+        }
+      });
+      li.appendChild(removeVigorButton);
+    }
+
     if (curso.status !== 'em_vigor' && curso.status !== 'finalizado') {
       const activateButton = document.createElement('button');
       activateButton.type = 'button';
@@ -803,6 +828,24 @@ function renderizarCursos(idDaLista, dados) {
   aplicarBuscaAdm();
 }
 
+async function limparDisponibilidadesDoCurso(courseId) {
+  const [availabilitySnapshot, notificationSnapshot] = await Promise.all([
+    db.collection('disponibilidades').where('cursoId', '==', courseId).get(),
+    db.collection('notificacoes').where('cursoId', '==', courseId).get()
+  ]);
+
+  await Promise.all([
+    ...availabilitySnapshot.docs.map(doc => doc.ref.delete()),
+    ...notificationSnapshot.docs
+      .filter(doc => doc.data()?.status !== 'cancelada')
+      .map(doc => doc.ref.update({
+        status: 'cancelada',
+        canceladaEm: firebase.firestore.FieldValue.serverTimestamp(),
+        motivoCancelamento: 'Curso removido da vigência.'
+      }))
+  ]);
+}
+
 async function ativarCursoNaAba(courseId, dataInicio, dataTermino, turmaId, turno) {
   const courseRef = db.collection('cursos').doc(courseId);
   let cursoAtivado = false;
@@ -815,6 +858,8 @@ async function ativarCursoNaAba(courseId, dataInicio, dataTermino, turmaId, turn
     if (!courseSnapshot.exists) throw new Error('Curso não encontrado.');
     const course = { id: courseSnapshot.id, ...courseSnapshot.data() };
     if (course.status === 'finalizado') throw new Error('Um curso finalizado não pode ser ativado.');
+
+    await limparDisponibilidadesDoCurso(courseId);
 
     const turmas = Array.isArray(course.turmas) ? course.turmas : [];
     const turmaExistente = turmas.find(turma => (turma.id || turma.turmaId) === turmaId);
@@ -857,6 +902,38 @@ async function ativarCursoNaAba(courseId, dataInicio, dataTermino, turmaId, turn
       : 'Erro ao ativar curso: ' + error.message, 'error');
     if (cursoAtivado) fetchCursos();
   }
+}
+
+async function retirarCursoDeVigor(courseId) {
+  const courseRef = db.collection('cursos').doc(courseId);
+  const courseSnapshot = await courseRef.get();
+  if (!courseSnapshot.exists) throw new Error('Curso não encontrado.');
+
+  const course = { id: courseSnapshot.id, ...courseSnapshot.data() };
+  if (course.status !== 'em_vigor') throw new Error('Este curso não está em vigor.');
+
+  await limparDisponibilidadesDoCurso(courseId);
+
+  const turmasAtualizadas = (Array.isArray(course.turmas) ? course.turmas : []).map(turma => ({
+    ...turma,
+    dataInicio: '',
+    dataTermino: '',
+    turno: '',
+    status: 'cancelada'
+  }));
+
+  await courseRef.update({
+    status: 'em_espera',
+    dataInicio: '',
+    dataTermino: '',
+    turno: '',
+    turmas: turmasAtualizadas
+  });
+
+  if (window.registrarLogAudit) registrarLogAudit(`Retirou o Curso da vigência: ${course.nome || courseId}`, 'adm', { cursoId: courseId });
+  showToast('Curso retirado da vigência. As disponibilidades dos professores foram apagadas.', 'success');
+  fetchCursos();
+  fetchLogs();
 }
 
 function normalizarDisciplinasProfessorParaIds(perfil) {
@@ -1037,6 +1114,7 @@ async function openModal(tipo, usuarioId = '') {
   tipoAtual = tipo;
   const modal = document.getElementById('editModal');
   const select = document.getElementById('selectUsuario');
+  aplicarMascarasUsuarioAdm();
   
   // Campos
   const camposUsuario = document.getElementById('camposUsuario');
@@ -1066,6 +1144,7 @@ async function openModal(tipo, usuarioId = '') {
   const precoInput = document.getElementById('editPreco');
   const cargaHorariaInput = document.getElementById('editCargaHoraria');
   const finalizeCourseButton = document.getElementById('finalizeCourseButton');
+  const removeCourseVigorButton = document.getElementById('removeCourseVigorButton');
   
   const deleteBtn = document.getElementById('deleteButton');
   const modalTitle = document.getElementById('modalTitle');
@@ -1079,6 +1158,7 @@ async function openModal(tipo, usuarioId = '') {
     camposCurso.style.gap = '18px';
     document.getElementById('novoCursoDisciplinasFields').style.display = tipo === 'curso_novo' ? 'flex' : 'none';
     finalizeCourseButton.style.display = 'none';
+    removeCourseVigorButton.style.display = 'none';
     
     if (tipo === 'curso_novo') {
         modalTitle.textContent = 'Criar Novo Curso';
@@ -1121,6 +1201,7 @@ async function openModal(tipo, usuarioId = '') {
       cargaHorariaInput.value = usuarioAtual.cargaHoraria || usuarioAtual.cargaHr || '';
       const turmaAtual = Array.isArray(usuarioAtual.turmas) ? usuarioAtual.turmas[usuarioAtual.turmas.length - 1] : null;
       finalizeCourseButton.style.display = usuarioAtual.status === 'em_vigor' ? 'block' : 'none';
+      removeCourseVigorButton.style.display = usuarioAtual.status === 'em_vigor' ? 'block' : 'none';
       deleteBtn.style.display = 'inline-block';
     }
   } // fim do bloco de edicao de curso
@@ -1197,7 +1278,7 @@ async function openModal(tipo, usuarioId = '') {
       nomeInput.value = usuarioAtual.nome || '';
       emailInput.value = usuarioAtual.email || '';
       cpfInput.value = usuarioAtual.cpf || '';
-      orgaoRgInput.value = usuarioAtual.orgaoRg || '';
+      if (orgaoRgInput) orgaoRgInput.value = usuarioAtual.orgaoRg || '';
       enderecoInput.value = usuarioAtual.endereco || '';
       cepInput.value = usuarioAtual.cep || '';
       logradouroInput.value = usuarioAtual.logradouro || '';
@@ -1207,7 +1288,7 @@ async function openModal(tipo, usuarioId = '') {
       ufInput.value = usuarioAtual.uf || '';
       telefoneInput.value = usuarioAtual.telefone || '';
       telefoneAltInput.value = usuarioAtual.telefoneAlt || '';
-      rgInput.value = usuarioAtual.rg || '';
+      if (rgInput) rgInput.value = usuarioAtual.rg || '';
       nascimentoInput.value = usuarioAtual.nascimento || '';
       atribuicaoSelect.value = usuarioAtual.atribuicao || '';
       atualizarCampoDisciplinasProfessor(usuarioAtual.atribuicao, usuarioAtual.disciplinasIds || []);
@@ -1218,7 +1299,7 @@ async function openModal(tipo, usuarioId = '') {
       nomeInput.value = '';
       emailInput.value = '';
       cpfInput.value = '';
-      orgaoRgInput.value = '';
+      if (orgaoRgInput) orgaoRgInput.value = '';
       enderecoInput.value = '';
       cepInput.value = '';
       logradouroInput.value = '';
@@ -1228,7 +1309,7 @@ async function openModal(tipo, usuarioId = '') {
       ufInput.value = '';
       telefoneInput.value = '';
       telefoneAltInput.value = '';
-      rgInput.value = '';
+      if (rgInput) rgInput.value = '';
       nascimentoInput.value = '';
       atribuicaoSelect.value = '';
       atualizarCampoDisciplinasProfessor('');
@@ -1271,6 +1352,17 @@ document.getElementById('finalizeCourseButton').addEventListener('click', async 
   }
 });
 
+document.getElementById('removeCourseVigorButton').addEventListener('click', async () => {
+  if (tipoAtual !== 'curso' || !usuarioAtual || !confirm(`Retirar o curso ${usuarioAtual.nome} da vigência?`)) return;
+
+  try {
+    await retirarCursoDeVigor(usuarioAtual.id);
+    closeModal();
+  } catch (error) {
+    showToast('Erro ao retirar curso da vigência: ' + error.message, 'error');
+  }
+});
+
 // Atualiza campos ao trocar usuário/curso selecionado
 document.getElementById('selectUsuario').addEventListener('change', function() {
   if (tipoAtual === 'curso') {
@@ -1279,13 +1371,15 @@ document.getElementById('selectUsuario').addEventListener('change', function() {
     document.getElementById('editPreco').value = usuarioAtual?.preco || '';
     document.getElementById('editCargaHoraria').value = usuarioAtual?.cargaHoraria || usuarioAtual?.cargaHr || '';
     document.getElementById('finalizeCourseButton').style.display = usuarioAtual?.status === 'em_vigor' ? 'block' : 'none';
+    document.getElementById('removeCourseVigorButton').style.display = usuarioAtual?.status === 'em_vigor' ? 'block' : 'none';
   } else {
     let lista = tipoAtual === 'funcionario' ? usuariosFuncionarios : (tipoAtual === 'professor' ? usuariosProfessores : usuariosAlunos);
     usuarioAtual = lista.find(u => u.id === this.value);
     document.getElementById('editNome').value = usuarioAtual?.nome || '';
     document.getElementById('editEmail').value = usuarioAtual?.email || '';
     document.getElementById('editCpf').value = usuarioAtual?.cpf || '';
-    document.getElementById('editOrgaoRg').value = usuarioAtual?.orgaoRg || '';
+    const orgaoRgInput = document.getElementById('editOrgaoRg');
+    if (orgaoRgInput) orgaoRgInput.value = usuarioAtual?.orgaoRg || '';
     document.getElementById('editEndereco').value = usuarioAtual?.endereco || '';
     document.getElementById('editCep').value = usuarioAtual?.cep || '';
     document.getElementById('editLogradouro').value = usuarioAtual?.logradouro || '';
@@ -1295,7 +1389,8 @@ document.getElementById('selectUsuario').addEventListener('change', function() {
     document.getElementById('editUf').value = usuarioAtual?.uf || '';
     document.getElementById('editTelefone').value = usuarioAtual?.telefone || '';
     document.getElementById('editTelefoneAlt').value = usuarioAtual?.telefoneAlt || '';
-    document.getElementById('editRg').value = usuarioAtual?.rg || '';
+    const rgInput = document.getElementById('editRg');
+    if (rgInput) rgInput.value = usuarioAtual?.rg || '';
     document.getElementById('editNascimento').value = usuarioAtual?.nascimento || '';
     document.getElementById('editAtribuicao').value = usuarioAtual?.atribuicao || '';
     atualizarCampoDisciplinasProfessor(usuarioAtual?.atribuicao, usuarioAtual?.disciplinasIds || []);
@@ -1483,31 +1578,23 @@ document.getElementById('editForm').addEventListener('submit', async function(e)
       document.getElementById('professorDisciplinasError').textContent = 'Selecione pelo menos uma disciplina.';
       return;
     }
-    if (atribuicao === 'professor') {
-      const conflicts = await window.academicWorkflow.findDisciplineAssignmentConflicts(db, disciplinasIds);
-      if (conflicts.length) {
-        document.getElementById('professorDisciplinasError').textContent = `Já atribuídas a outro professor: ${conflicts.join(', ')}.`;
-        return;
-      }
-    }
-
     const profile = {
       nome,
       email,
       password: senha,
-      cpf: document.getElementById('editCpf').value.trim(),
-      orgaoRg: document.getElementById('editOrgaoRg').value.trim(),
-      endereco: document.getElementById('editEndereco').value.trim(),
-      cep: document.getElementById('editCep').value.trim(),
-      logradouro: document.getElementById('editLogradouro').value.trim(),
-      numero: document.getElementById('editNumero').value.trim(),
-      bairro: document.getElementById('editBairro').value.trim(),
-      cidade: document.getElementById('editCidade').value.trim(),
-      uf: document.getElementById('editUf').value.trim().toUpperCase(),
-      telefone: document.getElementById('editTelefone').value.trim(),
-      telefoneAlt: document.getElementById('editTelefoneAlt').value.trim(),
-      rg: document.getElementById('editRg').value.trim(),
-      nascimento: document.getElementById('editNascimento').value.trim()
+      cpf: obterValorCampo('editCpf'),
+      orgaoRg: obterValorCampo('editOrgaoRg'),
+      endereco: obterValorCampo('editEndereco'),
+      cep: obterValorCampo('editCep'),
+      logradouro: obterValorCampo('editLogradouro'),
+      numero: obterValorCampo('editNumero'),
+      bairro: obterValorCampo('editBairro'),
+      cidade: obterValorCampo('editCidade'),
+      uf: obterValorCampo('editUf').toUpperCase(),
+      telefone: obterValorCampo('editTelefone'),
+      telefoneAlt: obterValorCampo('editTelefoneAlt'),
+      rg: obterValorCampo('editRg'),
+      nascimento: obterValorCampo('editNascimento')
     };
 
     try {
@@ -1645,19 +1732,19 @@ document.getElementById('editForm').addEventListener('submit', async function(e)
   } else {
       const novoNome = document.getElementById('editNome').value;
       const novoEmail = document.getElementById('editEmail').value.trim().toLowerCase();
-      const novoCpf = document.getElementById('editCpf').value;
-      const novoOrgaoRg = document.getElementById('editOrgaoRg').value;
-      const novoEndereco = document.getElementById('editEndereco').value;
-      const novoCep = document.getElementById('editCep').value;
-      const novoLogradouro = document.getElementById('editLogradouro').value;
-      const novoNumero = document.getElementById('editNumero').value;
-      const novoBairro = document.getElementById('editBairro').value;
-      const novaCidade = document.getElementById('editCidade').value;
-      const novaUf = document.getElementById('editUf').value.toUpperCase();
-      const novoTelefone = document.getElementById('editTelefone').value;
-      const novoTelefoneAlt = document.getElementById('editTelefoneAlt').value;
-      const novoRg = document.getElementById('editRg').value;
-      const novoNascimento = document.getElementById('editNascimento').value;
+      const novoCpf = obterValorCampo('editCpf');
+      const novoOrgaoRg = obterValorCampo('editOrgaoRg');
+      const novoEndereco = obterValorCampo('editEndereco');
+      const novoCep = obterValorCampo('editCep');
+      const novoLogradouro = obterValorCampo('editLogradouro');
+      const novoNumero = obterValorCampo('editNumero');
+      const novoBairro = obterValorCampo('editBairro');
+      const novaCidade = obterValorCampo('editCidade');
+      const novaUf = obterValorCampo('editUf').toUpperCase();
+      const novoTelefone = obterValorCampo('editTelefone');
+      const novoTelefoneAlt = obterValorCampo('editTelefoneAlt');
+      const novoRg = obterValorCampo('editRg');
+      const novoNascimento = obterValorCampo('editNascimento');
       const novaAtribuicao = document.getElementById('editAtribuicao').value;
       const cursoAluno = document.getElementById('editCursoAluno').value.trim();
       const turmaAluno = document.getElementById('editTurmaAluno').value.trim();
@@ -1681,17 +1768,7 @@ document.getElementById('editForm').addEventListener('submit', async function(e)
           document.getElementById('professorDisciplinasError').textContent = 'Selecione pelo menos uma disciplina.';
           return;
         }
-        if (novaAtribuicao === 'professor') {
-          const conflicts = await window.academicWorkflow.findDisciplineAssignmentConflicts(
-            firebase.firestore(), disciplinasIds, usuarioAtual.id
-          );
-          if (conflicts.length) {
-            document.getElementById('professorDisciplinasError').textContent = `Já atribuídas a outro professor: ${conflicts.join(', ')}.`;
-            return;
-          }
-        }
-
-            const { disciplinasSemProfessor, ...vinculoAcademicoPersistido } = vinculoAcademico;
+        const { disciplinasSemProfessor, ...vinculoAcademicoPersistido } = vinculoAcademico;
 
       firebase.firestore()
         .collection('usuarios')

@@ -96,7 +96,7 @@ exports.createStudentAccount = onCall(async (data, context) => {
   const disciplinas = courseDisciplines.map(subject => {
     const { nome, id } = subject;
     const professors = teacherByDiscipline.get(id) || [];
-    if (professors.length !== 1) {
+    if (!professors.length) {
       throw new HttpsError('failed-precondition', `Defina o professor responsavel pela disciplina ${nome}.`);
     }
     const professorId = professors[0];
@@ -110,8 +110,8 @@ exports.createStudentAccount = onCall(async (data, context) => {
     nome: requiredString(studentData.nome, 'nome'),
     email,
     cpf: requiredString(studentData.cpf, 'CPF'),
-    rg: requiredString(studentData.rg, 'RG'),
-    orgaoRg: requiredString(studentData.orgaoRg, 'orgao expedidor'),
+    rg: typeof studentData.rg === 'string' ? studentData.rg.trim() : '',
+    orgaoRg: typeof studentData.orgaoRg === 'string' ? studentData.orgaoRg.trim() : '',
     endereco: requiredString(studentData.endereco, 'endereco'),
     cep: typeof studentData.cep === 'string' ? studentData.cep.trim() : '',
     logradouro: typeof studentData.logradouro === 'string' ? studentData.logradouro.trim() : '',
@@ -196,15 +196,7 @@ exports.createTeacherAccount = onCall(async (data, context) => {
     throw new HttpsError('invalid-argument', 'Informe e-mail, senha e disciplinas validas.');
   }
 
-  const [teachersSnapshot, disciplinesSnapshot] = await Promise.all([
-    db.collection('usuarios').where('atribuicao', '==', 'professor').get(),
-    db.collection('disciplinas').get()
-  ]);
-  const currentAssignments = new Set();
-  teachersSnapshot.forEach(doc => teacherDisciplineIds(doc.data()).forEach(id => currentAssignments.add(id)));
-  if (disciplinasIds.some(id => currentAssignments.has(id))) {
-    throw new HttpsError('failed-precondition', 'Uma ou mais disciplinas ja possuem professor responsavel.');
-  }
+  const disciplinesSnapshot = await db.collection('disciplinas').get();
   const disciplineIdsInCatalog = new Set(disciplinesSnapshot.docs.filter(doc => (doc.data().cursoIds || []).length).map(doc => doc.id));
   const invalid = disciplinasIds.some(id => !disciplineIdsInCatalog.has(id));
   if (invalid) {
@@ -253,17 +245,7 @@ exports.updateTeacherAssignments = onCall(async (data, context) => {
   if (!disciplinasIds.length || disciplinasIds.some(id => typeof id !== 'string' || !id.trim())) {
     throw new HttpsError('invalid-argument', 'Selecione disciplinas validas.');
   }
-  const [teachersSnapshot, disciplinesSnapshot] = await Promise.all([
-    db.collection('usuarios').where('atribuicao', '==', 'professor').get(),
-    db.collection('disciplinas').get()
-  ]);
-  const currentAssignments = new Set();
-  teachersSnapshot.forEach(doc => {
-    if (doc.id !== teacherId) teacherDisciplineIds(doc.data()).forEach(id => currentAssignments.add(id));
-  });
-  if (disciplinasIds.some(id => currentAssignments.has(id))) {
-    throw new HttpsError('failed-precondition', 'Uma ou mais disciplinas ja possuem outro professor responsavel.');
-  }
+  const disciplinesSnapshot = await db.collection('disciplinas').get();
   const disciplineIdsInCatalog = new Set(disciplinesSnapshot.docs.filter(doc => (doc.data().cursoIds || []).length).map(doc => doc.id));
   const invalid = disciplinasIds.some(id => !disciplineIdsInCatalog.has(id));
   if (invalid) {
@@ -289,17 +271,19 @@ exports.submitTeacherAvailability = onCall(async (data, context) => {
   }
 
   const notificationId = requiredString(data?.notificationId, 'solicitacao');
-  const days = data?.diasSemana;
   const startTime = data?.horarioInicio;
   const endTime = data?.horarioTermino;
-  if (!Array.isArray(days) || !days.length || days.length > 7 || days.some(day => !Number.isInteger(day) || day < 1 || day > 7)) {
-    throw new HttpsError('invalid-argument', 'Selecione dias validos para as aulas.');
-  }
-  const uniqueDays = [...new Set(days)];
+  const startDate = data?.dataInicio;
+  const endDate = data?.dataTermino;
   if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(startTime || '')
     || !/^([01]\d|2[0-3]):[0-5]\d$/.test(endTime || '')
     || startTime >= endTime) {
     throw new HttpsError('invalid-argument', 'Informe uma faixa de horario valida.');
+  }
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(startDate || '')
+    || !/^\d{4}-\d{2}-\d{2}$/.test(endDate || '')
+    || startDate > endDate) {
+    throw new HttpsError('invalid-argument', 'Informe um periodo de datas valido.');
   }
   const notificationRef = db.collection('notificacoes').doc(notificationId);
   const availabilityRef = db.collection('disponibilidades').doc(encodeURIComponent(notificationId));
@@ -321,6 +305,10 @@ exports.submitTeacherAvailability = onCall(async (data, context) => {
       throw new HttpsError('failed-precondition', 'O periodo da solicitacao de disponibilidade e invalido.');
     }
 
+    if (startDate < notification.dataInicio || endDate > notification.dataTermino) {
+      throw new HttpsError('invalid-argument', 'As datas devem ficar dentro do periodo vigente do curso.');
+    }
+
     transaction.set(availabilityRef, {
       professorId: context.auth.uid,
       cursoId: notification.cursoId,
@@ -329,9 +317,9 @@ exports.submitTeacherAvailability = onCall(async (data, context) => {
       disciplinaId: assignmentDisciplineId,
       disciplinaNome: notification.disciplinaNome,
       disciplinaKey: notification.disciplinaKey,
-      dataInicio: notification.dataInicio,
-      dataTermino: notification.dataTermino,
-      diasSemana: uniqueDays,
+      dataInicio: startDate,
+      dataTermino: endDate,
+      diasSemana: [],
       horarioInicio: startTime,
       horarioTermino: endTime,
       status: 'aguardando_adm',
@@ -353,9 +341,8 @@ function availabilityIsApproved(record) {
 function availabilitySlotsOverlap(first, second) {
   const sameCourse = first.cursoId === second.cursoId;
   const dateRangesOverlap = first.dataInicio <= second.dataTermino && first.dataTermino >= second.dataInicio;
-  const sharesDay = (first.diasSemana || []).some(day => (second.diasSemana || []).includes(day));
   const timeOverlaps = first.horarioInicio < second.horarioTermino && first.horarioTermino > second.horarioInicio;
-  return sameCourse && dateRangesOverlap && sharesDay && timeOverlaps;
+  return sameCourse && dateRangesOverlap && timeOverlaps;
 }
 
 exports.reviewTeacherAvailability = onCall(async (data, context) => {
@@ -372,14 +359,10 @@ exports.reviewTeacherAvailability = onCall(async (data, context) => {
   if (!['save', 'approve'].includes(action)) {
     throw new HttpsError('invalid-argument', 'Acao de revisao invalida.');
   }
-  const days = data?.diasSemana;
   const startTime = data?.horarioInicio;
   const endTime = data?.horarioTermino;
   const startDate = data?.dataInicio;
   const endDate = data?.dataTermino;
-  if (!Array.isArray(days) || !days.length || days.length > 7 || days.some(day => !Number.isInteger(day) || day < 1 || day > 7)) {
-    throw new HttpsError('invalid-argument', 'Selecione dias validos para as aulas.');
-  }
   if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(startTime || '')
     || !/^([01]\d|2[0-3]):[0-5]\d$/.test(endTime || '')
     || startTime >= endTime) {
@@ -406,7 +389,7 @@ exports.reviewTeacherAvailability = onCall(async (data, context) => {
       ...current,
       dataInicio: startDate,
       dataTermino: endDate,
-      diasSemana: [...new Set(days)],
+      diasSemana: [],
       horarioInicio: startTime,
       horarioTermino: endTime
     };
@@ -428,7 +411,7 @@ exports.reviewTeacherAvailability = onCall(async (data, context) => {
     transaction.update(availabilityRef, {
       dataInicio: startDate,
       dataTermino: endDate,
-      diasSemana: [...new Set(days)],
+      diasSemana: [],
       horarioInicio: startTime,
       horarioTermino: endTime,
       status: approved ? 'aprovada' : 'aguardando_adm',
@@ -436,6 +419,25 @@ exports.reviewTeacherAvailability = onCall(async (data, context) => {
       revisadoEm: FieldValue.serverTimestamp(),
       revisadoPor: context.auth.uid
     });
+
+    if (approved) {
+      const pendingNotificationsSnapshot = await transaction.get(
+        db.collection('notificacoes')
+          .where('cursoId', '==', current.cursoId)
+          .where('disciplinaKey', '==', current.disciplinaKey)
+          .where('status', '==', 'pendente')
+      );
+
+      pendingNotificationsSnapshot.docs
+        .filter(doc => doc.id !== availabilityId && doc.data().professorId !== current.professorId)
+        .forEach(doc => {
+          transaction.update(doc.ref, {
+            status: 'cancelada',
+            canceladaEm: FieldValue.serverTimestamp(),
+            motivoCancelamento: 'Disponibilidade aprovada por outro professor na mesma disciplina.'
+          });
+        });
+    }
   });
 
   return { saved: true, approved: action === 'approve' };

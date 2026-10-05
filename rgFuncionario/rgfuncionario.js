@@ -118,8 +118,8 @@ document.getElementById("alunoForm").addEventListener("submit", async (event) =>
     const password = document.getElementById("password").value;
     const confirmPassword = document.getElementById("confirmPassword").value;
     const cpf = document.getElementById("cpf").value;
-    const rg = document.getElementById("rg").value;
-    const orgaoRg = document.getElementById("orgaoRg").value;
+    const rg = "";
+    const orgaoRg = "";
     const telefone = document.getElementById("telefone").value;
     const telefoneAlt = document.getElementById("telefoneAlt").value;
     const nascimento = document.getElementById("nascimento").value;
@@ -203,6 +203,50 @@ document.getElementById("alunoForm").addEventListener("submit", async (event) =>
         alert("Erro ao salvar aluno. Tente novamente.");
     }
 });
+
+function formatarCpf(value) {
+    const digits = String(value || '').replace(/\D/g, '').slice(0, 11);
+    return digits
+        .replace(/(\d{3})(\d)/, '$1.$2')
+        .replace(/(\d{3})\.(\d{3})(\d)/, '$1.$2.$3')
+        .replace(/(\d{3})\.(\d{3})\.(\d{3})(\d{1,2})/, '$1.$2.$3-$4');
+}
+
+function formatarTelefone(value) {
+    const digits = String(value || '').replace(/\D/g, '').slice(0, 11);
+    if (!digits) return '';
+    if (digits.length <= 10) {
+        return digits.replace(/(\d{2})(\d{4})(\d{0,4})/, (_, ddd, prefixo, sufixo) => {
+            if (!sufixo) return `(${ddd}) ${prefixo}`;
+            return `(${ddd}) ${prefixo}-${sufixo}`;
+        });
+    }
+    return digits.replace(/(\d{2})(\d{5})(\d{0,4})/, (_, ddd, prefixo, sufixo) => {
+        if (!sufixo) return `(${ddd}) ${prefixo}`;
+        return `(${ddd}) ${prefixo}-${sufixo}`;
+    });
+}
+
+const cpfInput = document.getElementById('cpf');
+if (cpfInput) {
+    cpfInput.addEventListener('input', () => {
+        cpfInput.value = formatarCpf(cpfInput.value);
+    });
+}
+
+const telefoneInput = document.getElementById('telefone');
+if (telefoneInput) {
+    telefoneInput.addEventListener('input', () => {
+        telefoneInput.value = formatarTelefone(telefoneInput.value);
+    });
+}
+
+const telefoneAltInput = document.getElementById('telefoneAlt');
+if (telefoneAltInput) {
+    telefoneAltInput.addEventListener('input', () => {
+        telefoneAltInput.value = formatarTelefone(telefoneAltInput.value);
+    });
+}
 
 document.getElementById('cep').addEventListener('blur', buscarEnderecoPorCep);
 
@@ -338,7 +382,7 @@ async function carregarAlunos() {
         console.log("Total de alunos encontrados:", listaAlunos.length);
 
         if (listaAlunos.length === 0) {
-            alunosTableBody.innerHTML = "<tr><td colspan='5' style='text-align:center;'>Nenhum aluno encontrado.</td></tr>";
+            alunosTableBody.innerHTML = "<tr><td colspan='4' style='text-align:center;'>Nenhum aluno encontrado.</td></tr>";
             return;
         }
 
@@ -350,7 +394,7 @@ async function carregarAlunos() {
 
         listaAlunos.forEach((aluno) => {
             const row = document.createElement('tr');
-            const values = [aluno.nome, aluno.cpf, aluno.rg, aluno.nascimento || '--'];
+            const values = [aluno.nome, aluno.cpf, aluno.nascimento || '--'];
             values.forEach((value, index) => {
                 const cell = document.createElement('td');
                 if (index === 0) {
@@ -370,7 +414,7 @@ async function carregarAlunos() {
             editButton.title = 'Editar Aluno';
             editButton.innerHTML = '<i class="fa-solid fa-pen" aria-hidden="true"></i>';
             editButton.addEventListener('click', () => editarAluno(
-                aluno.id, aluno.nome, aluno.email, aluno.cpf, aluno.rg, aluno.orgaoRg,
+                aluno.id, aluno.nome, aluno.email, aluno.cpf,
                 aluno.endereco, aluno.cep, aluno.logradouro, aluno.numero, aluno.bairro,
                 aluno.cidade, aluno.uf, aluno.telefone, aluno.telefoneAlt, aluno.cursoSolicitado,
                 aluno.turmaId || '', aluno.nascimento || '', aluno.dataInicio, aluno.dataTermino || '',
@@ -401,20 +445,18 @@ async function carregarAlunos() {
         });
     } catch (error) {
         console.error("Erro ao carregar alunos:", error);
-        alunosTableBody.innerHTML = "<tr><td colspan='5' style='text-align:center; color:red;'>Erro ao recarregar a lista.</td></tr>";
+        alunosTableBody.innerHTML = "<tr><td colspan='4' style='text-align:center; color:red;'>Erro ao recarregar a lista.</td></tr>";
     }
 }
 
 // Função para preencher o formulário com os dados do aluno para edição
-async function editarAluno(id, nome, email, cpf, rg, orgaoRg, endereco, cep, logradouro, numero, bairro, cidade, uf, telefone, telefoneAlt, cursoSolicitado, turmaId, nascimento, dataInicio, dataTermino, formaPagamento, turnoParam) {
+async function editarAluno(id, nome, email, cpf, endereco, cep, logradouro, numero, bairro, cidade, uf, telefone, telefoneAlt, cursoSolicitado, turmaId, nascimento, dataInicio, dataTermino, formaPagamento, turnoParam) {
     configurarCamposDeConta(false);
     await carregarOpcoesCursosAluno(cursoSolicitado);
     document.getElementById("alunoId").value = id;
     document.getElementById("nome").value = nome;
     document.getElementById("email").value = email;
     document.getElementById("cpf").value = cpf;
-    document.getElementById("rg").value = rg;
-    document.getElementById("orgaoRg").value = orgaoRg;
     document.getElementById("endereco").value = endereco || '';
     document.getElementById("cep").value = cep || '';
     document.getElementById("logradouro").value = logradouro || '';
@@ -426,7 +468,7 @@ async function editarAluno(id, nome, email, cpf, rg, orgaoRg, endereco, cep, log
     document.getElementById("telefoneAlt").value = telefoneAlt || '';
     document.getElementById("formaPagamento").value = formaPagamento || '';
     document.getElementById("cursoSolicitado").value = cursoSolicitado || '';
-    document.getElementById("turmaId").value = turmaId || '';
+    await carregarOpcoesTurmasAluno(cursoSolicitado || '', turmaId || '');
     document.getElementById("dataInicio").value = dataInicio || '';
     document.getElementById("dataTermino").value = dataTermino || '';
     document.getElementById("turno").value = turnoParam || '';
@@ -462,6 +504,11 @@ async function excluirAluno(id) {
 function criarContrato(nome, nascimento, cpf, rg, orgaoRg, endereco, telefone, telefoneAlt, formaPagamento, cursoSolicitado, dataInicio, turno) {
     if (window.registrarLogAudit) registrarLogAudit(`Gerou Contrato: ${nome}`, 'gestão', {cursoSolicitado});
     const idade = calcularIdade(nascimento);
+    const rgNumero = String(rg || '').trim();
+    const orgaoExpedidor = String(orgaoRg || '').trim();
+    const documentoTexto = rgNumero || orgaoExpedidor
+        ? `, ${rgNumero ? `RG nº ${rgNumero}` : 'RG não informado'}${orgaoExpedidor ? ` - ${orgaoExpedidor}` : ''}`
+        : '';
     
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF({
@@ -482,7 +529,7 @@ function criarContrato(nome, nascimento, cpf, rg, orgaoRg, endereco, telefone, t
 
 THÉMIS – ACADEMIA DE FORMAÇÃO DE VIGILANTES LTDA/EPP
 CONTRATO DE PRESTAÇÃO DE SERVIÇOS
-Pelo presente instrumento particular o Sr(a) NNN, IIII anos, CPF Nº CCC, RG nº RRR - SSS, residente na EEE , TELEFONE: TTT1, GGG2, Doravante Denominado CONTRATANTE e a THÉMIS – ACADEMIA DE FORMAÇÃO DE VIGILANTES LTDA-EPP, nome fantasia THÉMIS – ACADEMIA DE FORMAÇÃO DEVIGILANTES, inscrita no CNPJ 26.489.471/0001-07, autorizada  a    funcionar pelo   DEPARTAMENTO de POLICIA FEDERAL, conforme alvará Nº 4.733/17 , estabelecida na Avenida JK Qd. 12 Lote 16 Sala 2B – Jardim Brasília –Águas Lindas – GO, doravante denominada CONTRATADA, resolvem celebrar o presente contrato de prestação de serviços, conforme cláusulas a seguir:
+Pelo presente instrumento particular o Sr(a) NNN, IIII anos, CPF Nº CCC${documentoTexto}, residente na EEE , TELEFONE: TTT1, GGG2, Doravante Denominado CONTRATANTE e a THÉMIS – ACADEMIA DE FORMAÇÃO DE VIGILANTES LTDA-EPP, nome fantasia THÉMIS – ACADEMIA DE FORMAÇÃO DEVIGILANTES, inscrita no CNPJ 26.489.471/0001-07, autorizada  a    funcionar pelo   DEPARTAMENTO de POLICIA FEDERAL, conforme alvará Nº 4.733/17 , estabelecida na Avenida JK Qd. 12 Lote 16 Sala 2B – Jardim Brasília –Águas Lindas – GO, doravante denominada CONTRATADA, resolvem celebrar o presente contrato de prestação de serviços, conforme cláusulas a seguir:
 CLÁUSULA PRIMEIRA – DO OBJETO
 O objeto deste contrato consiste na prestação de serviços, pela contratada, a realização do curso pelo (a) contratante, conforme especificação contida abaixo e de acordo com a legislação vigente:	
 CURSO SOLICITADO: AAA
@@ -536,8 +583,6 @@ Assim, por estarem justas e contratadas, as partes assinam o presente contrato e
             .replace(/NNN/g, nome)
             .replace(/IIII/g, idade)
             .replace(/CCC/g, cpf)
-            .replace(/RRR/g, rg)
-            .replace(/SSS/g, orgaoRg)
             .replace(/EEE/g, endereco)
             .replace(/TTT1/g, telefone)
             .replace(/GGG2/g, telefoneAlt)
@@ -645,16 +690,60 @@ async function carregarOpcoesCursosAluno(cursoSelecionado = '') {
         select.innerHTML = '<option value="">Selecione um curso</option>';
         cursos.forEach(curso => {
             const option = document.createElement('option');
-            option.value = curso.id;
-            option.textContent = curso.nome || curso.id;
+            const nomeCurso = curso.nome || 'Curso sem nome';
+            option.value = curso.id || '';
+            option.textContent = nomeCurso;
+            option.title = nomeCurso;
             select.appendChild(option);
         });
         const opcaoEncontrada = Array.from(select.options).find(option => option.value.toLowerCase() === cursoNormalizado || option.textContent.toLowerCase() === cursoNormalizado);
         select.value = opcaoEncontrada ? opcaoEncontrada.value : '';
+        await carregarOpcoesTurmasAluno(select.value, document.getElementById('turmaId')?.value || '');
     } catch (error) {
         console.error('Erro ao carregar cursos disponíveis:', error);
         select.innerHTML = '<option value="">Não foi possível carregar os cursos</option>';
     }
+}
+
+async function carregarOpcoesTurmasAluno(cursoId, turmaSelecionada = '') {
+    const selectTurma = document.getElementById('turmaId');
+    if (!selectTurma) return;
+
+    selectTurma.innerHTML = '<option value="">Selecione uma turma</option>';
+    if (!cursoId) return;
+
+    try {
+        const cursoDoc = await db.collection('cursos').doc(cursoId).get();
+        const curso = cursoDoc.exists ? { id: cursoDoc.id, ...cursoDoc.data() } : null;
+        const turmas = Array.isArray(curso?.turmas) ? curso.turmas : [];
+
+        if (!turmas.length) {
+            selectTurma.innerHTML = '<option value="">Nenhuma turma cadastrada</option>';
+            return;
+        }
+
+        turmas.forEach(turma => {
+            const idTurma = turma.id || turma.turmaId || '';
+            if (!idTurma) return;
+            const option = document.createElement('option');
+            option.value = idTurma;
+            option.textContent = idTurma;
+            selectTurma.appendChild(option);
+        });
+
+        const turmaEncontrada = Array.from(selectTurma.options).find(option => option.value === turmaSelecionada);
+        selectTurma.value = turmaEncontrada ? turmaEncontrada.value : selectTurma.options[1]?.value || '';
+    } catch (error) {
+        console.error('Erro ao carregar turmas do curso:', error);
+        selectTurma.innerHTML = '<option value="">Não foi possível carregar as turmas</option>';
+    }
+}
+
+const selectCursoSolicitado = document.getElementById('cursoSolicitado');
+if (selectCursoSolicitado) {
+    selectCursoSolicitado.addEventListener('change', async () => {
+        await carregarOpcoesTurmasAluno(selectCursoSolicitado.value);
+    });
 }
 
 // Logout
@@ -863,11 +952,6 @@ if (professorForm) {
         }
 
         try {
-            const conflicts = await window.academicWorkflow.findDisciplineAssignmentConflicts(db, disciplinasIds, professorId);
-            if (conflicts.length) {
-                alert(`Já atribuídas a outro professor: ${conflicts.join(', ')}.`);
-                return;
-            }
             const courseIds = [...new Set(disciplinasDisponiveis
                 .filter(item => disciplinasIds.includes(item.chave))
                 .flatMap(item => item.cursoIds))];

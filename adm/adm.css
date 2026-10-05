@@ -603,18 +603,19 @@ body {
 
 .availability-admin-list {
     display: grid;
-    gap: 14px;
-    max-height: 850px;
+    gap: 18px;
+    max-height: 920px;
     overflow-y: auto;
-    padding-right: 4px;
+    padding: 6px 8px 8px 2px;
 }
 
 .availability-admin-item {
-    padding: 18px;
+    padding: 22px 20px;
     border: 1px solid var(--adm-line);
-    border-left: 3px solid #e2a537;
-    border-radius: 8px;
+    border-left: 4px solid #e2a537;
+    border-radius: 10px;
     background: var(--adm-panel-light);
+    box-shadow: 0 10px 22px rgba(0, 0, 0, 0.12);
 }
 
 .availability-admin-item.has-conflict {
@@ -633,14 +634,14 @@ body {
 .availability-admin-heading h3 {
     margin: 8px 0 5px;
     color: #fff;
-    font-size: 1rem;
+    font-size: 1.18rem;
 }
 
 .availability-admin-heading p {
     margin: 0;
     color: #aaa;
-    font-size: 0.78rem;
-    line-height: 1.5;
+    font-size: 0.82rem;
+    line-height: 1.6;
 }
 
 .availability-status {
@@ -707,25 +708,26 @@ body {
 
 .availability-admin-fields {
     display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 10px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
 }
 
 .availability-admin-fields label {
     display: grid;
-    gap: 6px;
+    gap: 7px;
     color: #aaa;
-    font-size: 0.72rem;
+    font-size: 0.78rem;
 }
 
 .availability-admin-fields input {
     min-width: 0;
-    padding: 9px;
+    padding: 10px 11px;
     border: 1px solid var(--adm-line);
-    border-radius: 5px;
+    border-radius: 6px;
     color: #fff;
     background: #101010;
     font: inherit;
+    min-height: 42px;
 }
 
 .availability-admin-actions {

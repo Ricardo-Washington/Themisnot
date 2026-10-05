@@ -411,7 +411,44 @@ function validarCamposObrigatorios() {
 }
 
 // Adicione o listener de evento para a função cadastrarDados() no formulário
+function formatarCpf(value) {
+    const digits = String(value || '').replace(/\D/g, '').slice(0, 11);
+    return digits
+        .replace(/(\d{3})(\d)/, '$1.$2')
+        .replace(/(\d{3})\.(\d{3})(\d)/, '$1.$2.$3')
+        .replace(/(\d{3})\.(\d{3})\.(\d{3})(\d{1,2})/, '$1.$2.$3-$4');
+}
+
+function formatarTelefone(value) {
+    const digits = String(value || '').replace(/\D/g, '').slice(0, 11);
+    if (!digits) return '';
+    if (digits.length <= 10) {
+        return digits.replace(/(\d{2})(\d{4})(\d{0,4})/, (_, ddd, prefixo, sufixo) => {
+            if (!sufixo) return `(${ddd}) ${prefixo}`;
+            return `(${ddd}) ${prefixo}-${sufixo}`;
+        });
+    }
+    return digits.replace(/(\d{2})(\d{5})(\d{0,4})/, (_, ddd, prefixo, sufixo) => {
+        if (!sufixo) return `(${ddd}) ${prefixo}`;
+        return `(${ddd}) ${prefixo}-${sufixo}`;
+    });
+}
+
 document.addEventListener('DOMContentLoaded', () => {
+    const cpfField = document.getElementById('cpf');
+    if (cpfField) {
+        cpfField.addEventListener('input', () => {
+            cpfField.value = formatarCpf(cpfField.value);
+        });
+    }
+
+    const telefoneField = document.getElementById('telefone');
+    if (telefoneField) {
+        telefoneField.addEventListener('input', () => {
+            telefoneField.value = formatarTelefone(telefoneField.value);
+        });
+    }
+
     const disciplineButton = document.getElementById('discipline-button');
     if (disciplineButton) disciplineButton.addEventListener('click', () => {
         window.location.href = '/disciplinas/disciplinas.html';

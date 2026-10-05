@@ -74,10 +74,9 @@ service cloud.firestore {
         && dados.dataTermino is string
         && dados.dataTermino.matches('^\\d{4}-\\d{2}-\\d{2}$')
         && dados.dataInicio <= dados.dataTermino
-        && dados.diasSemana is list
-        && dados.diasSemana.size() > 0
-        && dados.diasSemana.size() <= 7
-        && dados.diasSemana.toSet().hasOnly([1, 2, 3, 4, 5, 6, 7])
+        && (!dados.keys().hasAny(['diasSemana']) || (dados.diasSemana is list
+          && dados.diasSemana.size() <= 7
+          && dados.diasSemana.toSet().hasOnly([1, 2, 3, 4, 5, 6, 7])))
         && dados.horarioInicio is string
         && dados.horarioInicio.matches('^([01]\\d|2[0-3]):[0-5]\\d$')
         && dados.horarioTermino is string
@@ -92,11 +91,6 @@ service cloud.firestore {
         && exists(caminhoSolicitacao)
         && solicitacao.professorId == request.auth.uid
         && solicitacao.status == 'pendente'
-        && request.resource.data.keys().hasAll([
-          'professorId', 'cursoId', 'cursoNome', 'turmaId', 'disciplinaId',
-          'disciplinaNome', 'disciplinaKey', 'dataInicio', 'dataTermino',
-          'diasSemana', 'horarioInicio', 'horarioTermino', 'status', 'atualizadoEm'
-        ])
         && request.resource.data.keys().hasOnly([
           'professorId', 'cursoId', 'cursoNome', 'turmaId', 'disciplinaId',
           'disciplinaNome', 'disciplinaKey', 'dataInicio', 'dataTermino',

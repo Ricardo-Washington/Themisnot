@@ -107,12 +107,19 @@ async function carregarDadosAcademicos() {
         gradeRecords[doc.id] = { id: doc.id, ...doc.data() };
     });
     availabilityRecords = availabilitySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    const professorAvailabilityKeys = new Set(
+        availabilityRecords
+            .filter(record => record.cursoId && record.disciplinaKey)
+            .map(record => `${record.cursoId}::${record.disciplinaKey}`)
+    );
+
     availabilityRequests = requestsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
         .filter(request => request.tipo === 'solicitar_disponibilidade'
             && request.status === 'pendente'
             && !availabilityRecords.some(record =>
                 record.id === request.id || record.disciplinaKey === request.disciplinaKey
-            ));
+            )
+            && !professorAvailabilityKeys.has(`${request.cursoId}::${request.disciplinaKey}`));
 
     assignments = assignments.map(assignment => enriquecerDisciplina(assignment));
     renderizarResumo();
@@ -168,30 +175,30 @@ function renderizarSolicitacoesDisponibilidade() {
         container.appendChild(empty);
     }
 
-    const nomesDias = ['', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado', 'Domingo'];
     availabilityRecords.forEach(record => {
         const confirmation = document.createElement('div');
         const approved = record.status === 'aprovada' || !record.status;
         confirmation.className = approved ? 'availability-confirmed' : 'availability-pending';
-        const days = (record.diasSemana || []).map(day => nomesDias[day]).filter(Boolean).join(', ');
         const status = approved ? 'Aprovada pelo ADM' : 'Aguardando revisão do ADM';
-        confirmation.textContent = `${status} · ${record.cursoNome || 'Curso'} · ${record.disciplinaNome || 'Disciplina'}: ${days}, ${record.horarioInicio} às ${record.horarioTermino} (${record.dataInicio} até ${record.dataTermino})`;
+        confirmation.textContent = `${status} · ${record.cursoNome || 'Curso'} · ${record.disciplinaNome || 'Disciplina'}: ${record.dataInicio} até ${record.dataTermino}, ${record.horarioInicio} às ${record.horarioTermino}`;
         container.appendChild(confirmation);
     });
     if (!availabilityRequests.length) return;
 
-    const dias = ['Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado', 'Domingo'];
     availabilityRequests.forEach(request => {
         const course = courses.find(item => item.id === request.cursoId || item.nome === request.cursoNome) || {};
         const saved = availabilityRecords.find(item => item.disciplinaKey === request.disciplinaKey) || {};
-        const diasPermitidos = obterDiasPermitidosDoCurso(course);
         const horarioPermitido = obterHorarioPermitido(course);
+        const cursoInicio = request.dataInicio || course.dataInicio || '';
+        const cursoTermino = request.dataTermino || course.dataTermino || course.dataFim || '';
+        const dataMaxima = cursoTermino ? (() => {
+            const data = new Date(`${cursoTermino}T00:00:00`);
+            data.setDate(data.getDate() - 1);
+            return data.toISOString().slice(0, 10);
+        })() : '';
         const card = document.createElement('article');
         card.className = 'availability-card';
-        card.innerHTML = `<div class="availability-card-heading"><div><span class="card-kicker">${escapeHtml(request.cursoNome || 'Curso')}</span><h3>${escapeHtml(request.disciplinaNome || 'Disciplina')}</h3><p>Turma ${escapeHtml(request.turmaId || 'sem identificação')} · ${escapeHtml(request.dataInicio || '')} até ${escapeHtml(request.dataTermino || '')}</p></div></div><form class="availability-form" data-request-id="${escapeHtml(request.id)}"><fieldset><legend>Dias disponíveis</legend><div class="availability-days">${dias.map((dia, index) => {
-            const permitido = diasPermitidos.includes(index + 1);
-            return `<label><input type="checkbox" name="diaSemana" value="${index + 1}" ${saved.diasSemana?.includes(index + 1) ? 'checked' : ''} ${permitido ? '' : 'disabled'}><span>${dia}</span></label>`;
-        }).join('')}</div></fieldset><div class="availability-times"><label>Início <input type="time" name="inicio" value="${escapeHtml(saved.horarioInicio || horarioPermitido.inicio)}" min="${horarioPermitido.inicio}" max="${horarioPermitido.termino}" required></label><label>Término <input type="time" name="termino" value="${escapeHtml(saved.horarioTermino || horarioPermitido.termino)}" min="${horarioPermitido.inicio}" max="${horarioPermitido.termino}" required></label><button class="outline-button" type="submit"><i class="fa-solid fa-calendar-check"></i> Confirmar disponibilidade</button></div><p class="availability-feedback" aria-live="polite"></p></form>`;
+        card.innerHTML = `<div class="availability-card-heading"><div><span class="card-kicker">${escapeHtml(request.cursoNome || 'Curso')}</span><h3>${escapeHtml(request.disciplinaNome || 'Disciplina')}</h3><p>Turma ${escapeHtml(request.turmaId || 'sem identificação')} · ${escapeHtml(cursoInicio || '')} até ${escapeHtml(cursoTermino || '')}</p></div></div><form class="availability-form" data-request-id="${escapeHtml(request.id)}"><div class="availability-times"><label>Data inicial <input type="date" name="dataInicio" value="${escapeHtml(saved.dataInicio || cursoInicio || '')}" min="${escapeHtml(cursoInicio || '')}" max="${escapeHtml(dataMaxima || cursoTermino || '')}" required></label><label>Data final <input type="date" name="dataTermino" value="${escapeHtml(saved.dataTermino || cursoTermino || '')}" min="${escapeHtml(cursoInicio || '')}" max="${escapeHtml(dataMaxima || cursoTermino || '')}" required></label><label>Início <input type="time" name="inicio" value="${escapeHtml(saved.horarioInicio || horarioPermitido.inicio)}" min="${horarioPermitido.inicio}" max="${horarioPermitido.termino}" required></label><label>Término <input type="time" name="termino" value="${escapeHtml(saved.horarioTermino || horarioPermitido.termino)}" min="${horarioPermitido.inicio}" max="${horarioPermitido.termino}" required></label><button class="outline-button" type="submit"><i class="fa-solid fa-calendar-check"></i> Confirmar disponibilidade</button></div><p class="availability-feedback" aria-live="polite"></p></form>`;
         card.querySelector('form').addEventListener('submit', event => salvarDisponibilidade(event, request));
         container.appendChild(card);
     });
@@ -201,15 +208,29 @@ async function salvarDisponibilidade(event, request) {
     event.preventDefault();
     const form = event.currentTarget;
     const feedback = form.querySelector('.availability-feedback');
-    const diasSemana = Array.from(form.querySelectorAll('input[name="diaSemana"]:checked')).map(input => Number(input.value));
+    const dataInicio = form.elements.dataInicio.value;
+    const dataTermino = form.elements.dataTermino.value;
     const horarioInicio = form.elements.inicio.value;
     const horarioTermino = form.elements.termino.value;
     feedback.className = 'availability-feedback';
     feedback.textContent = '';
 
-    if (!diasSemana.length || !horarioInicio || !horarioTermino || horarioInicio >= horarioTermino) {
+    if (!dataInicio || !dataTermino || dataInicio > dataTermino || !horarioInicio || !horarioTermino || horarioInicio >= horarioTermino) {
         feedback.classList.add('warning');
-        feedback.textContent = 'Selecione ao menos um dia e informe uma faixa de horário válida.';
+        feedback.textContent = 'Informe datas válidas e um horário dentro do período permitido.';
+        return;
+    }
+
+    const cursoInicio = request.dataInicio || '';
+    const cursoTermino = request.dataTermino || '';
+    const dataMaxima = cursoTermino ? (() => {
+        const data = new Date(`${cursoTermino}T00:00:00`);
+        data.setDate(data.getDate() - 1);
+        return data.toISOString().slice(0, 10);
+    })() : '';
+    if ((cursoInicio && dataInicio < cursoInicio) || (dataMaxima && dataTermino > dataMaxima)) {
+        feedback.classList.add('warning');
+        feedback.textContent = 'As datas devem ficar dentro do período vigente do curso, até o dia anterior ao término.';
         return;
     }
 
@@ -233,9 +254,9 @@ async function salvarDisponibilidade(event, request) {
                 disciplinaId: notification.disciplinaId,
                 disciplinaNome: notification.disciplinaNome,
                 disciplinaKey: notification.disciplinaKey,
-                dataInicio: notification.dataInicio,
-                dataTermino: notification.dataTermino,
-                diasSemana: [...new Set(diasSemana)],
+                dataInicio,
+                dataTermino,
+                diasSemana: [],
                 horarioInicio,
                 horarioTermino,
                 status: 'aguardando_adm',
@@ -246,7 +267,9 @@ async function salvarDisponibilidade(event, request) {
             ...request,
             id: request.id,
             professorId,
-            diasSemana,
+            dataInicio,
+            dataTermino,
+            diasSemana: [],
             horarioInicio,
             horarioTermino,
             status: 'aguardando_adm'
