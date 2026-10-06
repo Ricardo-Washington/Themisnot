@@ -32,10 +32,19 @@ firebase.auth().onAuthStateChanged(async user => {
         const courses = coursesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         const course = localizarCurso(student, courses);
         const grades = gradesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        renderizarBoletim(student, course, grades);
+        let schedules = [];
+        if (student.cursoId && student.turmaId) {
+            const schedulesSnapshot = await db.collection('disponibilidades')
+                .where('cursoId', '==', student.cursoId)
+                .where('turmaId', '==', student.turmaId)
+                .where('status', '==', 'aprovada')
+                .get();
+            schedules = schedulesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        }
+        renderizarBoletim(student, course, grades, schedules);
     } catch (error) {
         console.error('Erro ao carregar boletim:', error);
-        document.getElementById('report-body').innerHTML = '<tr><td colspan="4" class="empty">Não foi possível carregar seu boletim.</td></tr>';
+        document.getElementById('report-body').innerHTML = '<tr><td colspan="5" class="empty">Não foi possível carregar seu boletim.</td></tr>';
     }
 });
 
@@ -44,14 +53,15 @@ function localizarCurso(student, courses) {
     return courses.find(course => course.id.toLowerCase() === cursoAluno || String(course.nome || '').toLowerCase() === cursoAluno) || null;
 }
 
-function renderizarBoletim(student, course, grades) {
+function renderizarBoletim(student, course, grades, schedules) {
     const courseName = course?.nome || student.cursoSolicitado || student.curso || 'Curso não vinculado';
     document.getElementById('student-course').textContent = `Aluno: ${student.nome || 'Estudante'} • Curso: ${courseName}`;
 
     const disciplines = listarDisciplinasDoAluno(student, course);
     const report = disciplines.map(discipline => ({
         ...discipline,
-        record: obterRegistroMaisRecente(grades, discipline.nome, course, student.turmaId)
+        record: obterRegistroMaisRecente(grades, discipline.nome, course, student.turmaId),
+        schedule: localizarHorarioDisciplina(discipline, schedules, student, course)
     }));
 
     document.getElementById('discipline-count').textContent = report.length;
@@ -62,7 +72,7 @@ function renderizarBoletim(student, course, grades) {
     const body = document.getElementById('report-body');
     body.textContent = '';
     if (!report.length) {
-        body.innerHTML = '<tr><td colspan="4" class="empty">Nenhuma disciplina foi vinculada ao seu curso ainda.</td></tr>';
+        body.innerHTML = '<tr><td colspan="5" class="empty">Nenhuma disciplina foi vinculada ao seu curso ainda.</td></tr>';
         return;
     }
 
@@ -74,6 +84,15 @@ function renderizarBoletim(student, course, grades) {
         const name = document.createElement('strong');
         name.textContent = item.nome;
         nameCell.appendChild(name);
+        const scheduleCell = document.createElement('td');
+        scheduleCell.className = 'schedule-cell';
+        const schedule = item.schedule;
+        if (schedule) {
+            const days = formatarDiasSemana(schedule.diasSemana);
+            scheduleCell.textContent = `${schedule.professorNome || item.professorNome || 'Professor'} · ${days} · ${schedule.horarioInicio} às ${schedule.horarioTermino}`;
+        } else {
+            scheduleCell.textContent = 'Aguardando confirmação administrativa';
+        }
         const gradeCell = document.createElement('td');
         gradeCell.textContent = record.nota === undefined || record.nota === null ? '--' : formatarNota(record.nota);
         const absenceCell = document.createElement('td');
@@ -83,9 +102,23 @@ function renderizarBoletim(student, course, grades) {
         statusBadge.className = `status ${status.classe}`;
         statusBadge.textContent = status.texto;
         statusCell.appendChild(statusBadge);
-        row.append(nameCell, gradeCell, absenceCell, statusCell);
+        row.append(nameCell, scheduleCell, gradeCell, absenceCell, statusCell);
         body.appendChild(row);
     });
+}
+
+function localizarHorarioDisciplina(discipline, schedules, student, course) {
+    const courseId = student.cursoId || course?.id || '';
+    const classId = student.turmaId || '';
+    const key = discipline.disciplinaKey || `${courseId}::${classId}::${discipline.nome}`;
+    return schedules.find(schedule => schedule.disciplinaKey === key
+        && Array.isArray(schedule.diasSemana)
+        && schedule.diasSemana.length > 0) || null;
+}
+
+function formatarDiasSemana(days = []) {
+    const nomes = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'];
+    return days.map(day => nomes[Number(day) - 1]).filter(Boolean).join(', ');
 }
 
 function listarDisciplinasDoAluno(student, course) {

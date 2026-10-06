@@ -142,10 +142,6 @@ document.getElementById("alunoForm").addEventListener("submit", async (event) =>
         alert('Curso não encontrado. Selecione um curso cadastrado antes de salvar o aluno.');
         return;
     }
-    if (vinculoAcademico.disciplinasSemProfessor.length) {
-        alert(`A matrícula exige professor responsável em todas as disciplinas. Pendentes: ${vinculoAcademico.disciplinasSemProfessor.join(', ')}.`);
-        return;
-    }
     const { disciplinasSemProfessor, ...vinculoAcademicoPersistido } = vinculoAcademico;
 
     const alunoData = { 
@@ -323,15 +319,61 @@ async function montarVinculoAcademico(cursoInformado, turmaId, dataInicio, dataT
     };
 }
 
+async function criarContaComAppSecundario(email, password, nome, gravarPerfilInicial) {
+    const appName = 'themis-account-registration';
+    const secondaryApp = firebase.apps.find(app => app.name === appName)
+        || firebase.initializeApp(firebase.app().options, appName);
+    const secondaryAuth = firebase.auth(secondaryApp);
+    let credential = null;
+    try {
+        credential = await secondaryAuth.createUserWithEmailAndPassword(email, password);
+        if (nome) await credential.user.updateProfile({ displayName: nome });
+        await gravarPerfilInicial(credential.user.uid, firebase.firestore(secondaryApp));
+        return { uid: credential.user.uid, user: credential.user, secondaryApp };
+    } catch (error) {
+        if (credential?.user) {
+            await firebase.firestore(secondaryApp).collection('usuarios').doc(credential.user.uid).delete().catch(() => {});
+            await credential.user.delete().catch(() => {});
+        }
+        await secondaryAuth.signOut().catch(() => {});
+        if (error.code === 'auth/email-already-in-use') throw new Error('Este e-mail já está cadastrado.');
+        throw error;
+    }
+}
+
 async function criarContaDoAluno(alunoData, password) {
-    const createStudent = firebase.functions().httpsCallable('createStudentAccount');
-    const result = await createStudent({
-        ...alunoData,
-        password,
-        confirmPassword: document.getElementById('confirmPassword').value,
-        confirmEmail: document.getElementById('confirmEmail').value.trim().toLowerCase()
-    });
-    return result.data.uid;
+    const camposAcademicos = [
+        'cursoId', 'cursoSolicitado', 'turmaId', 'disciplinas', 'disciplinasKeys',
+        'disciplinasIds', 'professoresPorDisciplina', 'dataInicio', 'dataTermino', 'turno'
+    ];
+    const perfilBase = Object.fromEntries(Object.entries(alunoData).filter(([campo]) => !camposAcademicos.includes(campo)));
+    const dadosAcademicos = Object.fromEntries(Object.entries(alunoData).filter(([campo]) => camposAcademicos.includes(campo)));
+    const operadorId = firebase.auth().currentUser.uid;
+
+    const { uid, user, secondaryApp } = await criarContaComAppSecundario(alunoData.email, password, alunoData.nome, (novoUid, secondaryDb) =>
+        secondaryDb.collection('usuarios').doc(novoUid).set({
+            ...perfilBase,
+            atribuicao: 'aluno',
+            createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+            dataCadastro: firebase.firestore.FieldValue.serverTimestamp(),
+            cadastradoPor: operadorId
+        })
+    );
+
+    try {
+        await db.collection('usuarios').doc(uid).update({
+            ...dadosAcademicos,
+            rosterAtualizadoEm: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        await window.academicWorkflow.syncStudentRosters(db, uid, { ...alunoData, nome: alunoData.nome });
+    } catch (error) {
+        await firebase.firestore(secondaryApp).collection('usuarios').doc(uid).delete().catch(() => {});
+        await user.delete().catch(() => {});
+        throw error;
+    } finally {
+        await firebase.auth(secondaryApp).signOut().catch(() => {});
+    }
+    return uid;
 }
 
 function configurarCamposDeConta(isNewStudent) {
@@ -957,7 +999,7 @@ if (professorForm) {
                 .flatMap(item => item.cursoIds))];
             if (professorId) {
                 await db.collection('usuarios').doc(professorId).update({ nome });
-                await firebase.functions().httpsCallable('updateTeacherAssignments')({ teacherId: professorId, disciplinasIds });
+                await atualizarDisciplinasDoProfessor(professorId, disciplinasIds);
                 alert('Professor atualizado com sucesso!');
             } else {
                 const senha = document.getElementById('professorPassword').value;
@@ -983,10 +1025,42 @@ if (professorForm) {
     });
 }
 
+async function validarDisciplinasDoCatalogo(disciplinasIds) {
+    const snapshot = await db.collection('disciplinas').get();
+    const catalogo = new Set(snapshot.docs.filter(doc => (doc.data().cursoIds || []).length).map(doc => doc.id));
+    if (!disciplinasIds.length || disciplinasIds.some(id => typeof id !== 'string' || !catalogo.has(id))) {
+        throw new Error('Uma ou mais disciplinas não pertencem ao catálogo de cursos.');
+    }
+}
+
+async function atualizarDisciplinasDoProfessor(teacherId, disciplinasIds) {
+    await validarDisciplinasDoCatalogo(disciplinasIds);
+    await db.collection('usuarios').doc(teacherId).update({
+        disciplinasIds,
+        disciplinas: firebase.firestore.FieldValue.delete(),
+        disciplinasKeys: firebase.firestore.FieldValue.delete()
+    });
+}
+
 async function criarContaDeProfessor(professorData, password) {
-    const createTeacher = firebase.functions().httpsCallable('createTeacherAccount');
-    const result = await createTeacher({ ...professorData, password });
-    return result.data.uid;
+    const nome = professorData.nome.trim();
+    const email = professorData.email.trim().toLowerCase();
+    const disciplinasIds = [...new Set(professorData.disciplinasIds)];
+    await validarDisciplinasDoCatalogo(disciplinasIds);
+    const operadorId = firebase.auth().currentUser.uid;
+
+    const { uid, secondaryApp } = await criarContaComAppSecundario(email, password, nome, async (novoUid) => {
+        await db.collection('usuarios').doc(novoUid).set({
+            nome,
+            email,
+            atribuicao: 'professor',
+            disciplinasIds,
+            createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+            cadastradoPor: operadorId
+        });
+    });
+    await firebase.auth(secondaryApp).signOut().catch(() => {});
+    return uid;
 }
 
 function escapeHtml(value) {

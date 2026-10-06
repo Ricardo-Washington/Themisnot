@@ -21,6 +21,23 @@ let professorDisciplinasIds = [];
 let availabilityRecords = [];
 let availabilityRequests = [];
 
+const weekdays = [
+    { value: 1, label: 'Segunda-feira', short: 'Seg' },
+    { value: 2, label: 'Terça-feira', short: 'Ter' },
+    { value: 3, label: 'Quarta-feira', short: 'Qua' },
+    { value: 4, label: 'Quinta-feira', short: 'Qui' },
+    { value: 5, label: 'Sexta-feira', short: 'Sex' },
+    { value: 6, label: 'Sábado', short: 'Sáb' },
+    { value: 7, label: 'Domingo', short: 'Dom' }
+];
+
+function formatarDiasSemana(days = [], short = false) {
+    return days
+        .map(day => weekdays.find(item => item.value === Number(day))?.[short ? 'short' : 'label'])
+        .filter(Boolean)
+        .join(', ');
+}
+
 function normalizarDisciplinasProfessor(perfil) {
     const rawValues = [
         ...(Array.isArray(perfil.disciplinasIds) ? perfil.disciplinasIds : []),
@@ -125,6 +142,7 @@ async function carregarDadosAcademicos() {
     renderizarResumo();
     renderizarSolicitacoesDisponibilidade();
     renderizarDisciplinas();
+    renderizarAlunosDasTurmas();
 }
 
 function reconstruirDisciplinasPorIds(ids) {
@@ -132,7 +150,10 @@ function reconstruirDisciplinasPorIds(ids) {
         const subject = (course.disciplinas || []).find(item => window.academicWorkflow.subjectId(item) === id);
         if (!subject) return [];
         const nome = typeof subject === 'string' ? subject : subject.nome;
-        const classes = Array.isArray(course.turmas) && course.turmas.length ? course.turmas : [{ id: '' }];
+        const storedClasses = Array.isArray(course.turmas) ? course.turmas : [];
+        const classes = storedClasses.length
+            ? storedClasses.filter(classItem => !['cancelada', 'finalizada'].includes(classItem.status))
+            : [{ id: '' }];
         return classes.map(classItem => ({
             cursoId: course.id,
             cursoNome: course.nome || course.id,
@@ -180,12 +201,62 @@ function renderizarSolicitacoesDisponibilidade() {
         const approved = record.status === 'aprovada' || !record.status;
         confirmation.className = approved ? 'availability-confirmed' : 'availability-pending';
         const status = approved ? 'Aprovada pelo ADM' : 'Aguardando revisão do ADM';
-        confirmation.textContent = `${status} · ${record.cursoNome || 'Curso'} · ${record.disciplinaNome || 'Disciplina'}: ${record.dataInicio} até ${record.dataTermino}, ${record.horarioInicio} às ${record.horarioTermino}`;
+        const days = record.datasDisponiveis?.length ? formatarDatasDisponiveis(record.datasDisponiveis) : formatarDiasSemana(record.diasSemana || [], true);
+        confirmation.textContent = `${status} · ${record.cursoNome || 'Curso'} · Turma ${record.turmaId || 'sem identificação'} · ${record.disciplinaNome || 'Disciplina'}: ${days || 'dias a definir'}, ${record.horarioInicio} às ${record.horarioTermino}`;
         container.appendChild(confirmation);
     });
     if (!availabilityRequests.length) return;
 
+    const gruposPorTurma = new Map();
     availabilityRequests.forEach(request => {
+        const chave = `${request.cursoId || request.cursoNome || ''}::${request.turmaId || ''}`;
+        if (!gruposPorTurma.has(chave)) gruposPorTurma.set(chave, []);
+        gruposPorTurma.get(chave).push(request);
+    });
+    gruposPorTurma.forEach(grupo => {
+        const titulo = document.createElement('h3');
+        titulo.className = 'availability-class-heading';
+        titulo.textContent = `${grupo[0].cursoNome || 'Curso'} · Turma ${grupo[0].turmaId || 'sem identificação'}`;
+        container.appendChild(titulo);
+        grupo.forEach(request => renderizarCartaoDisponibilidade(container, request));
+    });
+}
+
+function formatarDataIso(data) {
+    const mes = String(data.getMonth() + 1).padStart(2, '0');
+    const dia = String(data.getDate()).padStart(2, '0');
+    return `${data.getFullYear()}-${mes}-${dia}`;
+}
+
+function obterDiaSemanaIso(dataIso) {
+    const dia = new Date(`${dataIso}T00:00:00`).getDay();
+    return dia === 0 ? 7 : dia;
+}
+
+function formatarDatasDisponiveis(datas = []) {
+    return datas.map(data => data.split('-').reverse().slice(0, 2).join('/')).join(', ');
+}
+
+function montarCalendarioDisponibilidade(inicio, fim, selecionadas = []) {
+    if (!inicio || !fim || fim < inicio) return '<p class="empty-state">Período do curso indisponível.</p>';
+    const marcadas = new Set(selecionadas);
+    const nomesMeses = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+    const meses = new Map();
+    for (let atual = new Date(`${inicio}T00:00:00`), limite = new Date(`${fim}T00:00:00`); atual <= limite; atual.setDate(atual.getDate() + 1)) {
+        const chave = `${atual.getFullYear()}-${atual.getMonth()}`;
+        if (!meses.has(chave)) meses.set(chave, []);
+        meses.get(chave).push(formatarDataIso(atual));
+    }
+    const cabecalho = weekdays.map(day => `<span class="calendar-weekday">${day.short}</span>`).join('');
+    return `<div class="availability-calendar">${[...meses.values()].map(datas => {
+        const primeira = new Date(`${datas[0]}T00:00:00`);
+        const vazios = '<span></span>'.repeat(obterDiaSemanaIso(datas[0]) - 1);
+        const dias = datas.map(data => `<label class="calendar-day"><input type="checkbox" name="datasDisponiveis" value="${data}" ${marcadas.has(data) ? 'checked' : ''}><span>${Number(data.slice(8))}</span></label>`).join('');
+        return `<div class="calendar-month"><strong>${nomesMeses[primeira.getMonth()]} ${primeira.getFullYear()}</strong><div class="calendar-grid">${cabecalho}${vazios}${dias}</div></div>`;
+    }).join('')}</div>`;
+}
+
+function renderizarCartaoDisponibilidade(container, request) {
         const course = courses.find(item => item.id === request.cursoId || item.nome === request.cursoNome) || {};
         const saved = availabilityRecords.find(item => item.disciplinaKey === request.disciplinaKey) || {};
         const horarioPermitido = obterHorarioPermitido(course);
@@ -194,41 +265,69 @@ function renderizarSolicitacoesDisponibilidade() {
         const dataMaxima = cursoTermino ? (() => {
             const data = new Date(`${cursoTermino}T00:00:00`);
             data.setDate(data.getDate() - 1);
-            return data.toISOString().slice(0, 10);
+            return formatarDataIso(data);
         })() : '';
+        const calendario = montarCalendarioDisponibilidade(cursoInicio, dataMaxima || cursoTermino, saved.datasDisponiveis || []);
         const card = document.createElement('article');
         card.className = 'availability-card';
-        card.innerHTML = `<div class="availability-card-heading"><div><span class="card-kicker">${escapeHtml(request.cursoNome || 'Curso')}</span><h3>${escapeHtml(request.disciplinaNome || 'Disciplina')}</h3><p>Turma ${escapeHtml(request.turmaId || 'sem identificação')} · ${escapeHtml(cursoInicio || '')} até ${escapeHtml(cursoTermino || '')}</p></div></div><form class="availability-form" data-request-id="${escapeHtml(request.id)}"><div class="availability-times"><label>Data inicial <input type="date" name="dataInicio" value="${escapeHtml(saved.dataInicio || cursoInicio || '')}" min="${escapeHtml(cursoInicio || '')}" max="${escapeHtml(dataMaxima || cursoTermino || '')}" required></label><label>Data final <input type="date" name="dataTermino" value="${escapeHtml(saved.dataTermino || cursoTermino || '')}" min="${escapeHtml(cursoInicio || '')}" max="${escapeHtml(dataMaxima || cursoTermino || '')}" required></label><label>Início <input type="time" name="inicio" value="${escapeHtml(saved.horarioInicio || horarioPermitido.inicio)}" min="${horarioPermitido.inicio}" max="${horarioPermitido.termino}" required></label><label>Término <input type="time" name="termino" value="${escapeHtml(saved.horarioTermino || horarioPermitido.termino)}" min="${horarioPermitido.inicio}" max="${horarioPermitido.termino}" required></label><button class="outline-button" type="submit"><i class="fa-solid fa-calendar-check"></i> Confirmar disponibilidade</button></div><p class="availability-feedback" aria-live="polite"></p></form>`;
+        card.innerHTML = `<div class="availability-card-heading"><div><span class="card-kicker">${escapeHtml(request.cursoNome || 'Curso')}</span><h3>${escapeHtml(request.disciplinaNome || 'Disciplina')}</h3><p>Turma ${escapeHtml(request.turmaId || 'sem identificação')} · ${escapeHtml(cursoInicio || '')} até ${escapeHtml(cursoTermino || '')}</p></div></div><form class="availability-form" data-request-id="${escapeHtml(request.id)}"><fieldset><legend>Selecione os dias do calendário em que pode lecionar</legend>${calendario}</fieldset><div class="availability-times"><label>Início <input type="time" name="inicio" value="${escapeHtml(saved.horarioInicio || horarioPermitido.inicio)}" min="${horarioPermitido.inicio}" max="${horarioPermitido.termino}" required></label><label>Término <input type="time" name="termino" value="${escapeHtml(saved.horarioTermino || horarioPermitido.termino)}" min="${horarioPermitido.inicio}" max="${horarioPermitido.termino}" required></label><button class="outline-button" type="submit">        <i class="fa-solid fa-calendar-check"></i> Confirmar disponibilidade</button><button class="outline-button decline-availability" type="button"><i class="fa-solid fa-ban"></i> Não poderei lecionar</button></div><p class="availability-feedback" aria-live="polite"></p></form>`;
         card.querySelector('form').addEventListener('submit', event => salvarDisponibilidade(event, request));
+                card.querySelector('.decline-availability').addEventListener('click', event => recusarSolicitacaoDisponibilidade(event, request));
         container.appendChild(card);
-    });
+}
+
+async function recusarSolicitacaoDisponibilidade(event, request) {
+    const button = event.currentTarget;
+    const feedback = button.closest('form').querySelector('.availability-feedback');
+    const motivo = prompt(`Não poderá lecionar ${request.disciplinaNome || 'esta disciplina'} (Turma ${request.turmaId || 'sem identificação'})? Informe o motivo (opcional) e confirme para avisar o ADM.`);
+    if (motivo === null) return;
+
+    button.disabled = true;
+    feedback.className = 'availability-feedback';
+    feedback.textContent = '';
+    try {
+        await db.collection('notificacoes').doc(request.id).update({
+            status: 'recusada',
+            motivoRecusa: motivo.trim().slice(0, 300),
+            recusadaEm: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        availabilityRequests = availabilityRequests.filter(item => item.id !== request.id);
+        renderizarSolicitacoesDisponibilidade();
+    } catch (error) {
+        console.error('Erro ao recusar solicitação:', error);
+        button.disabled = false;
+        feedback.classList.add('warning');
+        feedback.textContent = 'Não foi possível avisar o ADM. Tente novamente.';
+    }
 }
 
 async function salvarDisponibilidade(event, request) {
     event.preventDefault();
     const form = event.currentTarget;
     const feedback = form.querySelector('.availability-feedback');
-    const dataInicio = form.elements.dataInicio.value;
-    const dataTermino = form.elements.dataTermino.value;
+    const dataInicio = request.dataInicio || '';
+    const dataTermino = request.dataTermino || '';
     const horarioInicio = form.elements.inicio.value;
     const horarioTermino = form.elements.termino.value;
+    const datasDisponiveis = Array.from(form.querySelectorAll('input[name="datasDisponiveis"]:checked'))
+        .map(input => input.value)
+        .sort();
+    const diasSemana = [...new Set(datasDisponiveis.map(obterDiaSemanaIso))].sort((a, b) => a - b);
     feedback.className = 'availability-feedback';
     feedback.textContent = '';
 
-    if (!dataInicio || !dataTermino || dataInicio > dataTermino || !horarioInicio || !horarioTermino || horarioInicio >= horarioTermino) {
+    if (!datasDisponiveis.length || !dataInicio || !dataTermino || dataInicio > dataTermino || !horarioInicio || !horarioTermino || horarioInicio >= horarioTermino) {
         feedback.classList.add('warning');
-        feedback.textContent = 'Informe datas válidas e um horário dentro do período permitido.';
+        feedback.textContent = 'Selecione ao menos um dia do calendário e informe horários válidos.';
         return;
     }
 
-    const cursoInicio = request.dataInicio || '';
-    const cursoTermino = request.dataTermino || '';
-    const dataMaxima = cursoTermino ? (() => {
-        const data = new Date(`${cursoTermino}T00:00:00`);
+    const dataMaxima = dataTermino ? (() => {
+        const data = new Date(`${dataTermino}T00:00:00`);
         data.setDate(data.getDate() - 1);
-        return data.toISOString().slice(0, 10);
+        return formatarDataIso(data);
     })() : '';
-    if ((cursoInicio && dataInicio < cursoInicio) || (dataMaxima && dataTermino > dataMaxima)) {
+    if (datasDisponiveis.some(data => data < dataInicio || (dataMaxima && data > dataMaxima))) {
         feedback.classList.add('warning');
         feedback.textContent = 'As datas devem ficar dentro do período vigente do curso, até o dia anterior ao término.';
         return;
@@ -248,6 +347,7 @@ async function salvarDisponibilidade(event, request) {
             const notification = notificationSnapshot.data();
             transaction.set(availabilityRef, {
                 professorId,
+                professorNome: professorPerfil.nome || professorPerfil.nomeCompleto || professorPerfil.email || professorId,
                 cursoId: notification.cursoId,
                 cursoNome: notification.cursoNome,
                 turmaId: notification.turmaId || '',
@@ -256,7 +356,9 @@ async function salvarDisponibilidade(event, request) {
                 disciplinaKey: notification.disciplinaKey,
                 dataInicio,
                 dataTermino,
-                diasSemana: [],
+                diasSemana,
+                diasDisponiveis: diasSemana,
+                datasDisponiveis,
                 horarioInicio,
                 horarioTermino,
                 status: 'aguardando_adm',
@@ -269,7 +371,8 @@ async function salvarDisponibilidade(event, request) {
             professorId,
             dataInicio,
             dataTermino,
-            diasSemana: [],
+            diasSemana,
+            datasDisponiveis,
             horarioInicio,
             horarioTermino,
             status: 'aguardando_adm'
@@ -294,10 +397,27 @@ function enriquecerDisciplina(assignment) {
     const courseDate = assignment.dataInicio || turma?.dataInicio || course?.dataInicio || course?.dataTurma || course?.proximaTurma || 'Data a definir';
     const endDate = assignment.dataTermino || turma?.dataTermino || turma?.dataFim || course?.dataTermino || course?.dataFim || 'Data a definir';
     const shift = assignment.turno || turma?.turno || course?.turno || '';
-    const day = assignment.diaSemana || assignment.dia || course?.diaSemana || course?.dia || '';
-    const time = assignment.horario || turma?.horario || course?.horario || '';
     const key = `${assignment.cursoId || course?.id || courseName}::${turmaId || 'sem-turma'}::${assignment.nome}`;
-    return { ...assignment, key, cursoId: assignment.cursoId || course?.id || '', cursoNome: courseName, turmaId, dataCurso: courseDate, dataTermino: endDate, turno: shift, diaSemana: day, horario: time };
+    const scheduled = availabilityRecords.find(record => record.disciplinaKey === key
+        && (record.status === 'aprovada' || !record.status));
+    const day = scheduled
+        ? formatarDiasSemana(scheduled.diasSemana || [], true)
+        : assignment.diaSemana || assignment.dia || course?.diaSemana || course?.dia || '';
+    const time = scheduled
+        ? `${scheduled.horarioInicio} às ${scheduled.horarioTermino}`
+        : assignment.horario || turma?.horario || course?.horario || '';
+    return {
+        ...assignment,
+        key,
+        cursoId: assignment.cursoId || course?.id || '',
+        cursoNome: courseName,
+        turmaId,
+        dataCurso: courseDate,
+        dataTermino: endDate,
+        turno: shift,
+        diaSemana: day,
+        horario: time
+    };
 }
 
 function renderizarResumo() {
@@ -368,6 +488,63 @@ function renderizarDisciplinas() {
     tabs.appendChild(tabList);
     tabs.appendChild(panels);
     grid.appendChild(tabs);
+}
+
+function renderizarAlunosDasTurmas() {
+    const container = document.getElementById('class-student-rosters');
+    if (!container) return;
+    container.replaceChildren();
+
+    const assignmentKeys = new Set(assignments.map(assignment => assignment.key));
+    const rosters = new Map();
+    students.forEach(student => {
+        if (!assignmentKeys.has(student.disciplinaKey) || !student.id) return;
+        const courseId = student.cursoId || '';
+        const classId = String(student.turmaId || '');
+        const rosterKey = JSON.stringify([courseId, classId]);
+        const roster = rosters.get(rosterKey) || {
+            cursoNome: String(student.cursoNome || courses.find(course => course.id === courseId)?.nome || courseId || 'Curso'),
+            turmaId: classId,
+            alunos: new Map()
+        };
+        roster.alunos.set(student.id, String(student.alunoNome || 'Aluno sem nome'));
+        rosters.set(rosterKey, roster);
+    });
+
+    if (!rosters.size) {
+        const empty = document.createElement('div');
+        empty.className = 'empty-state';
+        empty.textContent = assignments.length
+            ? 'Nenhum aluno está cadastrado nas turmas das disciplinas que você leciona.'
+            : 'Nenhuma turma vinculada às suas disciplinas foi encontrada.';
+        container.appendChild(empty);
+        return;
+    }
+
+    [...rosters.values()]
+        .sort((first, second) => first.cursoNome.localeCompare(second.cursoNome, 'pt-BR')
+            || first.turmaId.localeCompare(second.turmaId, 'pt-BR'))
+        .forEach(roster => {
+            const details = document.createElement('details');
+            details.className = 'class-student-roster';
+
+            const summary = document.createElement('summary');
+            const className = roster.turmaId ? `Turma ${roster.turmaId}` : 'Turma sem identificação';
+            summary.textContent = `${roster.cursoNome} · ${className} · ${roster.alunos.size} aluno(s)`;
+
+            const list = document.createElement('ul');
+            list.className = 'class-student-list';
+            [...roster.alunos.values()]
+                .sort((first, second) => first.localeCompare(second, 'pt-BR'))
+                .forEach(studentName => {
+                    const item = document.createElement('li');
+                    item.textContent = studentName;
+                    list.appendChild(item);
+                });
+
+            details.append(summary, list);
+            container.appendChild(details);
+        });
 }
 
 function selecionarDisciplina(assignment) {

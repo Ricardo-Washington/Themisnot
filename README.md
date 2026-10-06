@@ -38,7 +38,7 @@ Ao fazer o primeiro acesso, o sistema pode abrir um modal para completar os dado
 Os produtos são carregados dinamicamente a partir da coleção produtos do Firestore.
 
 ### Carrinho e pagamento
-Os itens adicionados ao carrinho são armazenados no localStorage. O fluxo de pagamento utiliza uma API local em Flask para criar preferências de pagamento no Mercado Pago.
+Os itens adicionados ao carrinho são armazenados no localStorage. A integração atual com o Mercado Pago usa uma API local em Flask apenas para desenvolvimento e testes. **Não use o fluxo atual para receber pagamentos reais nem o publique em produção**: o backend ainda precisa de autenticação, consulta de preços confiáveis no servidor, persistência de pedidos e confirmação de pagamento por webhook verificado.
 
 ## Como executar localmente
 ### 1. Pré-requisitos
@@ -66,7 +66,7 @@ http://localhost:8000/index/index.html
 ```
 
 ### 4. Rodar o backend de pagamento
-No diretório do projeto, instale as dependências do Python:
+Para testes locais do checkout, configure as variáveis listadas em `.env.example` e instale as dependências do Python:
 
 ```bash
 pip install flask flask-cors mercadopago
@@ -78,7 +78,7 @@ Em seguida, inicie o servidor:
 python cart/apimercadopago.py
 ```
 
-O backend ficará disponível em:
+O backend ficará disponível localmente em:
 
 ```text
 http://127.0.0.1:5000
@@ -90,8 +90,9 @@ O sistema utiliza, principalmente, as coleções:
 - produtos: catálogo de produtos disponíveis para venda
 
 ## Observações importantes
-- Os links de retorno do Mercado Pago no backend apontam para o ambiente local. Para uso em produção, é necessário ajustar essas URLs.
-- O projeto depende de uma conexão funcional com o Firebase e do servidor Flask para o fluxo de pagamento.
+- O checkout é somente para desenvolvimento/testes e não está pronto para produção; alterar apenas as URLs de retorno não é suficiente para torná-lo seguro.
+- Nunca versione segredos, como o token de acesso do Mercado Pago. Use variáveis de ambiente ou um gerenciador de segredos no servidor.
+- O projeto depende de uma conexão funcional com o Firebase e do servidor Flask local para testar o fluxo de pagamento.
 - Para fins acadêmicos, esta documentação pode ser adaptada para a apresentação do TCC com mais detalhes de arquitetura, fluxo de usuário e justificativa técnica.
 
 ## Sugestão de uso para o TCC

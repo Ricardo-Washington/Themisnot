@@ -115,7 +115,7 @@
         const id = subjectId(subject);
         if (!name || !assignedIds.includes(id)) return;
         classes.forEach(classItem => {
-          if (classItem.status === 'finalizada') return;
+          if (['cancelada', 'finalizada'].includes(classItem.status)) return;
           const classId = classItem.id || classItem.turmaId || '';
           const dataInicio = classItem.dataInicio || course.dataInicio || '';
           const dataTermino = classItem.dataTermino || classItem.dataFim || course.dataTermino || course.dataFim || '';
@@ -158,21 +158,39 @@
   }
 
   async function buildStudentDisciplineLinks(db, course, classId) {
-    const snapshot = await db.collection('usuarios').where('atribuicao', '==', 'professor').get();
+    const [snapshot, availabilitySnapshot] = await Promise.all([
+      db.collection('usuarios').where('atribuicao', '==', 'professor').get(),
+      db.collection('disponibilidades')
+        .where('cursoId', '==', course.id)
+        .where('turmaId', '==', classId)
+        .get()
+    ]);
     const teachers = [];
     snapshot.forEach(professorDoc => {
       const profile = professorDoc.data() || {};
-      teachers.push({ id: professorDoc.id, disciplineIds: teacherDisciplineIds(profile) });
+      teachers.push({
+        id: professorDoc.id,
+        nome: profile.nome || profile.nomeCompleto || profile.email || professorDoc.id,
+        disciplineIds: teacherDisciplineIds(profile)
+      });
     });
+    const approvedSchedules = new Map(availabilitySnapshot.docs
+      .map(doc => ({ id: doc.id, ...doc.data() }))
+      .filter(record => (!record.status || record.status === 'aprovada')
+        && Array.isArray(record.diasSemana)
+        && record.diasSemana.length)
+      .map(record => [record.disciplinaKey, record]));
 
     const disciplines = (Array.isArray(course.disciplinas) ? course.disciplinas : [])
       .filter(item => typeof item === 'string' ? item : item?.nome)
       .map(subject => {
         const name = typeof subject === 'string' ? subject : subject.nome;
         const id = subjectId(subject);
-        const assignedTeachers = teachers.filter(teacher => teacher.disciplineIds.includes(id));
-        const teacher = assignedTeachers.length ? assignedTeachers[0] : null;
         const key = disciplineKey(course.id, classId, name);
+        const schedule = approvedSchedules.get(key);
+        const teacher = schedule
+          ? teachers.find(item => item.id === schedule.professorId && item.disciplineIds.includes(id))
+          : null;
         return {
           nome: name,
           disciplinaId: id,
@@ -180,13 +198,19 @@
           cursoNome: course.nome || course.id,
           turmaId: classId || '',
           disciplinaKey: key,
-          professorId: teacher?.id || ''
+          professorId: teacher?.id || '',
+          professorNome: teacher?.nome || schedule?.professorNome || '',
+          diasSemana: schedule?.diasSemana || [],
+          horarioInicio: schedule?.horarioInicio || '',
+          horarioTermino: schedule?.horarioTermino || ''
         };
       });
 
     return {
       disciplines,
-      missing: disciplines.length ? disciplines.filter(item => !item.professorId).map(item => item.nome) : ['Nenhuma disciplina cadastrada']
+      missing: disciplines.length
+        ? disciplines.filter(item => !item.professorId).map(item => item.nome)
+        : ['Nenhuma disciplina cadastrada']
     };
   }
 
@@ -206,6 +230,7 @@
         alunoId: studentId,
         alunoNome: student.nome || 'Aluno',
         professorId: item.professorId,
+        professorNome: item.professorNome || '',
         cursoId: item.cursoId,
         cursoNome: item.cursoNome || '',
         turmaId: item.turmaId || '',
@@ -221,10 +246,11 @@
   }
 
   async function syncCourseStudentTeachers(db, courseId) {
-    const [courseDoc, studentsSnapshot, teachersSnapshot] = await Promise.all([
+    const [courseDoc, studentsSnapshot, teachersSnapshot, availabilitySnapshot] = await Promise.all([
       db.collection('cursos').doc(courseId).get(),
       db.collection('usuarios').where('cursoId', '==', courseId).get(),
-      db.collection('usuarios').where('atribuicao', '==', 'professor').get()
+      db.collection('usuarios').where('atribuicao', '==', 'professor').get(),
+      db.collection('disponibilidades').where('cursoId', '==', courseId).get()
     ]);
     if (!courseDoc.exists) return;
     const course = { id: courseDoc.id, ...courseDoc.data() };
@@ -233,6 +259,10 @@
       id: doc.id,
       disciplineIds: teacherDisciplineIds(doc.data())
     }));
+    const approvedSchedules = new Map(availabilitySnapshot.docs
+      .map(doc => ({ id: doc.id, ...doc.data() }))
+      .filter(record => !record.status || record.status === 'aprovada')
+      .map(record => [record.disciplinaKey, record]));
     await Promise.all(studentsSnapshot.docs.filter(doc => ['aluno', 'Aluno'].includes(doc.data().atribuicao)).map(async studentDoc => {
       const student = studentDoc.data() || {};
       const classId = student.turmaId || '';
@@ -242,14 +272,23 @@
           const name = typeof subject === 'string' ? subject : subject.nome;
           const id = subjectId(subject);
           const matches = teachers.filter(teacher => teacher.disciplineIds.includes(id));
+          const key = disciplineKey(courseId, classId, name);
+          const schedule = approvedSchedules.get(key);
+          const teacher = schedule
+            ? matches.find(item => item.id === schedule.professorId)
+            : null;
           return {
             nome: name,
             disciplinaId: id,
             cursoId: courseId,
             cursoNome: course.nome || courseId,
             turmaId: classId,
-            disciplinaKey: disciplineKey(courseId, classId, name),
-            professorId: matches.length ? matches[0].id : ''
+            disciplinaKey: key,
+            professorId: teacher?.id || '',
+            professorNome: schedule?.professorNome || '',
+            diasSemana: schedule?.diasSemana || [],
+            horarioInicio: schedule?.horarioInicio || '',
+            horarioTermino: schedule?.horarioTermino || ''
           };
         });
       const profileUpdate = {

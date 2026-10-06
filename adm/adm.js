@@ -155,6 +155,11 @@ disciplineFilterProfessor?.addEventListener('change', () => {
   renderizarDisciplinasCadastradas();
 });
 
+const studentFilterCourse = document.getElementById('studentFilterCourse');
+const studentFilterProfessor = document.getElementById('studentFilterProfessor');
+studentFilterCourse?.addEventListener('change', renderizarAlunosPorCursoProfessor);
+studentFilterProfessor?.addEventListener('change', renderizarAlunosPorCursoProfessor);
+
 // A função principal para buscar e separar os dados
 function findUsers() {
   firebase.firestore()
@@ -212,8 +217,19 @@ function findUsers() {
         await Promise.all(coursesNeedingRosterSync.map(courseId =>
           window.academicWorkflow.syncCourseStudentTeachers(firebase.firestore(), courseId)
         ));
+        cursosList = courses;
+        await renderizarDisciplinasCadastradas();
+        popularFiltrosAlunosPorCursoProfessor();
+        renderizarAlunosPorCursoProfessor();
       } catch (error) {
         console.error('As listas ADM foram carregadas, mas a migração acadêmica falhou:', error);
+        const listaAlunos = document.getElementById('studentsByCourseProfessor');
+        if (listaAlunos) {
+          const item = document.createElement('li');
+          item.className = 'item';
+          item.textContent = 'Não foi possível carregar os cursos, professores ou disciplinas para gerar a lista.';
+          listaAlunos.replaceChildren(item);
+        }
       }
     })
     .catch(error => {
@@ -237,19 +253,77 @@ async function fetchTeacherAvailabilities(users) {
       .map(user => [user.id, user.nome || user.nomeCompleto || user.email || user.id]));
     const records = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
     renderTeacherAvailabilities(container, records, professorNames);
+    await renderDeclinedAvailabilityRequests(professorNames);
   } catch (error) {
     console.error('Erro ao carregar disponibilidades dos professores:', error);
     container.innerHTML = '<p class="item">Não foi possível carregar as disponibilidades. Verifique as permissões e tente novamente.</p>';
   }
 }
 
+async function renderDeclinedAvailabilityRequests(professorNames) {
+  const container = document.getElementById('availability-declined-list');
+  if (!container) return;
+  container.textContent = '';
+  const snapshot = await db.collection('notificacoes').where('status', '==', 'recusada').get();
+  snapshot.docs.forEach(doc => {
+    const request = doc.data();
+    if (request.tipo !== 'solicitar_disponibilidade') return;
+    const item = document.createElement('div');
+    item.className = 'item availability-declined';
+    const professor = professorNames.get(request.professorId) || request.professorId;
+    const text = document.createElement('span');
+    text.textContent = `${professor} não poderá lecionar ${request.disciplinaNome || 'a disciplina'} — ${request.cursoNome || 'Curso'}, Turma ${request.turmaId || 'sem identificação'}.${request.motivoRecusa ? ` Motivo: ${request.motivoRecusa}` : ''}`;
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.textContent = 'Ciente';
+    button.addEventListener('click', async () => {
+      button.disabled = true;
+      try {
+        await doc.ref.update({ status: 'recusada_ciente' });
+        item.remove();
+      } catch (error) {
+        console.error('Erro ao marcar recusa como vista:', error);
+        button.disabled = false;
+        showToast('Não foi possível atualizar a recusa.', 'error');
+      }
+    });
+    item.append(text, button);
+    container.appendChild(item);
+  });
+}
+
 function teacherAvailabilityApproved(record) {
   return !record.status || record.status === 'aprovada';
 }
 
+const availabilityWeekdays = [
+  { value: 1, label: 'Segunda-feira' },
+  { value: 2, label: 'Terça-feira' },
+  { value: 3, label: 'Quarta-feira' },
+  { value: 4, label: 'Quinta-feira' },
+  { value: 5, label: 'Sexta-feira' },
+  { value: 6, label: 'Sábado' },
+  { value: 7, label: 'Domingo' }
+];
+
+function formatAvailabilityDays(days = []) {
+  return days
+    .map(day => availabilityWeekdays.find(item => item.value === Number(day))?.label)
+    .filter(Boolean)
+    .join(', ');
+}
+
+function availabilityDaysOverlap(first, second) {
+  const firstDays = Array.isArray(first.diasSemana) ? first.diasSemana : [];
+  const secondDays = Array.isArray(second.diasSemana) ? second.diasSemana : [];
+  return !firstDays.length || !secondDays.length || firstDays.some(day => secondDays.includes(day));
+}
+
 function teacherAvailabilityOverlaps(first, second) {
   return first.cursoId === second.cursoId
+    && (first.turmaId === second.turmaId || first.professorId === second.professorId)
     && dataRangesOverlap(first, second)
+    && availabilityDaysOverlap(first, second)
     && first.horarioInicio < second.horarioTermino
     && first.horarioTermino > second.horarioInicio;
 }
@@ -282,16 +356,31 @@ function renderTeacherAvailabilities(container, records, professorNames) {
     const conflictMessage = conflicts.length
       ? `Conflito com ${conflicts.map(item => professorNames.get(item.professorId) || 'outro professor').join(', ')}.`
       : 'Sem conflito de horário detectado.';
+    const submittedDays = Array.isArray(record.diasDisponiveis)
+      ? record.diasDisponiveis
+      : Array.isArray(record.diasSemana) ? record.diasSemana : [];
+    const selectedDays = Array.isArray(record.diasSemana) ? record.diasSemana : [];
+    const dayOptions = availabilityWeekdays.map(day => `
+      <label>
+        <input type="checkbox" name="diasSemana" value="${day.value}" ${selectedDays.includes(day.value) ? 'checked' : ''} ${submittedDays.length && !submittedDays.includes(day.value) ? 'disabled' : ''}>
+        ${day.label}
+      </label>`).join('');
     article.innerHTML = `
       <div class="availability-admin-heading">
         <div>
           <span class="availability-status ${approved ? 'approved' : 'pending'}">${status}</span>
           <h3>${escapeHtml(professorNames.get(record.professorId) || 'Professor não identificado')}</h3>
           <p>${escapeHtml(record.cursoNome || 'Curso')} · Turma ${escapeHtml(record.turmaId || 'sem identificação')} · ${escapeHtml(record.disciplinaNome || 'Disciplina')}</p>
+          <p>Disponibilidade informada: ${escapeHtml(formatAvailabilityDays(submittedDays) || 'dias não informados')} · ${escapeHtml(record.horarioInicio || '--')} às ${escapeHtml(record.horarioTermino || '--')}</p>
         </div>
         <p class="availability-conflict-message">${escapeHtml(conflictMessage)}</p>
       </div>
       <form class="availability-admin-form" data-availability-id="${escapeHtml(record.id)}">
+        <fieldset>
+          <legend>Dias em que o professor pode lecionar</legend>
+          <div class="availability-admin-days">${dayOptions}</div>
+          <p class="discipline-help">Marque os dias finais da turma entre as disponibilidades informadas.</p>
+        </fieldset>
         <div class="availability-admin-fields">
           <label>Data de início<input type="date" name="dataInicio" value="${escapeHtml(record.dataInicio || '')}" required></label>
           <label>Data de término<input type="date" name="dataTermino" value="${escapeHtml(record.dataTermino || '')}" required></label>
@@ -319,10 +408,12 @@ async function revisarDisponibilidadeProfessor(event) {
   const horarioTermino = form.elements.horarioTermino.value;
   const dataInicio = form.elements.dataInicio.value;
   const dataTermino = form.elements.dataTermino.value;
+  const diasSemana = Array.from(form.querySelectorAll('input[name="diasSemana"]:checked'))
+    .map(input => Number(input.value));
   feedback.textContent = '';
 
-  if (horarioInicio >= horarioTermino || dataInicio > dataTermino) {
-    feedback.textContent = 'Revise os horários e datas informados.';
+  if (!diasSemana.length || horarioInicio >= horarioTermino || dataInicio > dataTermino) {
+    feedback.textContent = 'Selecione ao menos um dia e revise os horários e datas informados.';
     return;
   }
 
@@ -336,6 +427,15 @@ async function revisarDisponibilidadeProfessor(event) {
     const courseAvailabilityRefs = courseSnapshot.docs
       .filter(doc => doc.id !== availabilityId)
       .map(doc => doc.ref);
+    const currentSnapshot = await availabilityRef.get();
+    const currentData = currentSnapshot.exists ? currentSnapshot.data() : null;
+    const relatedNotificationRefs = currentData && (action === 'approve' || teacherAvailabilityApproved(currentData))
+      ? (await db.collection('notificacoes')
+        .where('cursoId', '==', currentData.cursoId)
+        .where('disciplinaKey', '==', currentData.disciplinaKey)
+        .where('status', '==', 'pendente')
+        .get()).docs.map(doc => doc.ref)
+      : [];
 
     await db.runTransaction(async transaction => {
       const availabilitySnapshot = await transaction.get(availabilityRef);
@@ -343,13 +443,19 @@ async function revisarDisponibilidadeProfessor(event) {
         throw new Error('Esta disponibilidade não existe mais. Atualize a página.');
       }
       const current = availabilitySnapshot.data();
+      const availableDays = Array.isArray(current.diasDisponiveis)
+        ? current.diasDisponiveis
+        : Array.isArray(current.diasSemana) ? current.diasSemana : [];
+      if (availableDays.length && diasSemana.some(day => !availableDays.includes(day))) {
+        throw new Error('A administração só pode confirmar dias informados pelo professor.');
+      }
       const courseAvailabilitySnapshots = await Promise.all(
         courseAvailabilityRefs.map(ref => transaction.get(ref))
       );
       const approved = action === 'approve' || teacherAvailabilityApproved(current);
       const updated = {
         ...current,
-        diasSemana: [],
+        diasSemana,
         horarioInicio,
         horarioTermino,
         dataInicio,
@@ -359,13 +465,19 @@ async function revisarDisponibilidadeProfessor(event) {
         .filter(snapshot => snapshot.exists)
         .map(snapshot => snapshot.data())
         .find(existing => teacherAvailabilityApproved(existing)
-          && teacherAvailabilityOverlaps(updated, existing));
+          && (existing.disciplinaKey === current.disciplinaKey
+            || teacherAvailabilityOverlaps(updated, existing)));
       if (conflictingRecord) {
-        throw new Error('Este horário conflita com outra disponibilidade aprovada para o mesmo curso.');
+        throw new Error('Esta disciplina já tem um professor aprovado ou o horário conflita com outra aula do curso.');
       }
 
+      const relatedNotifications = approved
+        ? (await Promise.all(relatedNotificationRefs.map(ref => transaction.get(ref))))
+          .filter(snapshot => snapshot.exists && snapshot.data().status === 'pendente')
+        : [];
+
       transaction.update(availabilityRef, {
-        diasSemana: [],
+        diasSemana,
         horarioInicio,
         horarioTermino,
         dataInicio,
@@ -377,14 +489,7 @@ async function revisarDisponibilidadeProfessor(event) {
       });
 
       if (approved) {
-        const relatedNotifications = await transaction.get(
-          db.collection('notificacoes')
-            .where('cursoId', '==', current.cursoId)
-            .where('disciplinaKey', '==', current.disciplinaKey)
-            .where('status', '==', 'pendente')
-        );
-
-        relatedNotifications.docs
+        relatedNotifications
           .filter(doc => doc.id !== availabilityId && doc.data().professorId !== current.professorId)
           .forEach(doc => {
             transaction.update(doc.ref, {
@@ -396,7 +501,21 @@ async function revisarDisponibilidadeProfessor(event) {
       }
 
     });
-    showToast(action === 'approve' ? 'Disponibilidade aprovada e horário reservado.' : 'Alterações salvas.', 'success');
+    let rosterSyncError = null;
+    if (action === 'approve') {
+      try {
+        await window.academicWorkflow.syncCourseStudentTeachers(db, form.closest('.availability-admin-item').dataset.courseId);
+      } catch (error) {
+        rosterSyncError = error;
+        console.error('Horário aprovado, mas não foi possível atualizar os vínculos dos alunos:', error);
+      }
+    }
+    if (rosterSyncError) {
+      feedback.textContent = 'Horário aprovado, mas não foi possível atualizar os vínculos dos alunos. Tente sincronizar novamente.';
+      showToast(feedback.textContent, 'error');
+    } else {
+      showToast(action === 'approve' ? 'Disponibilidade aprovada e horário reservado.' : 'Alterações salvas.', 'success');
+    }
     fetchTeacherAvailabilities([
       ...usuariosFuncionarios,
       ...usuariosProfessores,
@@ -435,6 +554,7 @@ function fetchCursos() {//busca os cursos no fire base
         initCursos();
       } else {
         renderizarCursos('dadoscursos', cursosList);//renderiza os cursos
+        renderizarTurmasEmVigor(cursosList);
         try {
           await sincronizarDisciplinasPadrao(cursosList);
           const latestSnapshot = await firebase.firestore().collection('cursos').get();
@@ -448,6 +568,7 @@ function fetchCursos() {//busca os cursos no fire base
             }))
           }));
           renderizarCursos('dadoscursos', cursosList);
+          renderizarTurmasEmVigor(cursosList);
           await renderizarDisciplinasCadastradas();
         } catch (error) {
           console.error('Cursos exibidos sem concluir a sincronização de disciplinas:', error);
@@ -458,6 +579,35 @@ function fetchCursos() {//busca os cursos no fire base
       console.error("Erro ao buscar cursos: ", error);//tratamento de erro 
       mostrarEstadoLista('dadoscursos', 'Não foi possível carregar cursos. Verifique a conexão e as permissões do Firestore.');
     });
+}
+
+function renderizarTurmasEmVigor(cursos) {
+  const lista = document.getElementById('turmasEmVigor');
+  if (!lista) return;
+  lista.innerHTML = '';
+
+  const formatarData = valor => valor ? valor.split('-').reverse().join('/') : '-';
+  const turmasAtivas = [];
+  cursos.filter(curso => curso.status === 'em_vigor').forEach(curso => {
+    (Array.isArray(curso.turmas) ? curso.turmas : [])
+      .filter(turma => !['cancelada', 'finalizada'].includes(turma.status))
+      .forEach(turma => turmasAtivas.push({ curso, turma }));
+  });
+
+  if (!turmasAtivas.length) {
+    const vazio = document.createElement('li');
+    vazio.className = 'item';
+    vazio.textContent = 'Nenhuma turma em vigor.';
+    lista.appendChild(vazio);
+    return;
+  }
+
+  turmasAtivas.forEach(({ curso, turma }) => {
+    const item = document.createElement('li');
+    item.className = 'item';
+    item.textContent = `${curso.nome || curso.id} — Turma ${turma.id || turma.turmaId} | Turno: ${turma.turno || '-'} | ${formatarData(turma.dataInicio)} a ${formatarData(turma.dataTermino)}`;
+    lista.appendChild(item);
+  });
 }
 
 function mostrarEstadoLista(idDaLista, mensagem) {
@@ -746,7 +896,12 @@ function renderizarCursos(idDaLista, dados) {
           showToast('Erro ao retirar curso da vigência: ' + error.message, 'error');
         }
       });
-      li.appendChild(removeVigorButton);
+      const startNewClassButton = document.createElement('button');
+      startNewClassButton.type = 'button';
+      startNewClassButton.classList.add('details-button');
+      startNewClassButton.textContent = 'Iniciar nova turma';
+      startNewClassButton.addEventListener('click', () => openModal('curso', curso.id, true));
+      li.append(removeVigorButton, startNewClassButton);
     }
 
     if (curso.status !== 'em_vigor' && curso.status !== 'finalizado') {
@@ -828,22 +983,101 @@ function renderizarCursos(idDaLista, dados) {
   aplicarBuscaAdm();
 }
 
-async function limparDisponibilidadesDoCurso(courseId) {
+async function limparDisponibilidadesDoCurso(courseId, turmaId = null) {
   const [availabilitySnapshot, notificationSnapshot] = await Promise.all([
     db.collection('disponibilidades').where('cursoId', '==', courseId).get(),
     db.collection('notificacoes').where('cursoId', '==', courseId).get()
   ]);
+  const daTurma = doc => turmaId === null || (doc.data()?.turmaId || '') === turmaId;
 
   await Promise.all([
-    ...availabilitySnapshot.docs.map(doc => doc.ref.delete()),
+    ...availabilitySnapshot.docs.filter(daTurma).map(doc => doc.ref.delete()),
     ...notificationSnapshot.docs
+      .filter(daTurma)
       .filter(doc => doc.data()?.status !== 'cancelada')
       .map(doc => doc.ref.update({
         status: 'cancelada',
         canceladaEm: firebase.firestore.FieldValue.serverTimestamp(),
-        motivoCancelamento: 'Curso removido da vigência.'
+        motivoCancelamento: turmaId === null ? 'Curso removido da vigência.' : 'Datas da turma adiadas.'
       }))
   ]);
+}
+
+async function adiarTurmaDoCurso(courseId, turmaId, novoInicio, novoTermino) {
+  const courseRef = db.collection('cursos').doc(courseId);
+  const courseSnapshot = await courseRef.get();
+  if (!courseSnapshot.exists) throw new Error('Curso não encontrado.');
+  const course = { id: courseSnapshot.id, ...courseSnapshot.data() };
+  if (course.status !== 'em_vigor') throw new Error('Só é possível adiar turmas de cursos em vigor.');
+
+  const turmas = Array.isArray(course.turmas) ? course.turmas : [];
+  const turma = turmas.find(item => (item.id || item.turmaId) === turmaId);
+  if (!turma) throw new Error('Turma não encontrada.');
+  const inicioAtual = turma.dataInicio || course.dataInicio || '';
+  const terminoAtual = turma.dataTermino || turma.dataFim || course.dataTermino || course.dataFim || '';
+  if (!novoInicio || !novoTermino || novoTermino < novoInicio) {
+    throw new Error('Informe datas válidas de início e término.');
+  }
+  if (novoInicio < inicioAtual || novoTermino < terminoAtual) {
+    throw new Error('As novas datas não podem ser anteriores às atuais.');
+  }
+  const inicioMudou = novoInicio !== inicioAtual;
+  if (!inicioMudou && novoTermino === terminoAtual) throw new Error('Nenhuma data foi alterada.');
+
+  const courseLevelMatches = course.dataInicio === inicioAtual && course.dataTermino === terminoAtual;
+  await courseRef.update({
+    turmas: turmas.map(item => (item.id || item.turmaId) === turmaId
+      ? { ...item, dataInicio: novoInicio, dataTermino: novoTermino }
+      : item),
+    ...(courseLevelMatches ? { dataInicio: novoInicio, dataTermino: novoTermino } : {})
+  });
+
+  const studentsSnapshot = await db.collection('usuarios')
+    .where('cursoId', '==', courseId)
+    .where('turmaId', '==', turmaId)
+    .get();
+  await Promise.all(studentsSnapshot.docs
+    .filter(doc => ['aluno', 'Aluno'].includes(doc.data().atribuicao))
+    .map(doc => doc.ref.update({ dataInicio: novoInicio, dataTermino: novoTermino })));
+
+  let notificationsCreated = 0;
+  if (inicioMudou) await limparDisponibilidadesDoCurso(courseId, turmaId);
+  const updatedSnapshot = await courseRef.get();
+  notificationsCreated = await window.academicWorkflow.notifyCourseProfessors(db, courseId, { id: updatedSnapshot.id, ...updatedSnapshot.data() });
+  await window.academicWorkflow.syncCourseStudentTeachers(db, courseId);
+
+  if (window.registrarLogAudit) registrarLogAudit(`Adiou a turma ${turmaId} do Curso: ${course.nome || courseId}`, 'adm', {
+    cursoId: courseId, turmaId, inicioAtual, terminoAtual, novoInicio, novoTermino
+  });
+  showToast(inicioMudou
+    ? `Turma adiada. Disponibilidades apagadas e ${notificationsCreated} nova(s) solicitação(ões) enviada(s).`
+    : 'Término da turma adiado.', 'success');
+  fetchCursos();
+  fetchLogs();
+}
+
+function prepararPainelAdiamento(curso) {
+  const painel = document.getElementById('postponeCourseFields');
+  if (!painel) return;
+  const turmasAtivas = (Array.isArray(curso?.turmas) ? curso.turmas : [])
+    .filter(turma => !['cancelada', 'finalizada'].includes(turma.status));
+  painel.style.display = curso?.status === 'em_vigor' && turmasAtivas.length ? 'block' : 'none';
+  const select = document.getElementById('postponeTurma');
+  select.innerHTML = '';
+  turmasAtivas.forEach(turma => {
+    const option = document.createElement('option');
+    option.value = turma.id || turma.turmaId;
+    option.textContent = `${option.value} (${turma.dataInicio || '-'} a ${turma.dataTermino || '-'})`;
+    select.appendChild(option);
+  });
+  preencherDatasAdiamento(curso);
+}
+
+function preencherDatasAdiamento(curso) {
+  const turmaId = document.getElementById('postponeTurma').value;
+  const turma = (Array.isArray(curso?.turmas) ? curso.turmas : []).find(item => (item.id || item.turmaId) === turmaId);
+  document.getElementById('postponeInicio').value = turma?.dataInicio || '';
+  document.getElementById('postponeTermino').value = turma?.dataTermino || turma?.dataFim || '';
 }
 
 async function ativarCursoNaAba(courseId, dataInicio, dataTermino, turmaId, turno) {
@@ -902,6 +1136,41 @@ async function ativarCursoNaAba(courseId, dataInicio, dataTermino, turmaId, turn
       : 'Erro ao ativar curso: ' + error.message, 'error');
     if (cursoAtivado) fetchCursos();
   }
+}
+
+async function adicionarNovaTurmaAoCurso(courseId, turmaId, dataInicio, dataTermino, turno) {
+  turmaId = String(turmaId || '').trim();
+  const courseRef = db.collection('cursos').doc(courseId);
+  const turmaNova = {
+    id: turmaId,
+    dataInicio,
+    dataTermino,
+    turno,
+    status: 'planejada'
+  };
+
+  if (!turmaId || turmaId.length > 80 || !dataInicio || !dataTermino || dataTermino < dataInicio
+    || !['Diurno', 'Noturno'].includes(turno)) {
+    throw new Error('Informe um ID, datas válidas e o turno da turma.');
+  }
+
+  return db.runTransaction(async transaction => {
+    const courseSnapshot = await transaction.get(courseRef);
+    if (!courseSnapshot.exists) throw new Error('Curso não encontrado.');
+    const course = { id: courseSnapshot.id, ...courseSnapshot.data() };
+    if (course.status !== 'em_vigor') throw new Error('O curso precisa estar em vigor para iniciar outra turma.');
+
+    const turmas = Array.isArray(course.turmas) ? course.turmas : [];
+    const turmaIdNormalizado = turmaId.trim().toLocaleLowerCase('pt-BR');
+    const idJaUtilizado = turmas.some(turma =>
+      String(turma.id || turma.turmaId || '').trim().toLocaleLowerCase('pt-BR') === turmaIdNormalizado
+    );
+    if (idJaUtilizado) throw new Error('Já existe uma turma com esse ID neste curso.');
+
+    const turmasAtualizadas = [...turmas, turmaNova];
+    transaction.update(courseRef, { turmas: turmasAtualizadas });
+    return { ...course, turmas: turmasAtualizadas };
+  });
 }
 
 async function retirarCursoDeVigor(courseId) {
@@ -1020,8 +1289,10 @@ async function renderizarDisciplinasCadastradas() {
         const courseIds = Array.isArray(data.cursoIds) ? data.cursoIds : [];
         const professores = [...(professoresPorDisciplina.get(doc.id) || [])].sort((a, b) => a.localeCompare(b));
         return {
+          id: doc.id,
           nome,
           professores: professores.length ? professores : ['Sem professor vinculado'],
+          courseIds,
           cursos: courseIds.map(id => nomesCursos.get(id) || id).filter(Boolean)
         };
       })
@@ -1074,6 +1345,130 @@ async function renderizarDisciplinasCadastradas() {
   }
 }
 
+function popularFiltrosAlunosPorCursoProfessor() {
+  if (!studentFilterCourse || !studentFilterProfessor) return;
+
+  const cursoAtual = studentFilterCourse.value;
+  const professorAtual = studentFilterProfessor.value;
+  const cursosOrdenados = [...cursosList].sort((a, b) =>
+    String(a.nome || a.id).localeCompare(String(b.nome || b.id), 'pt-BR')
+  );
+  const professoresOrdenados = [...usuariosProfessores].sort((a, b) =>
+    String(a.nome || a.nomeCompleto || a.email || a.id)
+      .localeCompare(String(b.nome || b.nomeCompleto || b.email || b.id), 'pt-BR')
+  );
+
+  studentFilterCourse.innerHTML = '<option value="">Selecione um curso</option>' +
+    cursosOrdenados.map(curso =>
+      `<option value="${escapeHtml(curso.id)}">${escapeHtml(curso.nome || curso.id)}</option>`
+    ).join('');
+  studentFilterProfessor.innerHTML = '<option value="">Selecione um professor</option>' +
+    professoresOrdenados.map(professor =>
+      `<option value="${escapeHtml(professor.id)}">${escapeHtml(professor.nome || professor.nomeCompleto || professor.email || professor.id)}</option>`
+    ).join('');
+
+  if (cursosOrdenados.some(curso => curso.id === cursoAtual)) studentFilterCourse.value = cursoAtual;
+  if (professoresOrdenados.some(professor => professor.id === professorAtual)) {
+    studentFilterProfessor.value = professorAtual;
+  }
+}
+
+function renderizarAlunosPorCursoProfessor() {
+  const lista = document.getElementById('studentsByCourseProfessor');
+  if (!lista) return;
+  lista.replaceChildren();
+
+  const cursoId = studentFilterCourse?.value || '';
+  const professorId = studentFilterProfessor?.value || '';
+  if (!cursoId || !professorId) {
+    const item = document.createElement('li');
+    item.className = 'item';
+    item.textContent = 'Selecione um curso e um professor para listar os alunos.';
+    lista.appendChild(item);
+    aplicarBuscaAdm();
+    return;
+  }
+
+  const curso = cursosList.find(item => item.id === cursoId);
+  const professor = usuariosProfessores.find(item => item.id === professorId);
+  if (!curso || !professor) {
+    const item = document.createElement('li');
+    item.className = 'item';
+    item.textContent = 'Não foi possível localizar o curso ou o professor selecionado.';
+    lista.appendChild(item);
+    aplicarBuscaAdm();
+    return;
+  }
+
+  const disciplinasProfessor = new Set(normalizarDisciplinasProfessorParaIds(professor));
+  const nomesDisciplinas = new Map();
+  (Array.isArray(curso.disciplinas) ? curso.disciplinas : []).forEach(disciplina => {
+    const id = window.academicWorkflow.subjectId(disciplina);
+    const nome = typeof disciplina === 'string' ? disciplina : disciplina?.nome;
+    if (id && nome) nomesDisciplinas.set(id, nome);
+  });
+  disciplinasCadastradasCache
+    .filter(disciplina => disciplina.courseIds.includes(cursoId))
+    .forEach(disciplina => nomesDisciplinas.set(disciplina.id, disciplina.nome));
+
+  const disciplinasDoProfessor = [...disciplinasProfessor]
+    .filter(id => nomesDisciplinas.has(id))
+    .map(id => nomesDisciplinas.get(id))
+    .sort((a, b) => a.localeCompare(b, 'pt-BR'));
+
+  if (!disciplinasDoProfessor.length) {
+    const item = document.createElement('li');
+    item.className = 'item';
+    item.textContent = 'Este professor não tem disciplinas vinculadas ao curso selecionado.';
+    lista.appendChild(item);
+    aplicarBuscaAdm();
+    return;
+  }
+
+  const cursoNome = curso.nome || curso.id;
+  const cursoNormalizado = String(cursoNome).trim().toLocaleLowerCase('pt-BR');
+  const alunos = usuariosAlunos
+    .filter(aluno => {
+      if (aluno.cursoId) return aluno.cursoId === cursoId;
+      const cursoAluno = String(aluno.cursoSolicitado || aluno.curso || '').trim().toLocaleLowerCase('pt-BR');
+      return cursoAluno === cursoNormalizado || cursoAluno === cursoId.toLocaleLowerCase('pt-BR');
+    })
+    .sort((a, b) => String(a.nome || a.nomeCompleto || '').localeCompare(
+      String(b.nome || b.nomeCompleto || ''),
+      'pt-BR'
+    ));
+
+  if (!alunos.length) {
+    const item = document.createElement('li');
+    item.className = 'item';
+    item.textContent = 'Nenhum aluno cadastrado neste curso.';
+    lista.appendChild(item);
+    aplicarBuscaAdm();
+    return;
+  }
+
+  alunos.forEach(aluno => {
+    const item = document.createElement('li');
+    item.className = 'item';
+    item.setAttribute('data-search-record', '');
+
+    const nome = document.createElement('p');
+    const nomeDestaque = document.createElement('strong');
+    nomeDestaque.textContent = aluno.nome || aluno.nomeCompleto || aluno.email || 'Aluno sem nome';
+    nome.appendChild(nomeDestaque);
+
+    const cursoInfo = document.createElement('p');
+    cursoInfo.textContent = `Curso: ${cursoNome}${aluno.turmaId ? ` · Turma: ${aluno.turmaId}` : ''}`;
+
+    const disciplinasInfo = document.createElement('p');
+    disciplinasInfo.textContent = `Disciplinas com ${professor.nome || professor.nomeCompleto || professor.email || 'o professor'}: ${disciplinasDoProfessor.join(', ')}`;
+    item.append(nome, cursoInfo, disciplinasInfo);
+    lista.appendChild(item);
+  });
+
+  aplicarBuscaAdm();
+}
+
 function renderizarLogs(idDaLista, dados) {
   const lista = document.getElementById(idDaLista);
   lista.innerHTML = '';
@@ -1109,8 +1504,15 @@ function renderizarLogs(idDaLista, dados) {
   aplicarBuscaAdm();
 }
 
+function limparCamposNovaTurma() {
+  document.getElementById('newClassId').value = '';
+  document.getElementById('newClassShift').value = '';
+  document.getElementById('newClassStart').value = '';
+  document.getElementById('newClassEnd').value = '';
+}
+
 // Modal
-async function openModal(tipo, usuarioId = '') {
+async function openModal(tipo, usuarioId = '', abrirNovaTurma = false) {
   tipoAtual = tipo;
   const modal = document.getElementById('editModal');
   const select = document.getElementById('selectUsuario');
@@ -1145,6 +1547,8 @@ async function openModal(tipo, usuarioId = '') {
   const cargaHorariaInput = document.getElementById('editCargaHoraria');
   const finalizeCourseButton = document.getElementById('finalizeCourseButton');
   const removeCourseVigorButton = document.getElementById('removeCourseVigorButton');
+  const courseVigorActions = document.getElementById('courseVigorActions');
+  const newCourseClassFields = document.getElementById('newCourseClassFields');
   
   const deleteBtn = document.getElementById('deleteButton');
   const modalTitle = document.getElementById('modalTitle');
@@ -1157,9 +1561,11 @@ async function openModal(tipo, usuarioId = '') {
     camposCurso.style.flexDirection = 'column';
     camposCurso.style.gap = '18px';
     document.getElementById('novoCursoDisciplinasFields').style.display = tipo === 'curso_novo' ? 'flex' : 'none';
-    finalizeCourseButton.style.display = 'none';
-    removeCourseVigorButton.style.display = 'none';
-    
+    courseVigorActions.style.display = 'none';
+    newCourseClassFields.style.display = 'none';
+    limparCamposNovaTurma();
+    prepararPainelAdiamento(null);
+
     if (tipo === 'curso_novo') {
         modalTitle.textContent = 'Criar Novo Curso';
         select.style.display = 'none';
@@ -1175,7 +1581,6 @@ async function openModal(tipo, usuarioId = '') {
         precoInput.value = '';
         cargaHorariaInput.value = '';
         deleteBtn.style.display = 'none';
-        finalizeCourseButton.style.display = 'none';
         await carregarDisciplinasParaNovoCurso();
     } else {
         modalTitle.textContent = 'Editar Curso';
@@ -1195,14 +1600,18 @@ async function openModal(tipo, usuarioId = '') {
     });
 
     if (cursosList.length > 0) {
-      usuarioAtual = cursosList[0];
+      usuarioAtual = cursosList.find(item => item.id === usuarioId) || cursosList[0];
+      select.value = usuarioAtual.id;
       nomeCursoInput.value = usuarioAtual.nome || '';
       precoInput.value = usuarioAtual.preco || '';
       cargaHorariaInput.value = usuarioAtual.cargaHoraria || usuarioAtual.cargaHr || '';
-      const turmaAtual = Array.isArray(usuarioAtual.turmas) ? usuarioAtual.turmas[usuarioAtual.turmas.length - 1] : null;
-      finalizeCourseButton.style.display = usuarioAtual.status === 'em_vigor' ? 'block' : 'none';
-      removeCourseVigorButton.style.display = usuarioAtual.status === 'em_vigor' ? 'block' : 'none';
+      courseVigorActions.style.display = usuarioAtual.status === 'em_vigor' ? 'grid' : 'none';
+      prepararPainelAdiamento(usuarioAtual);
       deleteBtn.style.display = 'inline-block';
+    }
+    if (abrirNovaTurma && usuarioAtual?.status === 'em_vigor') {
+      newCourseClassFields.style.display = 'grid';
+      document.getElementById('newClassId').focus();
     }
   } // fim do bloco de edicao de curso
   } else if (tipo === 'funcionario_novo' || tipo === 'professor_novo') {
@@ -1334,6 +1743,7 @@ document.getElementById('finalizeCourseButton').addEventListener('click', async 
     if (!courseSnapshot.exists) throw new Error('Curso não encontrado.');
     const course = courseSnapshot.data() || {};
     const turmas = (Array.isArray(course.turmas) ? course.turmas : []).map(turma => ({ ...turma, status: 'finalizada' }));
+    await limparDisponibilidadesDoCurso(usuarioAtual.id);
     await courseRef.update({ status: 'finalizado', turmas });
     let erroNotificacoes = null;
     try {
@@ -1352,6 +1762,27 @@ document.getElementById('finalizeCourseButton').addEventListener('click', async 
   }
 });
 
+document.getElementById('postponeTurma').addEventListener('change', () => preencherDatasAdiamento(usuarioAtual));
+
+document.getElementById('postponeCourseButton').addEventListener('click', async event => {
+  if (tipoAtual !== 'curso' || !usuarioAtual) return;
+  const button = event.currentTarget;
+  const turmaId = document.getElementById('postponeTurma').value;
+  const novoInicio = document.getElementById('postponeInicio').value;
+  const novoTermino = document.getElementById('postponeTermino').value;
+  if (!confirm(`Adiar a turma ${turmaId} para ${novoInicio} até ${novoTermino}? Se o início mudar, os professores precisarão informar a disponibilidade novamente.`)) return;
+
+  button.disabled = true;
+  try {
+    await adiarTurmaDoCurso(usuarioAtual.id, turmaId, novoInicio, novoTermino);
+    closeModal();
+  } catch (error) {
+    showToast('Erro ao adiar turma: ' + error.message, 'error');
+  } finally {
+    button.disabled = false;
+  }
+});
+
 document.getElementById('removeCourseVigorButton').addEventListener('click', async () => {
   if (tipoAtual !== 'curso' || !usuarioAtual || !confirm(`Retirar o curso ${usuarioAtual.nome} da vigência?`)) return;
 
@@ -1363,6 +1794,72 @@ document.getElementById('removeCourseVigorButton').addEventListener('click', asy
   }
 });
 
+document.getElementById('startNewCourseClassButton').addEventListener('click', () => {
+  const fields = document.getElementById('newCourseClassFields');
+  limparCamposNovaTurma();
+  fields.style.display = 'grid';
+  document.getElementById('newClassId').focus();
+});
+
+document.getElementById('cancelNewCourseClassButton').addEventListener('click', () => {
+  document.getElementById('newCourseClassFields').style.display = 'none';
+  limparCamposNovaTurma();
+});
+
+document.getElementById('confirmNewCourseClassButton').addEventListener('click', async event => {
+  if (tipoAtual !== 'curso' || !usuarioAtual) return;
+
+  const button = event.currentTarget;
+  const turmaId = document.getElementById('newClassId').value.trim();
+  const turno = document.getElementById('newClassShift').value;
+  const dataInicio = document.getElementById('newClassStart').value;
+  const dataTermino = document.getElementById('newClassEnd').value;
+  if (!turmaId || !dataInicio || !dataTermino || dataTermino < dataInicio || !turno) {
+    showToast('Informe o ID, datas válidas e o turno da nova turma.', 'error');
+    return;
+  }
+  if (!confirm(`Iniciar a turma ${turmaId} do curso ${usuarioAtual.nome}, de ${dataInicio} até ${dataTermino}?`)) return;
+
+  button.disabled = true;
+  try {
+    const cursoAtualizado = await adicionarNovaTurmaAoCurso(
+      usuarioAtual.id,
+      turmaId,
+      dataInicio,
+      dataTermino,
+      turno
+    );
+
+    try {
+      const notificationsCreated = await window.academicWorkflow.notifyCourseProfessors(
+        db,
+        usuarioAtual.id,
+        cursoAtualizado
+      );
+      await window.academicWorkflow.syncCourseStudentTeachers(db, usuarioAtual.id);
+      if (window.registrarLogAudit) registrarLogAudit(`Iniciou nova turma ${turmaId} do Curso: ${usuarioAtual.nome}`, 'adm', {
+        cursoId: usuarioAtual.id,
+        turmaId,
+        turno,
+        dataInicio,
+        dataTermino
+      });
+      showToast(`Turma criada. ${notificationsCreated} solicitação(ões) de disponibilidade enviada(s) aos professores.`, 'success');
+    } catch (error) {
+      console.error('Turma criada, mas houve erro ao atualizar o fluxo acadêmico:', error);
+      showToast(`A turma foi criada, mas não foi possível concluir as notificações ou atualizar as matrículas: ${error.message}`, 'error');
+    }
+
+    closeModal();
+    fetchCursos();
+    fetchLogs();
+  } catch (error) {
+    showToast('Erro ao criar turma: ' + error.message, 'error');
+  } finally {
+    button.disabled = false;
+  }
+});
+
 // Atualiza campos ao trocar usuário/curso selecionado
 document.getElementById('selectUsuario').addEventListener('change', function() {
   if (tipoAtual === 'curso') {
@@ -1370,8 +1867,9 @@ document.getElementById('selectUsuario').addEventListener('change', function() {
     document.getElementById('editNomeCurso').value = usuarioAtual?.nome || '';
     document.getElementById('editPreco').value = usuarioAtual?.preco || '';
     document.getElementById('editCargaHoraria').value = usuarioAtual?.cargaHoraria || usuarioAtual?.cargaHr || '';
-    document.getElementById('finalizeCourseButton').style.display = usuarioAtual?.status === 'em_vigor' ? 'block' : 'none';
-    document.getElementById('removeCourseVigorButton').style.display = usuarioAtual?.status === 'em_vigor' ? 'block' : 'none';
+    document.getElementById('courseVigorActions').style.display = usuarioAtual?.status === 'em_vigor' ? 'grid' : 'none';
+    document.getElementById('newCourseClassFields').style.display = 'none';
+    prepararPainelAdiamento(usuarioAtual);
   } else {
     let lista = tipoAtual === 'funcionario' ? usuariosFuncionarios : (tipoAtual === 'professor' ? usuariosProfessores : usuariosAlunos);
     usuarioAtual = lista.find(u => u.id === this.value);
@@ -1757,10 +2255,6 @@ document.getElementById('editForm').addEventListener('submit', async function(e)
           alert('Curso não encontrado. Informe um curso cadastrado.');
           return;
         }
-        if (vinculoAcademico.disciplinasSemProfessor.length) {
-          alert(`A matrícula exige professor responsável em todas as disciplinas. Pendentes: ${vinculoAcademico.disciplinasSemProfessor.join(', ')}.`);
-          return;
-        }
       }
         const disciplinasIds = novaAtribuicao === 'professor' ? obterDisciplinasProfessorSelecionadas() : [];
 
@@ -1807,9 +2301,10 @@ document.getElementById('editForm').addEventListener('submit', async function(e)
         })
         .then(async () => {
           if (novaAtribuicao === 'professor') {
-            await firebase.functions().httpsCallable('updateTeacherAssignments')({
-              teacherId: usuarioAtual.id,
-              disciplinasIds
+            await db.collection('usuarios').doc(usuarioAtual.id).update({
+              disciplinasIds,
+              disciplinas: firebase.firestore.FieldValue.delete(),
+              disciplinasKeys: firebase.firestore.FieldValue.delete()
             });
             const courseIds = [...new Set(disciplinasProfessorDisponiveis
               .filter(item => disciplinasIds.includes(item.chave))

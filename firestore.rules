@@ -75,8 +75,16 @@ service cloud.firestore {
         && dados.dataTermino.matches('^\\d{4}-\\d{2}-\\d{2}$')
         && dados.dataInicio <= dados.dataTermino
         && (!dados.keys().hasAny(['diasSemana']) || (dados.diasSemana is list
+          && dados.diasSemana.size() > 0
           && dados.diasSemana.size() <= 7
           && dados.diasSemana.toSet().hasOnly([1, 2, 3, 4, 5, 6, 7])))
+        && (!dados.keys().hasAny(['diasDisponiveis']) || (dados.diasDisponiveis is list
+          && dados.diasDisponiveis.size() > 0
+          && dados.diasDisponiveis.size() <= 7
+          && dados.diasDisponiveis.toSet().hasOnly([1, 2, 3, 4, 5, 6, 7])))
+        && (!dados.keys().hasAny(['datasDisponiveis']) || (dados.datasDisponiveis is list
+          && dados.datasDisponiveis.size() > 0
+          && dados.datasDisponiveis.size() <= 400))
         && dados.horarioInicio is string
         && dados.horarioInicio.matches('^([01]\\d|2[0-3]):[0-5]\\d$')
         && dados.horarioTermino is string
@@ -92,12 +100,19 @@ service cloud.firestore {
         && solicitacao.professorId == request.auth.uid
         && solicitacao.status == 'pendente'
         && request.resource.data.keys().hasOnly([
-          'professorId', 'cursoId', 'cursoNome', 'turmaId', 'disciplinaId',
+          'professorId', 'professorNome', 'cursoId', 'cursoNome', 'turmaId', 'disciplinaId',
           'disciplinaNome', 'disciplinaKey', 'dataInicio', 'dataTermino',
-          'diasSemana', 'horarioInicio', 'horarioTermino', 'status', 'atualizadoEm'
+          'diasSemana', 'diasDisponiveis', 'datasDisponiveis', 'horarioInicio', 'horarioTermino', 'status', 'atualizadoEm'
         ])
         && disponibilidadeValida(request.resource.data)
         && request.resource.data.professorId == request.auth.uid
+        && request.resource.data.professorNome is string
+        && request.resource.data.professorNome.size() > 0
+        && request.resource.data.professorNome in [
+          get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.get('nome', ''),
+          get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.get('nomeCompleto', ''),
+          get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.get('email', '')
+        ]
         && request.resource.data.cursoId == solicitacao.cursoId
         && request.resource.data.cursoNome == solicitacao.cursoNome
         && request.resource.data.turmaId == solicitacao.turmaId
@@ -106,6 +121,7 @@ service cloud.firestore {
         && request.resource.data.disciplinaKey == solicitacao.disciplinaKey
         && request.resource.data.dataInicio == solicitacao.dataInicio
         && request.resource.data.dataTermino == solicitacao.dataTermino
+        && request.resource.data.diasDisponiveis == request.resource.data.diasSemana
         && request.resource.data.status == 'aguardando_adm'
         && request.resource.data.atualizadoEm == request.time;
     }
@@ -125,7 +141,7 @@ service cloud.firestore {
         && request.resource.data.dataTermino == resource.data.dataTermino
         && request.resource.data.status == 'aguardando_adm'
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
-          'diasSemana', 'horarioInicio', 'horarioTermino', 'atualizadoEm'
+          'diasSemana', 'datasDisponiveis', 'horarioInicio', 'horarioTermino', 'atualizadoEm'
         ])
         && disponibilidadeValida(request.resource.data)
         && request.resource.data.atualizadoEm == request.time;
@@ -157,8 +173,7 @@ service cloud.firestore {
           'cursoId', 'cursoSolicitado', 'turmaId', 'disciplinas', 'disciplinasKeys',
           'disciplinasIds', 'professoresPorDisciplina', 'dataInicio', 'dataTermino'
         ])
-        || (isAdmin()
-          && request.resource.data.atribuicao in ['funcionario', 'professor']
+        || ((isAdmin() || (isFuncionario() && request.resource.data.atribuicao == 'professor'))
           && request.resource.data.keys().hasOnly([
             'nome', 'email', 'cpf', 'orgaoRg', 'endereco', 'cep', 'logradouro',
             'numero', 'bairro', 'cidade', 'uf', 'telefone', 'telefoneAlt', 'rg',
@@ -181,7 +196,8 @@ service cloud.firestore {
         || (isFuncionario()
           && resource.data.atribuicao == 'professor'
           && request.resource.data.atribuicao == 'professor'
-          && request.resource.data.disciplinasIds == resource.data.disciplinasIds)
+          && request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['nome', 'disciplinasIds', 'disciplinas', 'disciplinasKeys']))
         || (isFuncionario()
           && resource.data.atribuicao in ['aluno', 'Aluno']
           && request.resource.data.atribuicao == resource.data.atribuicao)
@@ -248,12 +264,26 @@ service cloud.firestore {
         && request.resource.data.dataInicio is string
         && request.resource.data.dataTermino is string
         && request.resource.data.dataInicio <= request.resource.data.dataTermino;
-      allow update, delete: if isAdmin();
+      allow update: if isAdmin()
+        || (isProfessor()
+          && resource.data.professorId == request.auth.uid
+          && resource.data.status == 'pendente'
+          && request.resource.data.status == 'recusada'
+          && request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['status', 'motivoRecusa', 'recusadaEm'])
+          && request.resource.data.motivoRecusa is string
+          && request.resource.data.motivoRecusa.size() <= 300
+          && request.resource.data.recusadaEm == request.time);
+      allow delete: if isAdmin();
     }
 
     match /disponibilidades/{disponibilidadeId} {
       allow read: if isAdmin() || isFuncionario()
-        || (isProfessor() && resource.data.professorId == request.auth.uid);
+        || (isProfessor() && resource.data.professorId == request.auth.uid)
+        || (isAluno()
+          && resource.data.status == 'aprovada'
+          && resource.data.cursoId == get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.cursoId
+          && resource.data.turmaId == get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.turmaId);
       allow create: if professorCriaDisponibilidade(disponibilidadeId);
       allow update: if (isAdmin()
           && disponibilidadeValida(request.resource.data)
@@ -266,7 +296,7 @@ service cloud.firestore {
           && request.resource.data.revisadoEm == request.time
           && request.resource.data.atualizadoEm == request.time)
         || professorAtualizaDisponibilidadePendente();
-      allow delete: if false;
+      allow delete: if isAdmin();
     }
 
     match /disponibilidade_slots/{slotId} {
@@ -283,7 +313,7 @@ service cloud.firestore {
         || (isProfessor() && resource.data.professorId == request.auth.uid);
       allow create, update: if isAdmin() || isFuncionario()
         && request.resource.data.keys().hasOnly([
-          'alunoId', 'alunoNome', 'professorId', 'cursoId', 'cursoNome',
+          'alunoId', 'alunoNome', 'professorId', 'professorNome', 'cursoId', 'cursoNome',
           'turmaId', 'disciplinaId', 'disciplinaKey', 'disciplinaNome'
         ])
         && request.resource.data.alunoId is string

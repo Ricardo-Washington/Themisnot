@@ -13,9 +13,9 @@
     <script src="https://www.gstatic.com/firebasejs/12.1.0/firebase-functions-compat.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="/js/firebase-config-shared.js" defer></script>
-    <script src="/js/academic-workflow.js" defer></script>
+    <script src="/js/academic-workflow.js?v=approved-schedules-1" defer></script>
     <script src="/js/logger.js" defer></script>
-    <script src="adm.js?v=availability-firestore-1" defer></script>
+    <script src="adm.js?v=availability-weekdays-4" defer></script>
     <script src="/js/auth-guard.js" defer></script>
     <title>Thémis | Administração</title>
 </head>
@@ -111,6 +111,13 @@
                         <ol id="dadoscursos" class="data-list"><li class="item">Carregando cursos...</li></ol>
                     </article>
 
+                    <article class="admin-card" id="records-active-classes">
+                        <div class="card-header">
+                            <div><span class="card-kicker">Vigência</span><h2><i class="fas fa-people-group"></i> Turmas em vigor</h2></div>
+                        </div>
+                        <ol id="turmasEmVigor" class="data-list"><li class="item">Carregando turmas...</li></ol>
+                    </article>
+
                     <article class="admin-card" id="records-disciplines">
                         <div class="card-header">
                             <div><span class="card-kicker">Acadêmico</span><h2><i class="fas fa-book-open"></i> Disciplinas cadastradas</h2></div>
@@ -132,11 +139,35 @@
                         <ol id="dadosdisciplinas" class="data-list"><li class="item">Carregando disciplinas...</li></ol>
                     </article>
 
+                    <article class="admin-card" id="records-course-students">
+                        <div class="card-header">
+                            <div><span class="card-kicker">Matrículas</span><h2><i class="fas fa-user-graduate"></i> Alunos por curso e professor</h2></div>
+                        </div>
+                        <div class="discipline-filters">
+                            <label for="studentFilterCourse">
+                                <span>Curso</span>
+                                <select id="studentFilterCourse">
+                                    <option value="">Selecione um curso</option>
+                                </select>
+                            </label>
+                            <label for="studentFilterProfessor">
+                                <span>Professor</span>
+                                <select id="studentFilterProfessor">
+                                    <option value="">Selecione um professor</option>
+                                </select>
+                            </label>
+                        </div>
+                        <ol id="studentsByCourseProfessor" class="data-list" aria-live="polite">
+                            <li class="item">Carregando cursos, professores e matrículas...</li>
+                        </ol>
+                    </article>
+
                     <article class="admin-card availability-admin-card" id="records-availability">
                         <div class="card-header">
                             <div><span class="card-kicker">Planejamento acadêmico</span><h2><i class="fas fa-calendar-check"></i> Disponibilidade dos professores</h2></div>
                         </div>
-                        <p class="availability-admin-help">Revise as escolhas dos professores. Conflitos de dia e horário no mesmo curso precisam ser ajustados antes da aprovação; horários aprovados ficam reservados.</p>
+                        <p class="availability-admin-help">Revise as escolhas dos professores. Conflitos de dia e horário na mesma turma precisam ser ajustados antes da aprovação; horários aprovados ficam reservados.</p>
+                        <div id="availability-declined-list" class="availability-admin-list"></div>
                         <div id="availability-admin-list" class="availability-admin-list"><p class="item">Carregando disponibilidades...</p></div>
                     </article>
 
@@ -274,9 +305,43 @@
                 <span id="novaDisciplinaError" class="discipline-error" aria-live="polite"></span>
             </div>
 
+            <fieldset id="postponeCourseFields" style="display:none;">
+                <legend>Adiar datas da turma</legend>
+                <label for="postponeTurma">Turma</label>
+                <select id="postponeTurma"></select>
+                <label for="postponeInicio">Nova data de início</label>
+                <input type="date" id="postponeInicio">
+                <label for="postponeTermino">Nova data de término</label>
+                <input type="date" id="postponeTermino">
+                <p class="discipline-help">Só é possível adiar (datas iguais ou posteriores às atuais). Se o início mudar, as disponibilidades da turma são apagadas e os professores recebem nova solicitação.</p>
+                <button type="button" class="details-button" id="postponeCourseButton">Adiar turma</button>
+            </fieldset>
+
             <button type="submit" class="details-button">Salvar</button>
-            <button type="button" class="details-button" id="finalizeCourseButton" style="display:none;">Finalizar curso</button>
-            <button type="button" class="details-button" id="removeCourseVigorButton" style="display:none;">Retirar da vigência</button>
+            <div id="courseVigorActions" class="course-vigor-actions" style="display:none;">
+                <button type="button" class="details-button" id="finalizeCourseButton">Finalizar curso</button>
+                <button type="button" class="details-button" id="removeCourseVigorButton">Retirar da vigência</button>
+                <button type="button" class="details-button" id="startNewCourseClassButton">Iniciar nova turma</button>
+            </div>
+            <fieldset id="newCourseClassFields" class="course-activation-fields" style="display:none;">
+                <legend>Iniciar nova turma</legend>
+                <label for="newClassId">ID da turma</label>
+                <input type="text" id="newClassId" maxlength="80" placeholder="Ex: VIG-2026-02">
+                <label for="newClassShift">Turno</label>
+                <select id="newClassShift">
+                    <option value="">Selecione</option>
+                    <option value="Diurno">Diurno</option>
+                    <option value="Noturno">Noturno</option>
+                </select>
+                <label for="newClassStart">Data de início</label>
+                <input type="date" id="newClassStart">
+                <label for="newClassEnd">Data de término</label>
+                <input type="date" id="newClassEnd">
+                <div class="course-activation-actions">
+                    <button type="button" class="details-button" id="confirmNewCourseClassButton">Criar turma</button>
+                    <button type="button" class="details-button" id="cancelNewCourseClassButton">Cancelar</button>
+                </div>
+            </fieldset>
             <button type="button" class="details-button" onclick="closeModal()">Cancelar</button>
             <button type="button" class="details-button" id="deleteButton" style="background:#c00;">Excluir</button>
         </form>
