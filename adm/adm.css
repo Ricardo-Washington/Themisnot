@@ -285,8 +285,17 @@
     align-items: stretch;
 }
 
+#editClassForm {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    align-items: stretch;
+}
+
 #editForm select,
-#editForm input {
+#editForm input,
+#editClassForm select,
+#editClassForm input {
     padding: 12px 14px;
     border-radius: 8px;
     border: 1.5px solid var(--medium-grey, #444);
@@ -299,7 +308,9 @@
 }
 
 #editForm input:focus,
-#editForm select:focus {
+#editForm select:focus,
+#editClassForm input:focus,
+#editClassForm select:focus {
     border-color: var(--orange, #ff5e00);
     background: var(--medium-grey, #444);
 }
@@ -324,6 +335,14 @@
     color: var(--white, #fff);
     transform: translateY(-2px);
     box-shadow: 0 4px 15px rgba(255, 94, 0, 0.3);
+}
+
+.compact-action-button {
+    padding: 7px 10px;
+    border-width: 1px;
+    font-size: 0.78rem;
+    letter-spacing: 0.2px;
+    margin-top: 0;
 }
 
 .professor-discipline-fields {
@@ -444,7 +463,7 @@
     #modalTitle {
         font-size: 1.3rem;
     }
-    #editForm input, #editForm select {
+    #editForm input, #editForm select, #editClassForm input, #editClassForm select {
         font-size: 0.95rem;
         padding: 10px 8px;
     }
@@ -601,12 +620,75 @@ body {
     line-height: 1.6;
 }
 
+.availability-declined {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    min-width: 0;
+    padding: 12px 14px;
+    border: 1px solid rgba(255, 112, 83, 0.4);
+    border-left: 3px solid #ff7053;
+    border-radius: 7px;
+    background: rgba(255, 112, 83, 0.08);
+    color: #eee;
+    font-size: 0.82rem;
+    line-height: 1.5;
+}
+
+.availability-declined span {
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+.availability-declined button {
+    flex: 0 0 auto;
+    padding: 6px 10px;
+    border: 1px solid var(--adm-line);
+    border-radius: 5px;
+    background: transparent;
+    color: #eee;
+    cursor: pointer;
+}
+
+.availability-declined button:hover {
+    border-color: var(--adm-accent);
+    color: var(--adm-accent);
+}
+
 .availability-admin-list {
     display: grid;
     gap: 18px;
-    max-height: 920px;
+    min-width: 0;
+    min-height: 0;
+    max-height: min(70vh, 920px);
     overflow-y: auto;
+    overflow-x: hidden;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+    scrollbar-color: var(--adm-accent) rgba(255, 255, 255, 0.05);
     padding: 6px 8px 8px 2px;
+}
+
+.availability-admin-list::-webkit-scrollbar {
+    width: 7px;
+}
+
+.availability-admin-list::-webkit-scrollbar-track {
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.availability-admin-list::-webkit-scrollbar-thumb {
+    border: 1px solid transparent;
+    border-radius: 6px;
+    background: var(--adm-accent);
+    background-clip: padding-box;
+}
+
+.availability-admin-list::-webkit-scrollbar-thumb:hover {
+    background: #ff8b4d;
+    background-clip: padding-box;
 }
 
 .availability-admin-item {
@@ -642,6 +724,10 @@ body {
     color: #aaa;
     font-size: 0.82rem;
     line-height: 1.6;
+}
+
+.availability-admin-heading p + p {
+    margin-top: 4px;
 }
 
 .availability-status {
@@ -1422,6 +1508,11 @@ body {
     border-radius: 6px;
 }
 
+.admin-card.availability-admin-card {
+    height: auto;
+    min-height: 0;
+}
+
 .admin-card,
 .chart-card {
     scroll-margin-top: 100px;
@@ -1451,6 +1542,17 @@ body {
 
 .data-list .item:last-child {
     border-bottom: 0;
+}
+
+.class-list-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 10px;
+}
+
+.class-list-actions .details-button {
+    margin-top: 0;
 }
 
 .course-activation-fields {

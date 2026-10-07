@@ -640,6 +640,18 @@ document.getElementById('save-all-button').addEventListener('click', async () =>
 
 document.getElementById('mobile-menu-button').addEventListener('click', () => document.getElementById('nav-links').classList.toggle('open'));
 
+document.getElementById('toggle-availability-info').addEventListener('click', event => {
+    const button = event.currentTarget;
+    const list = document.getElementById('availability-request-list');
+    const expanded = button.getAttribute('aria-expanded') === 'true';
+    const icon = button.querySelector('i');
+
+    list.hidden = expanded;
+    button.setAttribute('aria-expanded', String(!expanded));
+    icon.className = `fa-solid ${expanded ? 'fa-eye' : 'fa-eye-slash'}`;
+    button.querySelector('span').textContent = expanded ? 'Mostrar informações' : 'Ocultar informações';
+});
+
 function idDoBoletim(studentId, assignment) {
     return encodeURIComponent(`${professorId}__${studentId}__${assignment.key}`);
 }
