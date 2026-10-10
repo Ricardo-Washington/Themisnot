@@ -39,7 +39,7 @@
 .admin-grid {
     display: grid;
     /* Força 3 colunas iguais no desktop, e empilha no mobile */
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr));
     gap: 25px;
     max-width: 1200px;
     margin: 0 auto;
@@ -847,7 +847,7 @@ body {
 
 .availability-admin-days {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(125px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 125px), 1fr));
     gap: 7px;
 }
 
@@ -1697,7 +1697,7 @@ fieldset.course-activation-fields legend {
 }
 
 .course-vigor-actions {
-    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 150px), 1fr));
     gap: 8px;
 }
 

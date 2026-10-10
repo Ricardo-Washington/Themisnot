@@ -282,7 +282,18 @@ async function fetchTeacherAvailabilities(users) {
         classEndDates.set(classKey, classItem.dataTermino || classItem.dataFim || course.dataTermino || course.dataFim || '');
       });
     });
+    const cursosPorId = new Map(coursesSnapshot.docs.map(doc => [doc.id, doc.data() || {}]));
+    const registroValido = record => {
+      const course = cursosPorId.get(record.cursoId);
+      if (!course) return false;
+      const turmas = Array.isArray(course.turmas) ? course.turmas : [];
+      if (turmas.length && !turmas.some(turma => (turma.id || turma.turmaId || '') === (record.turmaId || ''))) return false;
+      if (!record.disciplinaId) return true;
+      return (Array.isArray(course.disciplinas) ? course.disciplinas : [])
+        .some(subject => window.academicWorkflow.subjectId(subject) === record.disciplinaId);
+    };
     const activeRecords = records.filter(record => {
+      if (!registroValido(record)) return false;
       const classId = record.turmaId || '';
       const classKey = JSON.stringify([record.cursoId || '', classId]);
       if (classesWithoutAvailability.has(classKey)) return false;
@@ -291,7 +302,7 @@ async function fetchTeacherAvailabilities(users) {
     });
     renderTeacherAvailabilities(container, activeRecords, professorNames);
     renderGeneralScheduleReport(activeRecords, professorNames);
-    await renderDeclinedAvailabilityRequests(professorNames, classesWithoutAvailability, classEndDates);
+    await renderDeclinedAvailabilityRequests(professorNames, classesWithoutAvailability, classEndDates, registroValido);
   } catch (error) {
     console.error('Erro ao carregar disponibilidades dos professores:', error);
     container.innerHTML = '<p class="item">Não foi possível carregar as disponibilidades. Verifique as permissões e tente novamente.</p>';
@@ -318,14 +329,14 @@ function agendarLimpezaDisponibilidades(users) {
   );
 }
 
-async function renderDeclinedAvailabilityRequests(professorNames, classesWithoutAvailability, classEndDates) {
+async function renderDeclinedAvailabilityRequests(professorNames, classesWithoutAvailability, classEndDates, registroValido = () => true) {
   const container = document.getElementById('availability-declined-list');
   if (!container) return;
   container.textContent = '';
   const snapshot = await db.collection('notificacoes').where('status', '==', 'recusada').get();
   snapshot.docs.forEach(doc => {
     const request = doc.data();
-    if (request.tipo !== 'solicitar_disponibilidade') return;
+    if (request.tipo !== 'solicitar_disponibilidade' || !registroValido(request)) return;
     const classKey = JSON.stringify([request.cursoId || '', request.turmaId || '']);
     if (classesWithoutAvailability.has(classKey)) return;
     const endDate = classEndDates.get(classKey) || request.dataTermino || '';
@@ -1078,24 +1089,20 @@ function renderizarCursos(idDaLista, dados) {
   aplicarBuscaAdm();
 }
 
-async function limparDisponibilidadesDoCurso(courseId, turmaId = null, motivoCancelamento = null) {
+async function limparDisponibilidadesDoCurso(courseId, turmaId = null, disciplinaId = null) {
   const [availabilitySnapshot, notificationSnapshot] = await Promise.all([
     db.collection('disponibilidades').where('cursoId', '==', courseId).get(),
     db.collection('notificacoes').where('cursoId', '==', courseId).get()
   ]);
-  const daTurma = doc => turmaId === null || (doc.data()?.turmaId || '') === turmaId;
+  const alvo = doc => (turmaId === null || (doc.data()?.turmaId || '') === turmaId)
+    && (disciplinaId === null || doc.data()?.disciplinaId === disciplinaId);
 
   await Promise.all([
-    ...availabilitySnapshot.docs.filter(daTurma).map(doc => doc.ref.delete()),
+    ...availabilitySnapshot.docs.filter(alvo).map(doc => doc.ref.delete()),
     ...notificationSnapshot.docs
-      .filter(daTurma)
-      .filter(doc => doc.data()?.status !== 'cancelada')
-      .map(doc => doc.ref.update({
-        status: 'cancelada',
-        canceladaEm: firebase.firestore.FieldValue.serverTimestamp(),
-        motivoCancelamento: motivoCancelamento
-          || (turmaId === null ? 'Curso removido da vigência.' : 'Datas da turma adiadas.')
-      }))
+      .filter(doc => doc.data()?.tipo === 'solicitar_disponibilidade')
+      .filter(alvo)
+      .map(doc => doc.ref.delete())
   ]);
 }
 
@@ -1264,13 +1271,13 @@ async function salvarEdicaoTurma(courseId, turmaId, dataInicio, dataTermino, tur
 
 async function excluirTurmaDoCurso(courseId, turmaId) {
   const courseRef = db.collection('cursos').doc(courseId);
-  const studentsQuery = db.collection('usuarios')
+  const studentsSnapshot = await db.collection('usuarios')
       .where('cursoId', '==', courseId)
-      .where('turmaId', '==', turmaId);
+      .where('turmaId', '==', turmaId)
+      .get();
 
   return db.runTransaction(async transaction => {
     const courseSnapshot = await transaction.get(courseRef);
-    const studentsSnapshot = await transaction.get(studentsQuery);
     if (!courseSnapshot.exists) throw new Error('Curso não encontrado.');
 
     const course = { id: courseSnapshot.id, ...courseSnapshot.data() };
@@ -1466,6 +1473,13 @@ async function renderizarDisciplinasCadastradas() {
       cursos.textContent = `Cursos: ${disciplina.cursos.length ? disciplina.cursos.join(', ') : 'Nenhum curso vinculado'}`;
       li.appendChild(cursos);
 
+      const excluirButton = document.createElement('button');
+      excluirButton.type = 'button';
+      excluirButton.className = 'details-button compact-action-button';
+      excluirButton.textContent = 'Excluir disciplina';
+      excluirButton.addEventListener('click', () => excluirDisciplina(disciplina));
+      li.appendChild(excluirButton);
+
       lista.appendChild(li);
     });
 
@@ -1473,6 +1487,38 @@ async function renderizarDisciplinasCadastradas() {
   } catch (error) {
     console.error('Erro ao carregar disciplinas cadastradas:', error);
     lista.innerHTML = '<li class="item">Não foi possível carregar as disciplinas.</li>';
+  }
+}
+
+async function excluirDisciplina(disciplina) {
+  if (!confirm(`Excluir a disciplina ${disciplina.nome}? As escalas e solicitações de disponibilidade dos professores relacionadas a ela serão apagadas.`)) return;
+
+  try {
+    const cursosDaDisciplina = await Promise.all(disciplina.courseIds.map(id => db.collection('cursos').doc(id).get()));
+    await Promise.all(cursosDaDisciplina.filter(snapshot => snapshot.exists).map(async snapshot => {
+      const restantes = (Array.isArray(snapshot.data().disciplinas) ? snapshot.data().disciplinas : [])
+        .filter(item => window.academicWorkflow.subjectId(item) !== disciplina.id);
+      await snapshot.ref.update({ disciplinas: restantes });
+      await limparDisponibilidadesDoCurso(snapshot.id, null, disciplina.id);
+    }));
+
+    const professores = await db.collection('usuarios').where('disciplinasIds', 'array-contains', disciplina.id).get();
+    await Promise.all(professores.docs.map(doc => doc.ref.update({
+      disciplinasIds: firebase.firestore.FieldValue.arrayRemove(disciplina.id)
+    })));
+    await db.collection('disciplinas').doc(disciplina.id).delete();
+
+    await Promise.all(cursosDaDisciplina.filter(snapshot => snapshot.exists).map(snapshot =>
+      window.academicWorkflow.syncCourseStudentTeachers(db, snapshot.id)));
+
+    if (window.registrarLogAudit) registrarLogAudit(`Excluiu a disciplina: ${disciplina.nome}`, 'adm', { disciplinaId: disciplina.id });
+    showToast('Disciplina excluída.', 'success');
+    fetchCursos();
+    renderizarDisciplinasCadastradas();
+    fetchLogs();
+  } catch (error) {
+    console.error('Erro ao excluir disciplina:', error);
+    showToast('Erro ao excluir disciplina: ' + error.message, 'error');
   }
 }
 
@@ -1894,7 +1940,7 @@ document.getElementById('editClassForm').addEventListener('submit', async event 
 
     let notificationsCreated = 0;
     if (resultado.disponibilidadeAlterada) {
-      await limparDisponibilidadesDoCurso(cursoId, turmaId, 'Dados da turma alterados.');
+      await limparDisponibilidadesDoCurso(cursoId, turmaId);
       const cursoSnapshot = await db.collection('cursos').doc(cursoId).get();
       if (!cursoSnapshot.exists) throw new Error('Curso não encontrado após salvar a turma.');
       notificationsCreated = await window.academicWorkflow.notifyCourseProfessors(
@@ -1932,7 +1978,7 @@ async function excluirTurmaDaLista(curso, turmaId) {
   try {
     await excluirTurmaDoCurso(curso.id, turmaId);
     turmaExcluida = true;
-    await limparDisponibilidadesDoCurso(curso.id, turmaId, 'Turma excluída.');
+    await limparDisponibilidadesDoCurso(curso.id, turmaId);
     const cursoSnapshot = await db.collection('cursos').doc(curso.id).get();
     if (!cursoSnapshot.exists) throw new Error('Curso não encontrado após excluir a turma.');
     await window.academicWorkflow.notifyCourseProfessors(
@@ -2593,6 +2639,7 @@ document.getElementById('deleteButton').addEventListener('click', async function
         });
 
         await batch.commit();
+        await limparDisponibilidadesDoCurso(courseId);
         if (window.registrarLogAudit) registrarLogAudit(`Excluiu o Curso: ${usuarioAtual.nome}`, 'adm', { cursoId: courseId });
         showToast('Curso excluído!', 'success');
         closeModal();

@@ -147,13 +147,30 @@
     });
 
     await Promise.all(writes);
-    const existingRequests = await db.collection('notificacoes').where('cursoId', '==', courseId).get();
+    const [existingRequests, existingAvailability] = await Promise.all([
+      db.collection('notificacoes').where('cursoId', '==', courseId).get(),
+      db.collection('disponibilidades').where('cursoId', '==', courseId).get()
+    ]);
+    // Apaga o que ficou sem turma ou disciplina; sem permissão de exclusão, cancela a solicitação.
+    const removeRequest = doc => doc.ref.delete().catch(() => doc.ref.update({ status: 'cancelada' }));
     const cancellations = existingRequests.docs
       .filter(doc => doc.data().tipo === 'solicitar_disponibilidade'
-        && doc.data().status === 'pendente'
+        && ['pendente', 'cancelada'].includes(doc.data().status)
         && !expectedNotificationIds.has(doc.id))
-      .map(doc => doc.ref.update({ status: 'cancelada' }));
-    await Promise.all(cancellations);
+      .map(removeRequest);
+
+    const currentClassIds = new Set((Array.isArray(course.turmas) ? course.turmas : [])
+      .map(item => item.id || item.turmaId || ''));
+    const hasClasses = currentClassIds.size > 0;
+    const currentSubjectIds = new Set((Array.isArray(course.disciplinas) ? course.disciplinas : []).map(subjectId));
+    const staleAvailability = existingAvailability.docs.filter(doc => {
+      const record = doc.data() || {};
+      const classMissing = hasClasses && !currentClassIds.has(record.turmaId || '');
+      const subjectMissing = record.disciplinaId && !currentSubjectIds.has(record.disciplinaId);
+      return classMissing || subjectMissing;
+    }).map(doc => doc.ref.delete().catch(() => {}));
+
+    await Promise.all([...cancellations, ...staleAvailability]);
     return writes.length;
   }
 

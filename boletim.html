@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/png" href="/img/logo.png">
     <title>Thémis | Meu boletim</title>
     <link rel="stylesheet" href="/boletim/boletim.css">
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&family=Anton&display=swap" rel="stylesheet">
@@ -12,6 +13,7 @@
     <script src="https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore-compat.js"></script>
     <script src="/js/auth-guard.js"></script>
     <script src="/boletim/boletim.js?v=approved-schedules-1" defer></script>
+    <link rel="stylesheet" href="/responsive.css">
 </head>
 <body>
     <nav class="navbar">
@@ -32,5 +34,6 @@
             <div class="table-scroll"><table class="report-table"><thead><tr><th>Disciplina</th><th>Professor e horário</th><th>Nota do professor</th><th>Faltas</th><th>Situação</th></tr></thead><tbody id="report-body"><tr><td colspan="5" class="loading">Carregando seu boletim...</td></tr></tbody></table></div>
         </section>
     </main>
+    <script src="/js/responsive-nav.js"></script>
 </body>
 </html>

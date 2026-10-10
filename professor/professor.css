@@ -76,7 +76,7 @@ main { padding-top: 74px; }
 .availability-form { display: grid; gap: 16px; margin-top: 18px; }
 .availability-form fieldset { min-width: 0; border: 0; }
 .availability-form legend { margin-bottom: 9px; color: #bbb; font-size: .75rem; font-weight: 700; }
-.availability-days { display: grid; grid-template-columns: repeat(auto-fit,minmax(132px,1fr)); gap: 7px; }
+.availability-days { display: grid; grid-template-columns: repeat(auto-fit,minmax(min(100%, 132px),1fr)); gap: 7px; }
 .availability-days label { display: flex; align-items: center; gap: 8px; min-height: 38px; padding: 8px 10px; border: 1px solid var(--line); color: #ddd; background: rgba(255,255,255,.035); font-size: .72rem; cursor: pointer; }
 .availability-days input { accent-color: var(--orange); }
 .availability-times { display: flex; align-items: end; flex-wrap: wrap; gap: 12px; }
@@ -109,7 +109,8 @@ main { padding-top: 74px; }
 [hidden] { display: none !important; }
 @media (max-width: 760px) { .nav-content { padding: 0 17px; } .mobile-menu-button { display: block; } .nav-links { display: none; position: absolute; top: 74px; left: 0; right: 0; flex-direction: column; align-items: stretch; gap: 0; padding: 12px 18px 18px; border-bottom: 1px solid var(--line); background: #111; } .nav-links.open { display: flex; } .nav-links li { padding: 11px 0; } .welcome-content { min-height: 250px; padding-top: 35px; padding-bottom: 35px; } .welcome-mark { display: none; } .summary-strip { grid-template-columns: 1fr; } .summary-item { border-right: 0; border-bottom: 1px solid var(--line); } .summary-item:last-child { border-bottom: 0; } .discipline-grid { grid-template-columns: 1fr; } .grade-panel-header { align-items: flex-start; flex-direction: column; } .outline-button { width: 100%; } .availability-toggle-button { width: auto; } }
 
-.availability-calendar { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 16px; margin-top: 10px; }
+.availability-calendar { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 230px), 1fr)); gap: 16px; margin-top: 10px; }
+@media (max-width: 760px) { .nav-links { top: 100%; } .section-heading { flex-direction: column; } .availability-toggle-button { max-width: 100%; } }
 .calendar-month strong { display: block; margin-bottom: 8px; color: #d8b45a; font-size: .8rem; }
 .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; }
 .calendar-weekday { color: #888; font-size: .62rem; text-align: center; }

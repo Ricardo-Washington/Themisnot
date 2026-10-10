@@ -123,7 +123,8 @@ async function carregarDadosAcademicos() {
     gradesSnapshot.forEach(doc => {
         gradeRecords[doc.id] = { id: doc.id, ...doc.data() };
     });
-    availabilityRecords = availabilitySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    availabilityRecords = availabilitySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
+        .filter(record => registroAindaExiste(record));
     const professorAvailabilityKeys = new Set(
         availabilityRecords
             .filter(record => record.cursoId && record.disciplinaKey)
@@ -131,6 +132,7 @@ async function carregarDadosAcademicos() {
     );
 
     availabilityRequests = requestsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
+        .filter(request => registroAindaExiste(request))
         .filter(request => request.tipo === 'solicitar_disponibilidade'
             && request.status === 'pendente'
             && !availabilityRecords.some(record =>
@@ -144,6 +146,15 @@ async function carregarDadosAcademicos() {
     renderizarEscalaProfessor();
     renderizarDisciplinas();
     renderizarAlunosDasTurmas();
+}
+
+function registroAindaExiste(record) {
+    const course = courses.find(item => item.id === record.cursoId);
+    if (!course) return false;
+    const turmas = Array.isArray(course.turmas) ? course.turmas : [];
+    if (turmas.length && !turmas.some(turma => (turma.id || turma.turmaId || '') === (record.turmaId || ''))) return false;
+    if (!record.disciplinaId) return true;
+    return (course.disciplinas || []).some(subject => window.academicWorkflow.subjectId(subject) === record.disciplinaId);
 }
 
 function reconstruirDisciplinasPorIds(ids) {

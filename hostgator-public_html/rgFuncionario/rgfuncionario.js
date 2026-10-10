@@ -542,6 +542,8 @@ async function excluirAluno(id) {
 
 // Carregamento agora ocorre após autenticação (onAuthStateChanged)
 
+const EMPRESA_CNPJ = '26.489.471/0001-07';
+
 // Função para criar contrato em PDF
 function criarContrato(nome, nascimento, cpf, rg, orgaoRg, endereco, telefone, telefoneAlt, formaPagamento, cursoSolicitado, dataInicio, turno) {
     if (window.registrarLogAudit) registrarLogAudit(`Gerou Contrato: ${nome}`, 'gestão', {cursoSolicitado});
@@ -553,18 +555,15 @@ function criarContrato(nome, nascimento, cpf, rg, orgaoRg, endereco, telefone, t
         : '';
     
     const { jsPDF } = window.jspdf;
-    const doc = new jsPDF({
-        orientation: "portrait",
-        unit: "mm",
-        format: "a4"
-    });
+    const hoje = new Date();
+    const meses = ['JANEIRO', 'FEVEREIRO', 'MARÇO', 'ABRIL', 'MAIO', 'JUNHO', 'JULHO', 'AGOSTO', 'SETEMBRO', 'OUTUBRO', 'NOVEMBRO', 'DEZEMBRO'];
+    const dataEmissao = `${String(hoje.getDate()).padStart(2, '0')}/${String(hoje.getMonth() + 1).padStart(2, '0')}/${hoje.getFullYear()}`;
+    const dataExtenso = `${hoje.getDate()} de ${meses[hoje.getMonth()]} de ${hoje.getFullYear()}`;
 
     // Carrega a logo e gera o PDF após carregar
     const img = new Image();
     img.src = "/img/logo.png";
     img.onload = function () {
-        // Adiciona a logo no topo
-        doc.addImage(img, "PNG", 80, 8, 50, 40); // x, y, largura, altura
 
         // Texto do contrato com marcadores
         let contrato = `
@@ -615,7 +614,7 @@ CLÁUSULA SEXTA – DO FORO
 As partes elegem o foro de Águas Lindas de Goiás-GO, para dirimir quaisquer controvérsias existentes em relação ao presente Contrato, em detrimento de outro, por mais privilegiado que seja.
 Assim, por estarem justas e contratadas, as partes assinam o presente contrato em duas vias de igual teor.
 
-Águas Lindas de Goiás-GO, em  09 de JULHO de 2025.
+Águas Lindas de Goiás-GO, em  DDATA.
 
 
 `;
@@ -629,6 +628,7 @@ Assim, por estarem justas e contratadas, as partes assinam o presente contrato e
             .replace(/TTT1/g, telefone)
             .replace(/GGG2/g, telefoneAlt)
             .replace(/PPP/g, formaPagamento)
+            .replace(/DDATA/g, dataExtenso)
             .replace(/DDD/g, dataInicio)
             .replace(/TTTT/g, turno)
             .replace(/AAA/g, cursoSolicitado);
@@ -648,40 +648,98 @@ Assim, por estarem justas e contratadas, as partes assinam o presente contrato e
             "CLÁUSULA SEXTA – DO FORO"
         ];
 
-        let y = 35; // Começa abaixo da logo
-        linhas.forEach(linha => {
-            let texto = linha.trim();
-            if (titulos.some(t => texto.startsWith(t))) {
+        const MARGEM = 12;
+        const LARGURA = 210 - MARGEM * 2;
+        const TOPO_PRIMEIRA = 58;
+        const TOPO_DEMAIS = 20;
+        const LIMITE_Y = 280;
+        const MAX_PAGINAS = 2;
+        const ENDERECO_RODAPE = "Av. JK Qd. 12 Lote 16 sala 1B – Jardim Brasília – Águas Lindas de Goiás – GO – (61) 3613-4173 (61) 999624357";
+        const ehTituloDoc = (t) => t === titulos[0] || t === titulos[1];
+
+        const decorarPagina = (doc, primeira) => {
+            // Marca d'água com a logo, bem clara
+            doc.saveGraphicsState();
+            doc.setGState(new doc.GState({ opacity: 0.07 }));
+            doc.addImage(img, "PNG", 35, 85, 140, 130);
+            doc.restoreGraphicsState();
+
+            doc.setTextColor(0, 0, 0);
+            if (primeira) {
+                doc.addImage(img, "PNG", 85, 6, 40, 30);
                 doc.setFont("times", "bold");
                 doc.setFontSize(13);
-                doc.setTextColor(0, 0, 0);
+                doc.text(titulos[0], 105, 41, { align: "center" });
+                doc.setFontSize(8.5);
+                doc.setFont("times", "normal");
+                doc.text(`CNPJ: ${EMPRESA_CNPJ}   |   Data de emissão: ${dataEmissao}`, 105, 46, { align: "center" });
+                doc.setFont("times", "bold");
+                doc.setFontSize(15);
+                doc.text(titulos[1], 105, 54, { align: "center" });
             } else {
                 doc.setFont("times", "normal");
-                doc.setFontSize(11.5);
-                doc.setTextColor(0, 0, 0);
+                doc.setFontSize(8.5);
+                doc.text(`THÉMIS – ACADEMIA DE FORMAÇÃO DE VIGILANTES LTDA/EPP  |  CNPJ: ${EMPRESA_CNPJ}  |  Data de emissão: ${dataEmissao}`, 105, 12, { align: "center" });
+                doc.setLineWidth(0.2);
+                doc.line(MARGEM, 14, 210 - MARGEM, 14);
             }
-            // Quebra linhas longas automaticamente
-            const partes = doc.splitTextToSize(texto, 180);
-            partes.forEach(parte => {
-                doc.text(parte, 15, y);
-                y += 7;
-                // Se chegar ao fim da página, cria nova página
-                if (y > 280) {
-                    doc.addPage();
-                    y = 20;
-                }
-            });
-        });
+            doc.setFont("times", "bold");
+            doc.setFontSize(8);
+            doc.setTextColor(120, 120, 120);
+            doc.text(ENDERECO_RODAPE, 105, 290, { align: "center" });
+            doc.setTextColor(0, 0, 0);
+        };
 
-        // Espaço para assinatura
-        y += 10;
-        doc.setFont("times", "normal");
-        doc.setFontSize(12);
-        doc.setTextColor(0, 0, 0);
-        doc.line(15, y, 90, y); // Linha para assinatura contratada
-        doc.line(120, y, 195, y); // Linha para assinatura contratante
-        doc.text("CONTRATADA", 35, y + 6);
-        doc.text("CONTRATANTE", 145, y + 6);
+        // Gera o PDF com uma fonte e devolve o documento
+        const montarPdf = (tamanho) => {
+            const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+            const alturaLinha = tamanho * 0.4;
+            let y = TOPO_PRIMEIRA;
+            decorarPagina(doc, true);
+
+            const novaPaginaSeNecessario = (altura) => {
+                if (y + altura > LIMITE_Y) {
+                    doc.addPage();
+                    decorarPagina(doc, false);
+                    y = TOPO_DEMAIS;
+                }
+            };
+
+            linhas.forEach(linha => {
+                const texto = linha.replace(/\t/g, ' ').replace(/\s{2,}/g, ' ').trim();
+                if (!texto || ehTituloDoc(texto)) return;
+                const ehTitulo = titulos.some(t => texto.startsWith(t));
+                doc.setFont("times", ehTitulo ? "bold" : "normal");
+                doc.setFontSize(tamanho);
+                if (ehTitulo) y += alturaLinha * 0.5;
+                const partes = doc.splitTextToSize(texto, LARGURA);
+                partes.forEach((parte, i) => {
+                    novaPaginaSeNecessario(alturaLinha);
+                    const justificar = !ehTitulo && i < partes.length - 1;
+                    doc.text(parte, MARGEM, y, justificar ? { align: "justify", maxWidth: LARGURA } : undefined);
+                    if (ehTitulo) doc.line(MARGEM, y + 0.7, MARGEM + doc.getTextWidth(parte), y + 0.7);
+                    y += alturaLinha;
+                });
+            });
+
+            // Assinaturas
+            doc.setFont("times", "normal");
+            doc.setFontSize(tamanho);
+            y += alturaLinha * 2.5;
+            novaPaginaSeNecessario(alturaLinha * 3);
+            doc.line(MARGEM, y, 90, y);
+            doc.line(120, y, 210 - MARGEM, y);
+            doc.text("CONTRATADA", 40, y + alturaLinha);
+            doc.text("CONTRATANTE", 150, y + alturaLinha);
+            return doc;
+        };
+
+        // Usa a maior fonte que mantém o contrato em até 2 folhas A4
+        let doc;
+        for (let tamanho = 10; tamanho >= 6; tamanho -= 0.25) {
+            doc = montarPdf(tamanho);
+            if (doc.getNumberOfPages() <= MAX_PAGINAS) break;
+        }
 
         doc.save(`Contrato_${nome}.pdf`);
     };
