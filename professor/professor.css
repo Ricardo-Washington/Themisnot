@@ -21,7 +21,9 @@ main { padding-top: 74px; }
 .welcome-content h1 { margin: 17px 0 13px; font: 400 clamp(2.5rem,5vw,4.5rem)/1 'Anton',sans-serif; }
 .welcome-content h1 span { color: var(--orange); }
 .welcome-content p { max-width: 600px; color: #aaa; font-size: .94rem; line-height: 1.6; }
-.welcome-mark { padding-right: 7%; color: rgba(255,107,26,.23); font-size: 8rem; }
+.welcome-mark { display: block; width: 280px; height: 220px; padding-right: 7%; background: url('/img/logo.png') center / contain no-repeat; }
+.welcome-mark i { display: none; }
+.welcome-mark img { display: block; width: 280px; height: 220px; object-fit: contain; }
 .dashboard-content { padding-top: 34px; padding-bottom: 70px; }
 .summary-strip { display: grid; grid-template-columns: repeat(3,1fr); border: 1px solid var(--line); background: var(--panel); }
 .summary-item { display: flex; align-items: center; gap: 15px; padding: 20px 24px; border-right: 1px solid var(--line); }
@@ -52,6 +54,14 @@ main { padding-top: 74px; }
 .availability-request-list { display: grid; gap: 12px; }
 .availability-toggle-button { display: inline-flex; align-items: center; gap: 8px; flex: 0 0 auto; }
 .availability-toggle-button:focus-visible { outline: 2px solid #fff; outline-offset: 3px; }
+.teacher-schedule { display: grid; grid-template-columns: repeat(auto-fit,minmax(min(100%,320px),1fr)); gap: 14px; }
+.teacher-schedule-card { padding: 20px; border: 1px solid var(--line); border-left: 3px solid #72d39a; background: var(--panel); }
+.teacher-schedule-heading h3 { color: #fff; font-size: 1rem; }
+.teacher-schedule-heading p { margin-top: 7px; color: #aaa; font-size: .75rem; line-height: 1.5; }
+.teacher-schedule-details { display: grid; gap: 9px; margin-top: 17px; padding-top: 14px; border-top: 1px solid var(--line); }
+.teacher-schedule-details p { color: #ccc; font-size: .75rem; line-height: 1.5; }
+.teacher-schedule-details i { width: 17px; color: #72d39a; }
+.teacher-schedule-details strong { color: #fff; margin-right: 4px; }
 .class-student-rosters { display: grid; gap: 10px; }
 .class-student-roster { border: 1px solid var(--line); border-left: 3px solid var(--orange); background: var(--panel); }
 .class-student-roster summary { padding: 16px 18px; color: #eee; font-size: .82rem; font-weight: 700; cursor: pointer; }

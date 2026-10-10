@@ -620,6 +620,79 @@ body {
     line-height: 1.6;
 }
 
+.availability-admin-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 14px;
+}
+
+.availability-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    color: #ddd;
+    font-size: 0.82rem;
+    cursor: pointer;
+}
+
+.availability-toggle input {
+    accent-color: var(--adm-accent);
+}
+
+.availability-summary,
+.report-help {
+    color: #aaa;
+    font-size: 0.78rem;
+}
+
+.schedule-report-card {
+    height: auto;
+    min-height: 0;
+    margin-bottom: 25px;
+}
+
+.schedule-report-card .card-header {
+    margin-bottom: 12px;
+}
+
+.report-help {
+    margin: 0 0 14px;
+}
+
+.schedule-report-content {
+    min-width: 0;
+    overflow-x: auto;
+}
+
+.schedule-report-table {
+    width: 100%;
+    border-collapse: collapse;
+    color: #eee;
+    font-size: 0.82rem;
+}
+
+.schedule-report-table th,
+.schedule-report-table td {
+    padding: 11px 12px;
+    border-bottom: 1px solid var(--adm-line);
+    text-align: left;
+    vertical-align: top;
+}
+
+.schedule-report-table th {
+    color: var(--adm-accent);
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.schedule-report-table tbody tr:hover {
+    background: rgba(255, 94, 0, 0.08);
+}
+
 .availability-declined {
     display: flex;
     align-items: flex-start;
@@ -923,8 +996,13 @@ body {
 
 .welcome-mark {
     padding-right: 7%;
-    color: rgba(255, 107, 26, 0.23);
-    font-size: 6.5rem;
+}
+
+.welcome-mark img {
+    display: block;
+    width: 280px;
+    height: 220px;
+    object-fit: contain;
 }
 
 .dashboard-content {

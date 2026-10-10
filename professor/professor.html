@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Thémis | Área do professor</title>
-    <link rel="stylesheet" href="professor.css?v=availability-toggle-1">
+    <link rel="stylesheet" href="professor.css?v=teacher-schedule-logo-2">
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&family=Anton&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://www.gstatic.com/firebasejs/12.1.0/firebase-app-compat.js"></script>
@@ -13,7 +13,7 @@
     <script src="https://www.gstatic.com/firebasejs/12.1.0/firebase-functions-compat.js"></script>
     <script src="/js/auth-guard.js"></script>
     <script src="/js/academic-workflow.js?v=approved-schedules-1" defer></script>
-    <script src="professor.js?v=availability-toggle-1" defer></script>
+    <script src="professor.js?v=teacher-schedule-logo-1" defer></script>
 </head>
 <body>
     <nav class="navbar">
@@ -23,6 +23,7 @@
             <ul class="nav-links" id="nav-links">
                 <li class="teacher-greeting" id="teacher-greeting">Área do professor</li>
                 <li><a class="active" href="#inicio"><i class="fa-solid fa-house"></i> Início</a></li>
+                <li><a href="#minha-escala"><i class="fa-solid fa-calendar-days"></i> Minha escala</a></li>
                 <li><a href="#disciplinas"><i class="fa-solid fa-book-open"></i> Disciplinas</a></li>
                 <li><a href="#alunos-turma"><i class="fa-solid fa-users"></i> Alunos das turmas</a></li>
                 <li><a href="#boletim"><i class="fa-solid fa-clipboard-list"></i> Boletim</a></li>
@@ -39,7 +40,9 @@
                     <h1>Olá, <span id="teacher-name">professor</span>.</h1>
                     <p>Organize suas aulas e lance notas e faltas dos alunos das disciplinas que você leciona.</p>
                 </div>
-                <div class="welcome-mark" aria-hidden="true"><i class="fa-solid fa-graduation-cap"></i></div>
+                <div class="welcome-mark">
+                    <img src="/img/logo.png" alt="Logo Thémis">
+                </div>
             </div>
         </section>
 
@@ -59,6 +62,17 @@
                     </button>
                 </div>
                 <div id="availability-request-list" class="availability-request-list"><div class="loading-state">Carregando solicitações...</div></div>
+            </section>
+
+            <section class="section-block" id="minha-escala">
+                <div class="section-heading">
+                    <div><span class="card-kicker">Sua agenda de trabalho</span><h2>Minha escala</h2></div>
+                    <i class="fa-solid fa-calendar-check heading-icon"></i>
+                </div>
+                <p class="section-description">Consulte os dias e horários das aulas que foram confirmados pela administração.</p>
+                <div id="teacher-schedule" class="teacher-schedule" aria-live="polite">
+                    <div class="loading-state">Carregando sua escala...</div>
+                </div>
             </section>
 
             <section class="section-block" id="disciplinas">

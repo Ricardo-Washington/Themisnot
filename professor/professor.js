@@ -141,6 +141,7 @@ async function carregarDadosAcademicos() {
     assignments = assignments.map(assignment => enriquecerDisciplina(assignment));
     renderizarResumo();
     renderizarSolicitacoesDisponibilidade();
+    renderizarEscalaProfessor();
     renderizarDisciplinas();
     renderizarAlunosDasTurmas();
 }
@@ -235,6 +236,72 @@ function obterDiaSemanaIso(dataIso) {
 
 function formatarDatasDisponiveis(datas = []) {
     return datas.map(data => data.split('-').reverse().slice(0, 2).join('/')).join(', ');
+}
+
+function renderizarEscalaProfessor() {
+    const container = document.getElementById('teacher-schedule');
+    if (!container) return;
+    container.textContent = '';
+
+    const approvedRecords = availabilityRecords
+        .filter(record => record.status === 'aprovada' || !record.status)
+        .sort((first, second) => {
+            const firstDate = (first.datasDisponiveis || [first.dataInicio || ''])[0];
+            const secondDate = (second.datasDisponiveis || [second.dataInicio || ''])[0];
+            return firstDate.localeCompare(secondDate)
+                || String(first.horarioInicio || '').localeCompare(String(second.horarioInicio || ''));
+        });
+
+    if (!approvedRecords.length) {
+        const empty = document.createElement('div');
+        empty.className = 'empty-state';
+        empty.textContent = 'Nenhuma aula foi confirmada pela administração ainda.';
+        container.appendChild(empty);
+        return;
+    }
+
+    approvedRecords.forEach(record => {
+        const card = document.createElement('article');
+        card.className = 'teacher-schedule-card';
+
+        const heading = document.createElement('div');
+        heading.className = 'teacher-schedule-heading';
+        const subject = document.createElement('h3');
+        subject.textContent = record.disciplinaNome || 'Disciplina';
+        const course = document.createElement('p');
+        course.textContent = `${record.cursoNome || 'Curso'} · Turma ${record.turmaId || 'sem identificação'}`;
+        heading.append(subject, course);
+
+        const details = document.createElement('div');
+        details.className = 'teacher-schedule-details';
+        const dates = Array.isArray(record.datasDisponiveis) && record.datasDisponiveis.length
+            ? formatarDatasDisponiveis(record.datasDisponiveis)
+            : `De ${formatarDataEscala(record.dataInicio)} até ${formatarDataEscala(record.dataTermino)}`;
+        const dayText = formatarDiasSemana(record.diasSemana || []);
+        const dateItem = criarDetalheEscala('fa-calendar-day', 'Datas', dates);
+        const dayItem = criarDetalheEscala('fa-calendar-week', 'Dias', dayText || 'não informados');
+        const timeItem = criarDetalheEscala('fa-clock', 'Horário', `${record.horarioInicio || '--'} às ${record.horarioTermino || '--'}`);
+        details.append(dateItem, dayItem, timeItem);
+
+        card.append(heading, details);
+        container.appendChild(card);
+    });
+}
+
+function formatarDataEscala(data) {
+    if (!data || !/^\d{4}-\d{2}-\d{2}$/.test(data)) return 'data não informada';
+    return data.split('-').reverse().join('/');
+}
+
+function criarDetalheEscala(icon, label, value) {
+    const item = document.createElement('p');
+    const iconElement = document.createElement('i');
+    iconElement.className = `fa-solid ${icon}`;
+    iconElement.setAttribute('aria-hidden', 'true');
+    const labelElement = document.createElement('strong');
+    labelElement.textContent = `${label}:`;
+    item.append(iconElement, labelElement, document.createTextNode(` ${value}`));
+    return item;
 }
 
 function montarCalendarioDisponibilidade(inicio, fim, selecionadas = []) {

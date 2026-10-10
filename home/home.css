@@ -492,7 +492,9 @@ body {
 .welcome-content h1 { font-family: 'Anton', sans-serif; font-weight: 400; font-size: clamp(2.5rem, 5vw, 4.5rem); letter-spacing: 0.01em; line-height: 1; margin: 17px 0 13px; }
 .welcome-content h1 span { color: var(--orange-solid); }
 .welcome-content p { color: #aaa; max-width: 560px; font-size: 1rem; }
-.welcome-mark { color: rgba(255, 107, 26, 0.24); font-size: 8rem; padding-right: 7%; }
+.welcome-mark { display: block; width: 280px; height: 220px; padding-right: 7%; background: url('/img/logo.png') center / contain no-repeat; }
+.welcome-mark i { display: none; }
+.welcome-mark img { display: block; width: 280px; height: 220px; object-fit: contain; }
 .dashboard-content { padding-top: 34px; padding-bottom: 64px; }
 .course-banner { display: flex; align-items: center; gap: 18px; padding: 22px 26px; background: var(--orange-soft); border: 1px solid rgba(255, 107, 26, 0.35); border-radius: 8px; }
 .course-icon { width: 48px; height: 48px; display: grid; place-items: center; color: var(--orange-solid); background: rgba(255, 107, 26, 0.15); font-size: 1.25rem; }

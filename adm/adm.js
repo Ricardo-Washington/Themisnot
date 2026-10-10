@@ -49,6 +49,7 @@ let disciplinasCadastradasCache = [];
 let disciplinasCatalogoNovoCurso = [];
 let turmaEmEdicao = null;
 let availabilityRefreshTimeout = null;
+let ocultarDisponibilidadesConfirmadas = false;
 
 const mobileMenuButton = document.getElementById('mobile-menu-btn');
 const navigationLinks = document.getElementById('nav-links');
@@ -126,8 +127,9 @@ function aplicarBuscaAdm() {
 
   registros.forEach(registro => {
     const corresponde = !termo || registro.textContent.toLocaleLowerCase('pt-BR').includes(termo);
-    registro.hidden = !corresponde;
-    if (corresponde) encontrados += 1;
+    const ocultoPorStatus = registro.dataset.approved === 'true' && ocultarDisponibilidadesConfirmadas;
+    registro.hidden = !corresponde || ocultoPorStatus;
+    if (corresponde && !ocultoPorStatus) encontrados += 1;
   });
 
   if (searchStatus) {
@@ -161,6 +163,15 @@ const studentFilterCourse = document.getElementById('studentFilterCourse');
 const studentFilterProfessor = document.getElementById('studentFilterProfessor');
 studentFilterCourse?.addEventListener('change', renderizarAlunosPorCursoProfessor);
 studentFilterProfessor?.addEventListener('change', renderizarAlunosPorCursoProfessor);
+
+document.getElementById('hideApprovedAvailabilities')?.addEventListener('change', event => {
+  ocultarDisponibilidadesConfirmadas = event.target.checked;
+  document.querySelectorAll('#availability-admin-list .availability-admin-item').forEach(item => {
+    item.hidden = ocultarDisponibilidadesConfirmadas && item.dataset.approved === 'true';
+  });
+  aplicarBuscaAdm();
+  atualizarResumoDisponibilidades();
+});
 
 // A função principal para buscar e separar os dados
 function findUsers() {
@@ -279,10 +290,13 @@ async function fetchTeacherAvailabilities(users) {
       return !endDate || endDate >= obterDataLocalAtual();
     });
     renderTeacherAvailabilities(container, activeRecords, professorNames);
+    renderGeneralScheduleReport(activeRecords, professorNames);
     await renderDeclinedAvailabilityRequests(professorNames, classesWithoutAvailability, classEndDates);
   } catch (error) {
     console.error('Erro ao carregar disponibilidades dos professores:', error);
     container.innerHTML = '<p class="item">Não foi possível carregar as disponibilidades. Verifique as permissões e tente novamente.</p>';
+    const report = document.getElementById('generalScheduleReport');
+    if (report) report.innerHTML = '<p class="item">Não foi possível carregar o relatório.</p>';
   }
 }
 
@@ -397,6 +411,7 @@ function renderTeacherAvailabilities(container, records, professorNames) {
     empty.className = 'item';
     empty.textContent = 'Nenhuma disponibilidade de turmas em andamento ou futuras.';
     container.appendChild(empty);
+    atualizarResumoDisponibilidades();
     return;
   }
 
@@ -410,6 +425,8 @@ function renderTeacherAvailabilities(container, records, professorNames) {
     article.className = `availability-admin-item${conflicts.length ? ' has-conflict' : ''}`;
     article.dataset.searchRecord = '';
     article.dataset.courseId = record.cursoId || '';
+    article.dataset.approved = String(approved);
+    article.hidden = ocultarDisponibilidadesConfirmadas && approved;
     const status = approved ? 'Aprovada e reservada' : 'Aguardando revisão';
     const conflictMessage = conflicts.length
       ? `Conflito com ${conflicts.map(item => professorNames.get(item.professorId) || 'outro professor').join(', ')}.`
@@ -459,6 +476,53 @@ function renderTeacherAvailabilities(container, records, professorNames) {
     container.appendChild(article);
   });
   aplicarBuscaAdm();
+  atualizarResumoDisponibilidades();
+}
+
+function atualizarResumoDisponibilidades() {
+  const summary = document.getElementById('availabilityAdminSummary');
+  const items = Array.from(document.querySelectorAll('#availability-admin-list .availability-admin-item'));
+  if (!summary) return;
+  const confirmadas = items.filter(item => item.dataset.approved === 'true').length;
+  const pendentes = items.length - confirmadas;
+  summary.textContent = `${confirmadas} confirmada(s) · ${pendentes} pendente(s)`;
+}
+
+function renderGeneralScheduleReport(records, professorNames) {
+  const container = document.getElementById('generalScheduleReport');
+  if (!container) return;
+  const approvedRecords = records
+    .filter(teacherAvailabilityApproved)
+    .sort((first, second) => {
+      const firstDate = first.datasDisponiveis?.[0] || first.dataInicio || '';
+      const secondDate = second.datasDisponiveis?.[0] || second.dataInicio || '';
+      return firstDate.localeCompare(secondDate)
+        || String(professorNames.get(first.professorId) || '').localeCompare(String(professorNames.get(second.professorId) || ''));
+    });
+
+  if (!approvedRecords.length) {
+    container.innerHTML = '<p class="item">Nenhum horário confirmado para o período atual.</p>';
+    return;
+  }
+
+  const rows = approvedRecords.map(record => {
+    const dates = formatAvailabilityDates(record.datasDisponiveis || []);
+    const days = formatAvailabilityDays(record.diasSemana || []);
+    const period = dates || `${record.dataInicio || '--'} a ${record.dataTermino || '--'}`;
+    const dayInfo = days ? ` (${days})` : '';
+    return `<tr>
+      <td>${escapeHtml(professorNames.get(record.professorId) || 'Professor não identificado')}</td>
+      <td>${escapeHtml(record.cursoNome || 'Curso')} · Turma ${escapeHtml(record.turmaId || 'sem identificação')}</td>
+      <td>${escapeHtml(record.disciplinaNome || 'Disciplina')}</td>
+      <td>${escapeHtml(period + dayInfo)}</td>
+      <td>${escapeHtml(`${record.horarioInicio || '--'} às ${record.horarioTermino || '--'}`)}</td>
+    </tr>`;
+  }).join('');
+
+  container.innerHTML = `<div class="schedule-report-table-wrap"><table class="schedule-report-table">
+    <thead><tr><th>Professor</th><th>Curso e turma</th><th>Disciplina</th><th>Data(s)</th><th>Horário</th></tr></thead>
+    <tbody>${rows}</tbody>
+  </table></div>`;
 }
 
 async function revisarDisponibilidadeProfessor(event) {
@@ -992,24 +1056,12 @@ function renderizarCursos(idDaLista, dados) {
     li.appendChild(status);
 
     if (curso.status === 'em_vigor') {
-      const removeVigorButton = document.createElement('button');
-      removeVigorButton.type = 'button';
-      removeVigorButton.classList.add('details-button');
-      removeVigorButton.textContent = 'Retirar da vigência';
-      removeVigorButton.addEventListener('click', async () => {
-        if (!confirm(`Retirar o curso ${curso.nome} da vigência?`)) return;
-        try {
-          await retirarCursoDeVigor(curso.id);
-        } catch (error) {
-          showToast('Erro ao retirar curso da vigência: ' + error.message, 'error');
-        }
-      });
       const startNewClassButton = document.createElement('button');
       startNewClassButton.type = 'button';
       startNewClassButton.classList.add('details-button', 'compact-action-button');
       startNewClassButton.textContent = 'Nova turma';
       startNewClassButton.addEventListener('click', () => openModal('curso', curso.id, true));
-      li.append(removeVigorButton, startNewClassButton);
+      li.appendChild(startNewClassButton);
     }
 
     if (curso.status !== 'em_vigor' && curso.status !== 'finalizado') {
@@ -1625,7 +1677,6 @@ async function openModal(tipo, usuarioId = '', abrirNovaTurma = false) {
   const precoInput = document.getElementById('editPreco');
   const cargaHorariaInput = document.getElementById('editCargaHoraria');
   const finalizeCourseButton = document.getElementById('finalizeCourseButton');
-  const removeCourseVigorButton = document.getElementById('removeCourseVigorButton');
   const courseVigorActions = document.getElementById('courseVigorActions');
   const newCourseClassFields = document.getElementById('newCourseClassFields');
   
@@ -1951,17 +2002,6 @@ document.getElementById('postponeCourseButton').addEventListener('click', async 
     showToast('Erro ao adiar turma: ' + error.message, 'error');
   } finally {
     button.disabled = false;
-  }
-});
-
-document.getElementById('removeCourseVigorButton').addEventListener('click', async () => {
-  if (tipoAtual !== 'curso' || !usuarioAtual || !confirm(`Retirar o curso ${usuarioAtual.nome} da vigência?`)) return;
-
-  try {
-    await retirarCursoDeVigor(usuarioAtual.id);
-    closeModal();
-  } catch (error) {
-    showToast('Erro ao retirar curso da vigência: ' + error.message, 'error');
   }
 });
 
