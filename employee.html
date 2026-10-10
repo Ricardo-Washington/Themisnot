@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Funcionario</title>
+    <link rel="stylesheet" href="/registerEmployee/employee.css">
+    <link rel="stylesheet" href="/global.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="container nav-content">
+            <a href="/index.html" class="logo"><img src="/img/logo.png" alt="logo"></a>
+            
+                <ul class="nav-links">
+                <li class="user-greeting" style="color: var(--orange); font-family: 'Anton', sans-serif; font-size: 1.2rem; display: flex; align-items: center;"></li>
+                <li><a href="/index.html#sobre">Sobre</a></li>
+                <li><a href="/index.html#cursos">Cursos</a></li>
+                <li><a href="/index.html#depoimentos">Depoimentos</a></li>
+                <li><a href="/index.html#contato">Contato</a></li>
+                <li><a href="/login.html">Login</a></li>
+            </ul>
+        </div>
+    </nav>
+    <section class="register-section">
+        <div class="register-container">
+            <h1>Solicitação de cadastro de funcionário</h1>
+            <p>Crie sua conta para que a secretaria possa validar seu acesso.</p>
+            <form id="employeeRegisterForm" class="register-form">
+                <div class="form-group"><label for="email">E-mail</label><input id="email" type="email" required></div>
+                <div class="form-group"><label for="confirmEmail">Confirme o e-mail</label><input id="confirmEmail" type="email" required></div>
+                <div class="form-group"><label for="password">Senha</label><input id="password" type="password" minlength="6" required></div>
+                <div class="form-group"><label for="confirmPassword">Confirme a senha</label><input id="confirmPassword" type="password" minlength="6" required></div>
+                <div class="form-group"><label for="nome">Nome completo</label><input id="nome" type="text" required></div>
+                <button type="submit" class="cta-button">Enviar solicitação</button>
+                <p id="employeeMessage" class="register-message" role="status"></p>
+            </form>
+        </div>
+    </section>
+
+    
+    <footer id="contato" class="footer-section">
+        <div class="container footer-content">
+            <div class="footer-info">
+                <h4>Thémis</h4>
+                <p>Rua da Segurança, 123 - Cidade Protetora</p>
+                <p>contato@themis.com</p>
+                <p>(11) 98765-4321</p>
+            </div>
+            <div class="social-links">
+                <a href="#"><i class="fab fa-facebook-f"></i></a>
+                <a href="#"><i class="fab fa-instagram"></i></a>
+                <a href="#"><i class="fab fa-linkedin-in"></i></a>
+            </div>
+        </div>
+        <div class="footer-copyright">
+            <p>&copy; 2025 Thémis. Todos os direitos reservados.</p>
+        </div>
+    </footer>
+    <script src="https://www.gstatic.com/firebasejs/12.1.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/12.1.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore-compat.js"></script>
+    <script src="/registerEmployee/employee.js"></script>
+</body>
+</html>

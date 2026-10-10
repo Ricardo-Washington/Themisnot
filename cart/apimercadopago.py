@@ -87,9 +87,9 @@ def create_preference():
         preference_data = {
             "items": items,
             "back_urls": {
-                "success": f"{BASE_URL}/cart/cart.html?payment=success",
-                "failure": f"{BASE_URL}/cart/cart.html?payment=error",
-                "pending": f"{BASE_URL}/cart/cart.html?payment=pending",
+                "success": f"{BASE_URL}/cart.html?payment=success",
+                "failure": f"{BASE_URL}/cart.html?payment=error",
+                "pending": f"{BASE_URL}/cart.html?payment=pending",
             },
         }
 

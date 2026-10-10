@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Thémis | Carrinho de Compras</title>
+    <link rel="stylesheet" href="/cart/cart.css">
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;700&family=Anton&display=swap" rel="stylesheet">
+    <script src="/js/auth-guard.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/12.1.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/12.1.0/firebase-auth-compat.js"></script>
+
+    <script src="/js/logger.js" defer></script>
+    <script src="/cart/cart.js" defer></script>
+</head>
+
+<body>
+    <nav class="navbar">
+        <div class="container nav-content">
+            <a href="/home.html" class="logo"><img src="/img/logo.png" alt="logo"></a>
+            
+                <ul class="nav-links">
+                <li class="user-greeting" style="color: var(--orange); font-family: 'Anton', sans-serif; font-size: 1.2rem; display: flex; align-items: center;"></li>
+                <li><a href="/products.html">Produtos</a></li>
+                <li><a href="/home.html#cursos">Cursos</a></li>
+                <li><a href="/home.html#contato">Contato</a></li>
+                <li><a href="/cart.html">Carrinho</a></li>
+                <li><button class="logout-button" type="button" onclick="logout()">Sair</button></li>
+            </ul>
+        </div>
+    </nav>
+
+    <header class="hero-section">
+        <div class="container hero-content">
+            <h1>Seu Carrinho de Compras</h1>
+            <p>Revise os itens selecionados no seu carrinho.</p>
+        </div>
+    </header>
+
+    <section class="cart-section">
+        <div class="container">
+            
+            <div id="cart-items">
+                <!-- Itens do carrinho serão inseridos aqui -->
+            </div>
+            <div id="cart-total">
+                <h3>Total: R$ <span id="total-price">0,00</span></h3>
+            </div>
+            <p class="checkout-notice">Compras online temporariamente indisponíveis.</p>
+            <button id="checkout-button" type="button" disabled>Checkout indisponível</button>
+        </div>
+    </section>
+
+    <footer class="footer-section">
+        <div class="container footer-content">
+            <div class="footer-info">
+                <h4>Thémis</h4>
+                <p>Rua da Segurança, 123 - Cidade Protetora</p>
+                <p>contato@themis.com</p>
+                <p>(11) 98765-4321</p>
+            </div>
+            <div class="social-links">
+                <a href="#"><i class="fab fa-facebook-f"></i></a>
+                <a href="#"><i class="fab fa-instagram"></i></a>
+                <a href="#"><i class="fab fa-linkedin-in"></i></a>
+            </div>
+        </div>
+        <div class="footer-copyright">
+            <p>&copy; 2025 Thémis. Todos os direitos reservados.</p>
+        </div>
+    </footer>
+</body>
+    
+</html>

@@ -1,0 +1,129 @@
+* { box-sizing: border-box; margin: 0; }
+:root { --orange: #ff6b1a; --orange-soft: rgba(255,107,26,.13); --black: #0b0b0b; --panel: #171717; --panel-light: #202020; --line: rgba(255,255,255,.1); }
+body { min-height: 100vh; color: #f5f5f5; background: #0b0b0b; background-image: radial-gradient(circle at 82% 0%, rgba(255,107,26,.12), transparent 30%), linear-gradient(135deg,#0b0b0b,#151515); font-family: 'Montserrat', sans-serif; }
+a { color: inherit; text-decoration: none; }
+.navbar { position: fixed; inset: 0 0 auto; z-index: 10; border-bottom: 1px solid var(--line); background: rgba(11,11,11,.92); backdrop-filter: blur(8px); }
+.nav-content { max-width: 1180px; min-height: 74px; margin: auto; padding: 0 24px; display: flex; justify-content: space-between; align-items: center; }
+.logo img { width: 82px; height: 74px; object-fit: contain; }
+.nav-links { display: flex; align-items: center; gap: 21px; list-style: none; }
+.nav-links a, .nav-links button { color: #aaa; font: 500 .78rem 'Montserrat',sans-serif; transition: color .2s; }
+.nav-links a:hover, .nav-links a.active, .nav-links button:hover { color: var(--orange); }
+.nav-links i { margin-right: 5px; }
+.nav-links button { border: 0; background: transparent; cursor: pointer; }
+.teacher-greeting { color: var(--orange); font: 400 1rem 'Anton',sans-serif; }
+.mobile-menu-button { display: none; border: 0; color: var(--orange); background: none; font-size: 1.4rem; cursor: pointer; }
+.page-width { max-width: 1120px; margin: auto; padding-left: 24px; padding-right: 24px; }
+main { padding-top: 74px; }
+.welcome-section { border-bottom: 1px solid var(--line); background: linear-gradient(110deg, rgba(255,107,26,.12), transparent 56%); }
+.welcome-content { min-height: 285px; display: flex; align-items: center; justify-content: space-between; gap: 30px; }
+.eyebrow, .card-kicker { color: var(--orange); font-size: .7rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+.eyebrow i { margin-right: 7px; }
+.welcome-content h1 { margin: 17px 0 13px; font: 400 clamp(2.5rem,5vw,4.5rem)/1 'Anton',sans-serif; }
+.welcome-content h1 span { color: var(--orange); }
+.welcome-content p { max-width: 600px; color: #aaa; font-size: .94rem; line-height: 1.6; }
+.welcome-mark { display: block; width: 280px; height: 220px; padding-right: 7%; background: url('/img/logo.png') center / contain no-repeat; }
+.welcome-mark i { display: none; }
+.welcome-mark img { display: block; width: 280px; height: 220px; object-fit: contain; }
+.dashboard-content { padding-top: 34px; padding-bottom: 70px; }
+.summary-strip { display: grid; grid-template-columns: repeat(3,1fr); border: 1px solid var(--line); background: var(--panel); }
+.summary-item { display: flex; align-items: center; gap: 15px; padding: 20px 24px; border-right: 1px solid var(--line); }
+.summary-item:last-child { border-right: 0; }
+.summary-item > i { color: var(--orange); font-size: 1.25rem; }
+.summary-item strong { display: block; color: #fff; font: 400 1.7rem 'Anton',sans-serif; }
+.summary-item span { color: #999; font-size: .7rem; }
+.section-block { margin-top: 34px; }
+.section-heading { display: flex; justify-content: space-between; align-items: flex-start; gap: 15px; margin-bottom: 20px; }
+.section-heading h2 { margin-top: 5px; font-size: 1.45rem; text-align: left; }
+.heading-icon { color: var(--orange); font-size: 1.3rem; }
+.discipline-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 15px; }
+.course-tabs { display: grid; gap: 16px; }
+.course-tab-list { display: flex; flex-wrap: wrap; gap: 8px; }
+.course-tab { min-height: 38px; padding: 9px 13px; border: 1px solid var(--line); color: #bbb; background: var(--panel); font: 600 .75rem 'Montserrat',sans-serif; cursor: pointer; transition: color .2s, border-color .2s, background .2s; }
+.course-tab:hover, .course-tab.active { border-color: var(--orange); color: #fff; background: var(--orange-soft); }
+.course-tab:focus-visible { outline: 2px solid var(--orange); outline-offset: 2px; }
+.course-panel { display: grid; grid-template-columns: repeat(auto-fit,minmax(min(100%,280px),1fr)); gap: 15px; }
+.discipline-card { position: relative; min-height: 170px; padding: 22px; border: 1px solid var(--line); border-left: 3px solid var(--orange); background: var(--panel); cursor: pointer; transition: border-color .2s, transform .2s, background .2s; }
+.discipline-card:hover, .discipline-card.selected { border-color: var(--orange); background: linear-gradient(135deg,rgba(255,107,26,.14),var(--panel)); transform: translateY(-2px); }
+.discipline-card h3 { max-width: 75%; margin-top: 12px; color: #fff; font-size: 1.1rem; }
+.discipline-card p { color: #999; font-size: .75rem; line-height: 1.5; margin-top: 9px; }
+.discipline-number { position: absolute; top: 17px; right: 20px; color: var(--orange); font: 400 1.7rem 'Anton',sans-serif; }
+.discipline-meta { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 19px; color: #aaa; font-size: .68rem; }
+.discipline-meta span { padding: 5px 8px; background: rgba(255,255,255,.06); }
+.discipline-meta i { margin-right: 4px; color: var(--orange); }
+.section-description { margin: -6px 0 18px; color: #999; font-size: .8rem; }
+.availability-request-list { display: grid; gap: 12px; }
+.availability-toggle-button { display: inline-flex; align-items: center; gap: 8px; flex: 0 0 auto; }
+.availability-toggle-button:focus-visible { outline: 2px solid #fff; outline-offset: 3px; }
+.teacher-schedule { display: grid; grid-template-columns: repeat(auto-fit,minmax(min(100%,320px),1fr)); gap: 14px; }
+.teacher-schedule-card { padding: 20px; border: 1px solid var(--line); border-left: 3px solid #72d39a; background: var(--panel); }
+.teacher-schedule-heading h3 { color: #fff; font-size: 1rem; }
+.teacher-schedule-heading p { margin-top: 7px; color: #aaa; font-size: .75rem; line-height: 1.5; }
+.teacher-schedule-details { display: grid; gap: 9px; margin-top: 17px; padding-top: 14px; border-top: 1px solid var(--line); }
+.teacher-schedule-details p { color: #ccc; font-size: .75rem; line-height: 1.5; }
+.teacher-schedule-details i { width: 17px; color: #72d39a; }
+.teacher-schedule-details strong { color: #fff; margin-right: 4px; }
+.class-student-rosters { display: grid; gap: 10px; }
+.class-student-roster { border: 1px solid var(--line); border-left: 3px solid var(--orange); background: var(--panel); }
+.class-student-roster summary { padding: 16px 18px; color: #eee; font-size: .82rem; font-weight: 700; cursor: pointer; }
+.class-student-roster summary::marker { color: var(--orange); }
+.class-student-list { display: grid; grid-template-columns: repeat(auto-fit,minmax(min(100%,220px),1fr)); gap: 8px; margin: 0; padding: 0 18px 18px 36px; color: #bbb; font-size: .78rem; }
+.availability-confirmed { padding: 12px 15px; border-left: 2px solid #72d39a; color: #b9e6ca; background: rgba(114,211,154,.07); font-size: .75rem; line-height: 1.55; }
+.availability-pending { padding: 12px 15px; border-left: 2px solid #e2a537; color: #f0d49b; background: rgba(226,165,55,.07); font-size: .75rem; line-height: 1.55; }
+.availability-card { padding: 20px; border: 1px solid var(--line); border-left: 3px solid var(--orange); background: var(--panel); }
+.availability-card-heading h3 { margin-top: 5px; color: #fff; font-size: 1.05rem; }
+.availability-class-heading { margin: 22px 0 8px; padding-bottom: 6px; border-bottom: 1px solid rgba(255,255,255,.12); color: #d8b45a; font-size: .85rem; letter-spacing: .08em; text-transform: uppercase; }
+.availability-card-heading p { margin-top: 7px; color: #999; font-size: .75rem; }
+.availability-form { display: grid; gap: 16px; margin-top: 18px; }
+.availability-form fieldset { min-width: 0; border: 0; }
+.availability-form legend { margin-bottom: 9px; color: #bbb; font-size: .75rem; font-weight: 700; }
+.availability-days { display: grid; grid-template-columns: repeat(auto-fit,minmax(132px,1fr)); gap: 7px; }
+.availability-days label { display: flex; align-items: center; gap: 8px; min-height: 38px; padding: 8px 10px; border: 1px solid var(--line); color: #ddd; background: rgba(255,255,255,.035); font-size: .72rem; cursor: pointer; }
+.availability-days input { accent-color: var(--orange); }
+.availability-times { display: flex; align-items: end; flex-wrap: wrap; gap: 12px; }
+.availability-times label { display: grid; gap: 6px; color: #aaa; font-size: .7rem; }
+.availability-times input { min-height: 39px; padding: 8px 10px; border: 1px solid #444; color: #fff; background: #101010; font: .8rem 'Montserrat',sans-serif; }
+.availability-times input:focus { border-color: var(--orange); outline: none; }
+.availability-feedback { flex-basis: 100%; color: #72d39a; font-size: .75rem; line-height: 1.5; }
+.availability-feedback.warning { color: #ffb66a; }
+.availability-feedback.success { color: #72d39a; }
+.grade-section { padding-top: 7px; }
+.grade-panel { border: 1px solid var(--line); background: var(--panel); }
+.grade-panel-header { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 22px 24px; border-bottom: 1px solid var(--line); }
+.grade-panel-header h3 { margin-top: 5px; font-size: 1.2rem; }
+.grade-panel-header p { margin-top: 6px; color: #999; font-size: .75rem; }
+.outline-button { border: 1px solid var(--orange); padding: 11px 15px; color: var(--orange); background: transparent; font: 700 .76rem 'Montserrat',sans-serif; cursor: pointer; white-space: nowrap; }
+.outline-button:hover { color: #111; background: var(--orange); }
+.table-scroll { overflow-x: auto; }
+.grade-table { width: 100%; border-collapse: collapse; }
+.grade-table th, .grade-table td { padding: 15px 20px; border-bottom: 1px solid var(--line); text-align: left; font-size: .8rem; }
+.grade-table th { color: #999; font-size: .68rem; letter-spacing: .07em; text-transform: uppercase; }
+.grade-table td { color: #ddd; }
+.grade-table tr:last-child td { border-bottom: 0; }
+.grade-table input { width: 90px; padding: 9px 10px; border: 1px solid #444; border-radius: 2px; color: #fff; background: #101010; font: .8rem 'Montserrat',sans-serif; }
+.grade-table input:focus { border-color: var(--orange); outline: none; }
+.status-badge { color: #aaa; font-size: .7rem; }
+.status-badge.approved { color: #72d39a; }
+.status-badge.warning { color: #ffb66a; }
+.loading-state, .empty-state { padding: 28px 0; color: #999; font-size: .8rem; }
+.empty-state { padding: 20px; border: 1px dashed #444; text-align: center; }
+[hidden] { display: none !important; }
+@media (max-width: 760px) { .nav-content { padding: 0 17px; } .mobile-menu-button { display: block; } .nav-links { display: none; position: absolute; top: 74px; left: 0; right: 0; flex-direction: column; align-items: stretch; gap: 0; padding: 12px 18px 18px; border-bottom: 1px solid var(--line); background: #111; } .nav-links.open { display: flex; } .nav-links li { padding: 11px 0; } .welcome-content { min-height: 250px; padding-top: 35px; padding-bottom: 35px; } .welcome-mark { display: none; } .summary-strip { grid-template-columns: 1fr; } .summary-item { border-right: 0; border-bottom: 1px solid var(--line); } .summary-item:last-child { border-bottom: 0; } .discipline-grid { grid-template-columns: 1fr; } .grade-panel-header { align-items: flex-start; flex-direction: column; } .outline-button { width: 100%; } .availability-toggle-button { width: auto; } }
+
+.availability-calendar { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 16px; margin-top: 10px; }
+.calendar-month strong { display: block; margin-bottom: 8px; color: #d8b45a; font-size: .8rem; }
+.calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; }
+.calendar-weekday { color: #888; font-size: .62rem; text-align: center; }
+.calendar-day { position: relative; cursor: pointer; }
+.calendar-day input { position: absolute; opacity: 0; inset: 0; cursor: pointer; }
+.calendar-day span { display: block; padding: 6px 0; border: 1px solid rgba(255,255,255,.12); border-radius: 4px; color: #ccc; font-size: .75rem; text-align: center; }
+.calendar-day input:checked + span { border-color: #72d39a; background: rgba(114,211,154,.2); color: #fff; }
+.calendar-day input:focus-visible + span { outline: 2px solid #d8b45a; }
+
+.absence-button { margin-top: 12px; width: 100%; border-color: #e0a35a; color: #e0a35a; }
+.absence-dialog { max-width: 440px; width: calc(100% - 32px); padding: 22px; border: 1px solid rgba(255,255,255,.15); border-radius: 8px; background: #151515; color: #eee; }
+.absence-dialog::backdrop { background: rgba(0,0,0,.65); }
+.absence-dialog h3 { margin-bottom: 8px; color: #fff; }
+.absence-dialog label { display: block; margin-top: 14px; font-size: .8rem; color: #bbb; }
+.absence-dialog input, .absence-dialog textarea { display: block; width: 100%; margin-top: 6px; padding: 9px; border: 1px solid rgba(255,255,255,.2); border-radius: 4px; background: #0d0d0d; color: #fff; font: inherit; box-sizing: border-box; }
+.absence-summary { color: #999; font-size: .78rem; }
+.absence-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 16px; }
